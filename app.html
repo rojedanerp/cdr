@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remesas Pro - Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+            </svg>
+            <span>Remesas Pro</span>
+        </div>
+        
+        <ul class="nav-links">
+            <li class="active" data-section="dashboard">
+                <span>📊</span> Dashboard
+            </li>
+            <li data-section="nueva">
+                <span>➕</span> Nueva Remesa
+            </li>
+            <li data-section="historial">
+                <span>📋</span> Historial
+            </li>
+            <li data-section="reportes">
+                <span>📈</span> Reportes
+            </li>
+            <li data-section="config">
+                <span>⚙️</span> Configuración
+            </li>
+        </ul>
+        
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <span id="userEmail">usuario@empresa.com</span>
+            </div>
+            <button onclick="logout()" class="btn-logout">🚪 Cerrar Sesión</button>
+        </div>
+    </nav>
+
+    <!-- Mobile toggle -->
+    <button class="menu-toggle" id="menuToggle">☰</button>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="section active">
+            <div class="section-header">
+                <h2>Panel de Control</h2>
+                <p class="section-subtitle">Resumen de operaciones de hoy</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Enviado hoy</span>
+                    <span class="stat-value" data-stat="enviado-hoy">—</span>
+                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Remesas del mes</span>
+                    <span class="stat-value" data-stat="remesas-mes">—</span>
+                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Pendientes</span>
+                    <span class="stat-value" data-stat="pendientes">—</span>
+                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Clientes activos</span>
+                    <span class="stat-value" data-stat="clientes-activos">—</span>
+                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Últimas remesas</h3>
+                    <span class="route-tag"><i class="dot dot-origin"></i><i class="route-line"></i><i class="dot dot-dest"></i></span>
+                </div>
+                <div class="empty-state">
+                    <span class="empty-state-icon">📭</span>
+                    <p>Todavía no hay remesas registradas.</p>
+                    <span class="empty-state-hint">Esta tabla se llenará cuando conectemos la lógica de Firestore.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- NUEVA REMESA -->
+        <section id="nueva" class="section">
+            <div class="section-header">
+                <h2>Nueva Remesa</h2>
+                <p class="section-subtitle">Registrar un nuevo envío</p>
+            </div>
+            <div class="panel">
+                <form id="remesaForm" class="remesa-form">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="clienteNombre">Nombre del cliente</label>
+                            <input type="text" id="clienteNombre" required placeholder="Ej. Juan Pérez">
+                        </div>
+                        <div class="input-group">
+                            <label for="clienteTelefono">Teléfono</label>
+                            <input type="tel" id="clienteTelefono" required placeholder="+56 9 1234 5678">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="paisOrigen">País de origen</label>
+                            <input type="text" id="paisOrigen" required placeholder="Chile" list="listaPaises">
+                        </div>
+                        <div class="input-group">
+                            <label for="paisDestino">País de destino</label>
+                            <input type="text" id="paisDestino" required placeholder="Perú" list="listaPaises">
+                        </div>
+                        <datalist id="listaPaises">
+                            <option value="Chile"></option>
+                            <option value="Perú"></option>
+                            <option value="Bolivia"></option>
+                            <option value="Colombia"></option>
+                            <option value="Venezuela"></option>
+                            <option value="Argentina"></option>
+                            <option value="Ecuador"></option>
+                            <option value="Haití"></option>
+                            <option value="República Dominicana"></option>
+                        </datalist>
+
+                        <div class="input-group">
+                            <label for="montoEnviado">Monto enviado</label>
+                            <input type="number" id="montoEnviado" required min="0" step="0.01" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="monedaEnviado">Moneda de envío</label>
+                            <input type="text" id="monedaEnviado" required placeholder="CLP" maxlength="6">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="tasaCambio">Tasa de cambio</label>
+                            <input type="number" id="tasaCambio" required min="0" step="0.0001" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="monedaRecibido">Moneda a recibir</label>
+                            <input type="text" id="monedaRecibido" required placeholder="PEN" maxlength="6">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="montoRecibido">Monto a recibir (calculado)</label>
+                            <input type="text" id="montoRecibido" class="input-readonly" readonly value="—">
+                        </div>
+                        <div class="input-group">
+                            <label for="estado">Estado</label>
+                            <select id="estado">
+                                <option value="pendiente">Pendiente</option>
+                                <option value="completado">Completado</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="remesaMessage" class="form-message"></div>
+
+                    <button type="submit" class="btn-primary btn-form" id="remesaSubmitBtn">
+                        <span class="btn-text">Registrar remesa</span>
+                        <span class="spinner hidden"></span>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- HISTORIAL -->
+        <section id="historial" class="section">
+            <div class="section-header">
+                <h2>Historial</h2>
+                <p class="section-subtitle">Todas las remesas procesadas</p>
+            </div>
+            <div class="panel">
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Ruta</th>
+                                <th>Enviado</th>
+                                <th>Recibido</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historialBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="historialEmpty">
+                    <span class="empty-state-icon">📭</span>
+                    <p>Todavía no hay remesas registradas.</p>
+                    <span class="empty-state-hint">Usa "Nueva Remesa" para registrar la primera.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- REPORTES -->
+        <section id="reportes" class="section">
+            <div class="section-header">
+                <h2>Reportes</h2>
+                <p class="section-subtitle">Métricas y tendencias</p>
+            </div>
+            <div class="panel">
+                <div class="empty-state">
+                    <span class="empty-state-icon">📈</span>
+                    <p>Los reportes se implementarán en la siguiente etapa.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONFIGURACIÓN -->
+        <section id="config" class="section">
+            <div class="section-header">
+                <h2>Configuración</h2>
+                <p class="section-subtitle">Preferencias del sistema</p>
+            </div>
+            <div class="panel">
+                <div class="empty-state">
+                    <span class="empty-state-icon">⚙️</span>
+                    <p>Las opciones de configuración se implementarán en la siguiente etapa.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
