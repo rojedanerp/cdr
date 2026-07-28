@@ -69,7 +69,9 @@ const badgeLabel = (estado) => {
 const montoEnviadoInput = document.getElementById('montoEnviado');
 const tasaCambioInput = document.getElementById('tasaCambio');
 const montoRecibidoInput = document.getElementById('montoRecibido');
+const monedaEnviadoInput = document.getElementById('monedaEnviado');
 const monedaRecibidoInput = document.getElementById('monedaRecibido');
+const tasaHint = document.getElementById('tasaHint');
 
 function recalcularMontoRecibido() {
     const enviado = parseFloat(montoEnviadoInput.value);
@@ -84,6 +86,122 @@ function recalcularMontoRecibido() {
 
 [montoEnviadoInput, tasaCambioInput, monedaRecibidoInput].forEach(el => {
     el.addEventListener('input', recalcularMontoRecibido);
+});
+
+// ============================================
+// TASAS DE CAMBIO — automáticas (API en vivo) + manuales (Configuración)
+// ============================================
+let tasasCache = {};          // { "CLP_PEN": 0.1234, ... } — configuradas manualmente en Configuración
+let liveRatesCache = {};      // { CLP: { PEN: 0.12, USD: 0.001, ... }, ... } — cacheadas por sesión
+let liveRateFetchInFlight = {};
+let isAutoFilling = false;    // evita marcar como "manual" el autollenado
+let tasaManual = false;       // el usuario editó la tasa a mano para este par
+let autocompletarTimeout = null;
+let autocompletarToken = 0;
+
+function claveTasa(origen, destino) {
+    return `${(origen || '').trim().toUpperCase()}_${(destino || '').trim().toUpperCase()}`;
+}
+
+// Consulta (y cachea por sesión) las tasas en vivo de una moneda base
+// usando el endpoint abierto y gratuito de ExchangeRate-API.
+async function obtenerTasaEnVivo(origen, destino) {
+    if (!liveRatesCache[origen]) {
+        if (!liveRateFetchInFlight[origen]) {
+            liveRateFetchInFlight[origen] = fetch(`https://open.er-api.com/v6/latest/${origen}`)
+                .then(res => res.json())
+                .then(json => {
+                    if (json.result === 'success' && json.rates) {
+                        liveRatesCache[origen] = json.rates;
+                        return json.rates;
+                    }
+                    throw new Error('Respuesta inválida de la API de tasas');
+                })
+                .finally(() => { delete liveRateFetchInFlight[origen]; });
+        }
+        await liveRateFetchInFlight[origen];
+    }
+    const rates = liveRatesCache[origen];
+    return rates ? rates[destino] : undefined;
+}
+
+function aplicarTasaAlFormulario(valor) {
+    isAutoFilling = true;
+    tasaCambioInput.value = valor;
+    isAutoFilling = false;
+    recalcularMontoRecibido();
+}
+
+async function intentarAutocompletarTasa() {
+    const origen = monedaEnviadoInput.value.trim().toUpperCase();
+    const destino = monedaRecibidoInput.value.trim().toUpperCase();
+
+    if (!origen || !destino) {
+        tasaHint.textContent = '';
+        tasaHint.classList.remove('input-hint-active');
+        return;
+    }
+
+    const guardada = tasasCache[claveTasa(origen, destino)];
+
+    // El usuario ya editó la tasa a mano para este par: no la pisamos,
+    // solo avisamos si existe una tasa configurada distinta.
+    if (tasaManual) {
+        if (guardada !== undefined) {
+            tasaHint.textContent = `Hay una tasa configurada (${guardada}), pero se mantiene el valor ingresado manualmente.`;
+        } else {
+            tasaHint.textContent = '';
+        }
+        tasaHint.classList.remove('input-hint-active');
+        return;
+    }
+
+    // 1) Prioridad: tasa configurada manualmente en "Configuración"
+    if (guardada !== undefined) {
+        aplicarTasaAlFormulario(guardada);
+        tasaHint.textContent = `Tasa configurada manualmente (1 ${origen} = ${guardada} ${destino}).`;
+        tasaHint.classList.add('input-hint-active');
+        return;
+    }
+
+    // 2) Si no hay una configurada, se busca una tasa en vivo automáticamente
+    const token = ++autocompletarToken;
+    tasaHint.textContent = 'Buscando tasa en vivo...';
+    tasaHint.classList.remove('input-hint-active');
+
+    try {
+        const tasaViva = await obtenerTasaEnVivo(origen, destino);
+
+        if (token !== autocompletarToken || tasaManual) return; // el usuario siguió escribiendo o editó a mano
+
+        if (tasaViva !== undefined) {
+            const tasaRedondeada = Number(tasaViva.toFixed(6));
+            aplicarTasaAlFormulario(tasaRedondeada);
+            tasaHint.textContent = `Tasa en vivo aproximada (1 ${origen} = ${tasaViva.toFixed(4)} ${destino}). Verifícala antes de confirmar.`;
+            tasaHint.classList.add('input-hint-active');
+        } else {
+            tasaHint.textContent = `No se encontró una tasa en vivo para ${origen} → ${destino}. Ingresa el valor manualmente.`;
+            tasaHint.classList.remove('input-hint-active');
+        }
+    } catch (error) {
+        if (token !== autocompletarToken) return;
+        console.error('Error obteniendo tasa en vivo:', error);
+        tasaHint.textContent = 'No se pudo obtener una tasa en vivo. Ingresa el valor manualmente.';
+        tasaHint.classList.remove('input-hint-active');
+    }
+}
+
+function onMonedaInputChange() {
+    clearTimeout(autocompletarTimeout);
+    autocompletarTimeout = setTimeout(intentarAutocompletarTasa, 400);
+}
+
+[monedaEnviadoInput, monedaRecibidoInput].forEach(el => {
+    el.addEventListener('input', onMonedaInputChange);
+});
+
+tasaCambioInput.addEventListener('input', () => {
+    if (!isAutoFilling) tasaManual = true;
 });
 
 // ============================================
@@ -127,6 +245,9 @@ remesaForm.addEventListener('submit', async (e) => {
         await db.collection('remesas').add(data);
         remesaForm.reset();
         montoRecibidoInput.value = '—';
+        tasaManual = false;
+        tasaHint.textContent = '';
+        tasaHint.classList.remove('input-hint-active');
         remesaMessage.textContent = 'Remesa registrada correctamente.';
         remesaMessage.className = 'form-message form-message-success';
     } catch (error) {
@@ -233,4 +354,174 @@ db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     }
 }, error => {
     console.error('Error escuchando remesas:', error);
+});
+
+// ============================================
+// CONFIGURACIÓN — CRUD de tasas de cambio
+// ============================================
+const tasaForm = document.getElementById('tasaForm');
+const tasaDocIdInput = document.getElementById('tasaDocId');
+const tasaMonedaOrigenInput = document.getElementById('tasaMonedaOrigen');
+const tasaMonedaDestinoInput = document.getElementById('tasaMonedaDestino');
+const tasaValorInput = document.getElementById('tasaValor');
+const tasaSubmitBtn = document.getElementById('tasaSubmitBtn');
+const tasaCancelBtn = document.getElementById('tasaCancelBtn');
+const tasaLiveBtn = document.getElementById('tasaLiveBtn');
+const tasaMessage = document.getElementById('tasaMessage');
+const tasasBody = document.getElementById('tasasBody');
+const tasasEmpty = document.getElementById('tasasEmpty');
+const tasasTableWrap = document.querySelector('#config .table-wrap');
+
+function formatTasaFecha(timestamp) {
+    if (!timestamp || !timestamp.toDate) return '—';
+    return timestamp.toDate().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function resetTasaForm() {
+    tasaForm.reset();
+    tasaDocIdInput.value = '';
+    tasaSubmitBtn.querySelector('.btn-text').textContent = 'Guardar tasa';
+    tasaCancelBtn.classList.add('hidden');
+    tasaMessage.textContent = '';
+    tasaMessage.className = 'form-message';
+}
+
+tasaCancelBtn.addEventListener('click', resetTasaForm);
+
+tasaLiveBtn.addEventListener('click', async () => {
+    const origen = tasaMonedaOrigenInput.value.trim().toUpperCase();
+    const destino = tasaMonedaDestinoInput.value.trim().toUpperCase();
+
+    if (!origen || !destino) {
+        tasaMessage.textContent = 'Ingresa la moneda de origen y destino primero.';
+        tasaMessage.className = 'form-message form-message-error';
+        return;
+    }
+
+    tasaLiveBtn.disabled = true;
+    const textoOriginal = tasaLiveBtn.textContent;
+    tasaLiveBtn.textContent = 'Buscando...';
+
+    try {
+        const tasaViva = await obtenerTasaEnVivo(origen, destino);
+        if (tasaViva !== undefined) {
+            tasaValorInput.value = Number(tasaViva.toFixed(6));
+            tasaMessage.textContent = `Tasa en vivo cargada: 1 ${origen} = ${tasaViva.toFixed(4)} ${destino}. Revísala y guárdala si te parece correcta.`;
+            tasaMessage.className = 'form-message form-message-success';
+        } else {
+            tasaMessage.textContent = `No se encontró una tasa en vivo para ${origen} → ${destino}.`;
+            tasaMessage.className = 'form-message form-message-error';
+        }
+    } catch (error) {
+        console.error('Error obteniendo tasa en vivo:', error);
+        tasaMessage.textContent = 'No se pudo obtener la tasa en vivo. Intenta de nuevo.';
+        tasaMessage.className = 'form-message form-message-error';
+    } finally {
+        tasaLiveBtn.disabled = false;
+        tasaLiveBtn.textContent = textoOriginal;
+    }
+});
+
+tasaForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const origen = tasaMonedaOrigenInput.value.trim().toUpperCase();
+    const destino = tasaMonedaDestinoInput.value.trim().toUpperCase();
+    const tasa = parseFloat(tasaValorInput.value);
+    const docId = claveTasa(origen, destino);
+
+    tasaSubmitBtn.disabled = true;
+    tasaSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
+    tasaSubmitBtn.querySelector('.spinner').classList.remove('hidden');
+    tasaMessage.textContent = '';
+    tasaMessage.className = 'form-message';
+
+    try {
+        await db.collection('tasasCambio').doc(docId).set({
+            monedaOrigen: origen,
+            monedaDestino: destino,
+            tasa,
+            actualizadoEn: firebase.firestore.FieldValue.serverTimestamp(),
+            actualizadoPor: auth.currentUser ? auth.currentUser.email : null
+        }, { merge: true });
+
+        resetTasaForm();
+        tasaMessage.textContent = 'Tasa guardada correctamente.';
+        tasaMessage.className = 'form-message form-message-success';
+    } catch (error) {
+        console.error('Error al guardar tasa de cambio:', error);
+        tasaMessage.textContent = 'No se pudo guardar la tasa. Intenta de nuevo.';
+        tasaMessage.className = 'form-message form-message-error';
+    } finally {
+        tasaSubmitBtn.disabled = false;
+        tasaSubmitBtn.querySelector('.spinner').classList.add('hidden');
+    }
+});
+
+window.editarTasa = (docId) => {
+    const data = tasasCache[`__doc_${docId}`];
+    if (!data) return;
+
+    tasaDocIdInput.value = docId;
+    tasaMonedaOrigenInput.value = data.monedaOrigen;
+    tasaMonedaDestinoInput.value = data.monedaDestino;
+    tasaValorInput.value = data.tasa;
+    tasaSubmitBtn.querySelector('.btn-text').textContent = 'Actualizar tasa';
+    tasaCancelBtn.classList.remove('hidden');
+    tasaMessage.textContent = '';
+    tasaMessage.className = 'form-message';
+    tasaMonedaOrigenInput.focus();
+};
+
+window.eliminarTasa = async (docId) => {
+    if (!confirm('¿Eliminar esta tasa de cambio?')) return;
+    try {
+        await db.collection('tasasCambio').doc(docId).delete();
+    } catch (error) {
+        console.error('Error al eliminar tasa de cambio:', error);
+        alert('No se pudo eliminar la tasa. Intenta de nuevo.');
+    }
+};
+
+function renderTasaRow(docId, data) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>${data.monedaOrigen}</td>
+        <td>${data.monedaDestino}</td>
+        <td class="mono-cell">${data.tasa}</td>
+        <td>${formatTasaFecha(data.actualizadoEn)}</td>
+        <td>
+            <button type="button" class="btn-icon-action" onclick="editarTasa('${docId}')">✏️ Editar</button>
+            <button type="button" class="btn-icon-action danger" onclick="eliminarTasa('${docId}')">🗑️ Eliminar</button>
+        </td>
+    `;
+    return tr;
+}
+
+db.collection('tasasCambio').orderBy('monedaOrigen').onSnapshot(snapshot => {
+    // Reconstruir la caché usada para el autocompletado en Nueva Remesa
+    tasasCache = {};
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        tasasCache[claveTasa(data.monedaOrigen, data.monedaDestino)] = data.tasa;
+        tasasCache[`__doc_${doc.id}`] = data;
+    });
+
+    // Re-evaluar el autocompletado por si el par actual ya tiene tasa
+    intentarAutocompletarTasa();
+
+    // Renderizar tabla de Configuración
+    tasasBody.innerHTML = '';
+    if (snapshot.empty) {
+        tasasEmpty.style.display = 'block';
+        tasasTableWrap.style.display = 'none';
+    } else {
+        tasasEmpty.style.display = 'none';
+        tasasTableWrap.style.display = 'block';
+        snapshot.forEach(doc => {
+            tasasBody.appendChild(renderTasaRow(doc.id, doc.data()));
+        });
+    }
+}, error => {
+    console.error('Error escuchando tasas de cambio:', error);
 });
