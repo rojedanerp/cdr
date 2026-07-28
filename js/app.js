@@ -205,6 +205,194 @@ tasaCambioInput.addEventListener('input', () => {
 });
 
 // ============================================
+// CLIENTES — CRUD + caché para vincular remesas
+// ============================================
+let clientesCache = {};       // { "juan perez": { id, nombre, telefono, paisDestino, ... } } — clave normalizada por nombre
+let clientesPorId = {};       // { docId: data }
+
+function normalizarNombre(nombre) {
+    return (nombre || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function formatClienteFecha(timestamp) {
+    if (!timestamp || !timestamp.toDate) return '—';
+    return timestamp.toDate().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+const clienteForm = document.getElementById('clienteForm');
+const clienteFormTitle = document.getElementById('clienteFormTitle');
+const clienteDocIdInput = document.getElementById('clienteDocId');
+const clienteFormNombreInput = document.getElementById('clienteFormNombre');
+const clienteFormTelefonoInput = document.getElementById('clienteFormTelefono');
+const clienteFormPaisDestinoInput = document.getElementById('clienteFormPaisDestino');
+const clienteFormNotasInput = document.getElementById('clienteFormNotas');
+const clienteSubmitBtn = document.getElementById('clienteSubmitBtn');
+const clienteCancelBtn = document.getElementById('clienteCancelBtn');
+const clienteMessage = document.getElementById('clienteMessage');
+const clientesBody = document.getElementById('clientesBody');
+const clientesEmpty = document.getElementById('clientesEmpty');
+const clientesTableWrap = document.getElementById('clientesTableWrap');
+const listaClientesDatalist = document.getElementById('listaClientes');
+
+function resetClienteForm() {
+    clienteForm.reset();
+    clienteDocIdInput.value = '';
+    clienteFormTitle.textContent = 'Nuevo cliente';
+    clienteSubmitBtn.querySelector('.btn-text').textContent = 'Guardar cliente';
+    clienteCancelBtn.classList.add('hidden');
+    clienteMessage.textContent = '';
+    clienteMessage.className = 'form-message';
+}
+
+clienteCancelBtn.addEventListener('click', resetClienteForm);
+
+clienteForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const docId = clienteDocIdInput.value;
+    const nombre = clienteFormNombreInput.value.trim();
+    const claveNombre = normalizarNombre(nombre);
+
+    // Evitar duplicados: si ya existe un cliente con ese nombre (y no es el que estamos editando), avisar.
+    const existente = clientesCache[claveNombre];
+    if (existente && existente.id !== docId) {
+        clienteMessage.textContent = `Ya existe un cliente llamado "${nombre}". Edítalo en vez de crear uno nuevo.`;
+        clienteMessage.className = 'form-message form-message-error';
+        return;
+    }
+
+    const data = {
+        nombre,
+        telefono: clienteFormTelefonoInput.value.trim(),
+        paisDestino: clienteFormPaisDestinoInput.value.trim(),
+        notas: clienteFormNotasInput.value.trim(),
+        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp(),
+        actualizadoPor: auth.currentUser ? auth.currentUser.email : null
+    };
+
+    clienteSubmitBtn.disabled = true;
+    clienteSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
+    clienteSubmitBtn.querySelector('.spinner').classList.remove('hidden');
+    clienteMessage.textContent = '';
+    clienteMessage.className = 'form-message';
+
+    try {
+        if (docId) {
+            await db.collection('clientes').doc(docId).update(data);
+        } else {
+            data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection('clientes').add(data);
+        }
+        resetClienteForm();
+        clienteMessage.textContent = 'Cliente guardado correctamente.';
+        clienteMessage.className = 'form-message form-message-success';
+    } catch (error) {
+        console.error('Error al guardar cliente:', error);
+        clienteMessage.textContent = 'No se pudo guardar el cliente. Intenta de nuevo.';
+        clienteMessage.className = 'form-message form-message-error';
+    } finally {
+        clienteSubmitBtn.disabled = false;
+        clienteSubmitBtn.querySelector('.spinner').classList.add('hidden');
+    }
+});
+
+window.editarCliente = (docId) => {
+    const data = clientesPorId[docId];
+    if (!data) return;
+
+    clienteDocIdInput.value = docId;
+    clienteFormNombreInput.value = data.nombre || '';
+    clienteFormTelefonoInput.value = data.telefono || '';
+    clienteFormPaisDestinoInput.value = data.paisDestino || '';
+    clienteFormNotasInput.value = data.notas || '';
+    clienteFormTitle.textContent = `Editando: ${data.nombre}`;
+    clienteSubmitBtn.querySelector('.btn-text').textContent = 'Actualizar cliente';
+    clienteCancelBtn.classList.remove('hidden');
+    clienteMessage.textContent = '';
+    clienteMessage.className = 'form-message';
+    clienteFormNombreInput.focus();
+    document.querySelector('.nav-links li[data-section="clientes"]').click();
+};
+
+window.eliminarCliente = async (docId) => {
+    if (!confirm('¿Eliminar este cliente? Las remesas ya registradas no se verán afectadas.')) return;
+    try {
+        await db.collection('clientes').doc(docId).delete();
+    } catch (error) {
+        console.error('Error al eliminar cliente:', error);
+        alert('No se pudo eliminar el cliente. Intenta de nuevo.');
+    }
+};
+
+function renderClienteRow(docId, data) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>${data.nombre || '—'}</td>
+        <td class="mono-cell">${data.telefono || '—'}</td>
+        <td>${data.paisDestino || '—'}</td>
+        <td>${formatClienteFecha(data.ultimaRemesaEn)}</td>
+        <td>
+            <button type="button" class="btn-icon-action" onclick="editarCliente('${docId}')">✏️ Editar</button>
+            <button type="button" class="btn-icon-action danger" onclick="eliminarCliente('${docId}')">🗑️ Eliminar</button>
+        </td>
+    `;
+    return tr;
+}
+
+db.collection('clientes').orderBy('nombre').onSnapshot(snapshot => {
+    clientesCache = {};
+    clientesPorId = {};
+    listaClientesDatalist.innerHTML = '';
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        const entry = { id: doc.id, ...data };
+        clientesCache[normalizarNombre(data.nombre)] = entry;
+        clientesPorId[doc.id] = data;
+
+        const option = document.createElement('option');
+        option.value = data.nombre;
+        listaClientesDatalist.appendChild(option);
+    });
+
+    clientesBody.innerHTML = '';
+    if (snapshot.empty) {
+        clientesEmpty.style.display = 'block';
+        clientesTableWrap.style.display = 'none';
+    } else {
+        clientesEmpty.style.display = 'none';
+        clientesTableWrap.style.display = 'block';
+        snapshot.forEach(doc => {
+            clientesBody.appendChild(renderClienteRow(doc.id, doc.data()));
+        });
+    }
+}, error => {
+    console.error('Error escuchando clientes:', error);
+});
+
+// Autocompletar teléfono en "Nueva Remesa" si el nombre coincide con un cliente existente
+const clienteNombreInput = document.getElementById('clienteNombre');
+const clienteIdInput = document.getElementById('clienteId');
+const clienteTelefonoInput = document.getElementById('clienteTelefono');
+const clienteHint = document.getElementById('clienteHint');
+
+clienteNombreInput.addEventListener('input', () => {
+    const match = clientesCache[normalizarNombre(clienteNombreInput.value)];
+    if (match) {
+        clienteIdInput.value = match.id;
+        if (!clienteTelefonoInput.value.trim() && match.telefono) {
+            clienteTelefonoInput.value = match.telefono;
+        }
+        clienteHint.textContent = 'Cliente existente — se vinculará a su historial.';
+        clienteHint.classList.add('input-hint-active');
+    } else {
+        clienteIdInput.value = '';
+        clienteHint.textContent = clienteNombreInput.value.trim() ? 'Cliente nuevo — se creará al guardar.' : '';
+        clienteHint.classList.remove('input-hint-active');
+    }
+});
+
+// ============================================
 // NUEVA REMESA — envío del formulario
 // ============================================
 const remesaForm = document.getElementById('remesaForm');
@@ -218,22 +406,8 @@ remesaForm.addEventListener('submit', async (e) => {
     const tasaCambio = parseFloat(tasaCambioInput.value);
     const monedaRecibido = monedaRecibidoInput.value.trim().toUpperCase();
     const montoRecibido = montoEnviado * tasaCambio;
-
-    const data = {
-        clienteNombre: document.getElementById('clienteNombre').value.trim(),
-        clienteTelefono: document.getElementById('clienteTelefono').value.trim(),
-        paisOrigen: document.getElementById('paisOrigen').value.trim(),
-        paisDestino: document.getElementById('paisDestino').value.trim(),
-        montoEnviado,
-        monedaEnviado: document.getElementById('monedaEnviado').value.trim().toUpperCase(),
-        tasaCambio,
-        montoRecibido,
-        monedaRecibido,
-        estado: document.getElementById('estado').value,
-        creadoPor: auth.currentUser ? auth.currentUser.uid : null,
-        creadoPorEmail: auth.currentUser ? auth.currentUser.email : null,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
+    const clienteNombre = clienteNombreInput.value.trim();
+    const clienteTelefono = clienteTelefonoInput.value.trim();
 
     remesaSubmitBtn.disabled = true;
     remesaSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
@@ -242,9 +416,53 @@ remesaForm.addEventListener('submit', async (e) => {
     remesaMessage.className = 'form-message';
 
     try {
+        // Resolver el cliente: reutilizar uno existente o crear uno nuevo automáticamente
+        let clienteId = clienteIdInput.value || null;
+        const existente = clientesCache[normalizarNombre(clienteNombre)];
+
+        if (existente) {
+            clienteId = existente.id;
+        } else {
+            const nuevoCliente = await db.collection('clientes').add({
+                nombre: clienteNombre,
+                telefono: clienteTelefono,
+                paisDestino: document.getElementById('paisDestino').value.trim(),
+                notas: '',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                actualizadoPor: auth.currentUser ? auth.currentUser.email : null
+            });
+            clienteId = nuevoCliente.id;
+        }
+
+        const data = {
+            clienteId,
+            clienteNombre,
+            clienteTelefono,
+            paisOrigen: document.getElementById('paisOrigen').value.trim(),
+            paisDestino: document.getElementById('paisDestino').value.trim(),
+            montoEnviado,
+            monedaEnviado: document.getElementById('monedaEnviado').value.trim().toUpperCase(),
+            tasaCambio,
+            montoRecibido,
+            monedaRecibido,
+            estado: document.getElementById('estado').value,
+            creadoPor: auth.currentUser ? auth.currentUser.uid : null,
+            creadoPorEmail: auth.currentUser ? auth.currentUser.email : null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
         await db.collection('remesas').add(data);
+
+        // Marcar la fecha de última remesa en el cliente (no bloqueante para el flujo principal)
+        db.collection('clientes').doc(clienteId).update({
+            ultimaRemesaEn: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(err => console.warn('No se pudo actualizar ultimaRemesaEn:', err));
+
         remesaForm.reset();
         montoRecibidoInput.value = '—';
+        clienteIdInput.value = '';
+        clienteHint.textContent = '';
+        clienteHint.classList.remove('input-hint-active');
         tasaManual = false;
         tasaHint.textContent = '';
         tasaHint.classList.remove('input-hint-active');
