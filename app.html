@@ -29,6 +29,9 @@
             <li data-section="nueva">
                 <span>➕</span> Nueva Remesa
             </li>
+            <li data-section="clientes">
+                <span>👥</span> Clientes
+            </li>
             <li data-section="historial">
                 <span>📋</span> Historial
             </li>
@@ -107,7 +110,10 @@
                     <div class="form-grid">
                         <div class="input-group">
                             <label for="clienteNombre">Nombre del cliente</label>
-                            <input type="text" id="clienteNombre" required placeholder="Ej. Juan Pérez">
+                            <input type="text" id="clienteNombre" required placeholder="Ej. Juan Pérez" list="listaClientes" autocomplete="off">
+                            <input type="hidden" id="clienteId" value="">
+                            <datalist id="listaClientes"></datalist>
+                            <span class="input-hint" id="clienteHint"></span>
                         </div>
                         <div class="input-group">
                             <label for="clienteTelefono">Teléfono</label>
@@ -173,6 +179,71 @@
                         <span class="spinner hidden"></span>
                     </button>
                 </form>
+            </div>
+        </section>
+
+        <!-- CLIENTES -->
+        <section id="clientes" class="section">
+            <div class="section-header">
+                <h2>Clientes</h2>
+                <p class="section-subtitle">Personas que envían dinero a través de nosotros</p>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 id="clienteFormTitle">Nuevo cliente</h3>
+                </div>
+                <form id="clienteForm" class="remesa-form">
+                    <input type="hidden" id="clienteDocId" value="">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="clienteFormNombre">Nombre</label>
+                            <input type="text" id="clienteFormNombre" required placeholder="Ej. Juan Pérez">
+                        </div>
+                        <div class="input-group">
+                            <label for="clienteFormTelefono">Teléfono</label>
+                            <input type="tel" id="clienteFormTelefono" placeholder="+56 9 1234 5678">
+                        </div>
+                        <div class="input-group">
+                            <label for="clienteFormPaisDestino">País de destino habitual</label>
+                            <input type="text" id="clienteFormPaisDestino" placeholder="Venezuela" list="listaPaises">
+                        </div>
+                        <div class="input-group">
+                            <label for="clienteFormNotas">Notas</label>
+                            <input type="text" id="clienteFormNotas" placeholder="Opcional">
+                        </div>
+                    </div>
+
+                    <div id="clienteMessage" class="form-message"></div>
+
+                    <div class="tasa-form-actions">
+                        <button type="submit" class="btn-primary btn-form" id="clienteSubmitBtn">
+                            <span class="btn-text">Guardar cliente</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                        <button type="button" class="btn-secondary hidden" id="clienteCancelBtn">Cancelar edición</button>
+                    </div>
+                </form>
+
+                <div class="table-wrap" id="clientesTableWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>País destino</th>
+                                <th>Última remesa</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientesBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="clientesEmpty">
+                    <span class="empty-state-icon">👥</span>
+                    <p>Todavía no hay clientes registrados.</p>
+                    <span class="empty-state-hint">Se crean automáticamente al registrar una remesa, o agrégalos aquí.</span>
+                </div>
             </div>
         </section>
 
