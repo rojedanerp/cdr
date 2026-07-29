@@ -655,6 +655,17 @@ button {
   margin: 8px 0 4px;
 }
 
+.calc-result-secondary {
+  background: var(--canvas);
+  border-color: var(--border);
+  margin-top: 20px;
+}
+
+.calc-result-secondary .calc-result-value {
+  color: var(--slate);
+  font-size: 20px;
+}
+
 .calc-result {
   margin-top: 20px;
   padding: 20px 24px;
