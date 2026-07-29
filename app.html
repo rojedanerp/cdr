@@ -431,7 +431,7 @@
                     <h3>Tasas de cambio</h3>
                 </div>
                 <p class="tasa-intro">
-                    En "Nueva Remesa" la tasa se completa sola: primero usa la que configures aquí manualmente y,
+                    En "Nueva Remesa" la tasa se completa sola: primero usa la tasa de <strong>compra</strong> que configures aquí manualmente y,
                     si no hay ninguna guardada para ese par de monedas, busca una tasa en vivo automáticamente.
                 </p>
 
@@ -447,9 +447,26 @@
                             <input type="text" id="tasaMonedaDestino" required placeholder="PEN" maxlength="6">
                         </div>
                         <div class="input-group">
-                            <label for="tasaValor">Tasa (1 origen = X destino)</label>
-                            <input type="number" id="tasaValor" required min="0" step="0.0001" placeholder="0">
+                            <label for="tasaBase">Valor de mercado (1 origen = X destino)</label>
+                            <input type="number" id="tasaBase" required min="0" step="0.0001" placeholder="0">
                         </div>
+                        <div class="input-group">
+                            <label for="tasaMargenCompra">Margen al comprar (%)</label>
+                            <input type="number" id="tasaMargenCompra" step="any" inputmode="decimal" placeholder="0" value="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="tasaMargenVenta">Margen al vender (%)</label>
+                            <input type="number" id="tasaMargenVenta" step="any" inputmode="decimal" placeholder="0" value="0">
+                        </div>
+                    </div>
+
+                    <div class="calc-result calc-result-secondary" id="tasaPreviewCompraBox">
+                        <span class="calc-result-label" id="tasaPreviewCompraLabel">Tasa de compra (la que se usa para autocompletar remesas)</span>
+                        <span class="calc-result-value" id="tasaPreviewCompraValue">—</span>
+                    </div>
+                    <div class="calc-result" id="tasaPreviewVentaBox">
+                        <span class="calc-result-label" id="tasaPreviewVentaLabel">Tasa de venta</span>
+                        <span class="calc-result-value" id="tasaPreviewVentaValue">—</span>
                     </div>
 
                     <div id="tasaMessage" class="form-message"></div>
@@ -470,7 +487,8 @@
                             <tr>
                                 <th>Origen</th>
                                 <th>Destino</th>
-                                <th>Tasa</th>
+                                <th>Compra</th>
+                                <th>Venta</th>
                                 <th>Actualizada</th>
                                 <th>Acciones</th>
                             </tr>
