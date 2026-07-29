@@ -330,94 +330,64 @@
 
             <div class="panel">
                 <div class="panel-header">
-                    <h3>Calculadora de tasa cruzada</h3>
+                    <h3>Calculadora de tasa (vía USDT)</h3>
                 </div>
                 <p class="tasa-intro">
-                    Calcula la tasa cruzada del día a partir del valor de cada moneda frente al dólar, y úsala para completar la tasa de abajo.
+                    Registra a cómo compras el USDT y a cómo lo vendes. La calculadora arma la tasa cruzada,
+                    le descuenta tu margen y te entrega la tasa final para tus clientes — en ambos sentidos.
                 </p>
                 <div class="form-grid">
                     <div class="input-group">
-                        <label for="calcOrigenCodigo">Moneda de origen</label>
-                        <input type="text" id="calcOrigenCodigo" placeholder="CLP" maxlength="6">
+                        <label for="calcMonedaOrigen">Moneda de origen</label>
+                        <input type="text" id="calcMonedaOrigen" placeholder="CLP" maxlength="6" value="CLP">
                     </div>
                     <div class="input-group">
-                        <label for="calcOrigenValor">Valor de 1 USD en esa moneda</label>
-                        <input type="number" id="calcOrigenValor" placeholder="940" step="any" inputmode="decimal">
+                        <label for="calcMonedaDestino">Moneda de destino</label>
+                        <input type="text" id="calcMonedaDestino" placeholder="VES" maxlength="6" value="VES">
                     </div>
                     <div class="input-group">
-                        <label for="calcDestinoCodigo">Moneda de destino</label>
-                        <input type="text" id="calcDestinoCodigo" placeholder="VES" maxlength="6">
+                        <label for="calcCompraValor">Compras 1 USDT pagando</label>
+                        <input type="number" id="calcCompraValor" placeholder="940" step="any" inputmode="decimal">
                     </div>
                     <div class="input-group">
-                        <label for="calcDestinoValor">Valor de 1 USD en esa moneda</label>
-                        <input type="number" id="calcDestinoValor" placeholder="845" step="any" inputmode="decimal">
+                        <label for="calcVentaValor">Vendes ese USDT y recibes</label>
+                        <input type="number" id="calcVentaValor" placeholder="850" step="any" inputmode="decimal">
                     </div>
                     <div class="input-group">
-                        <label for="calcMargen">Margen a descontar (%)</label>
+                        <label for="calcMargen">Margen adicional a descontar (%)</label>
                         <input type="number" id="calcMargen" value="6" step="any" inputmode="decimal">
                     </div>
                 </div>
 
-                <div class="calc-result calc-result-secondary" id="calcResultBoxMercado">
-                    <span class="calc-result-label" id="calcResultLabelMercado">Tasa de mercado (sin margen)</span>
-                    <span class="calc-result-value" id="calcResultValueMercado">—</span>
+                <div class="calc-result calc-result-secondary" id="calcTasaFullBox">
+                    <span class="calc-result-label" id="calcTasaFullLabel">Tasa full (cruce sin margen)</span>
+                    <span class="calc-result-value" id="calcTasaFullValue">—</span>
                 </div>
 
-                <div class="calc-result" id="calcResultBox">
-                    <span class="calc-result-label" id="calcResultLabel">Tasa a ofrecer (con margen descontado)</span>
-                    <span class="calc-result-value" id="calcResultValue">—</span>
+                <div class="calc-result" id="calcTasaFinalBox">
+                    <span class="calc-result-label" id="calcTasaFinalLabel">Tasa final a ofrecer</span>
+                    <span class="calc-result-value" id="calcTasaFinalValue">—</span>
+                </div>
+
+                <div class="calc-result calc-result-secondary" id="calcTasaInversaBox">
+                    <span class="calc-result-label" id="calcTasaInversaLabel">Tasa inversa</span>
+                    <span class="calc-result-value" id="calcTasaInversaValue">—</span>
+                </div>
+
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="calcMontoOrigen">Simular envío: monto en origen</label>
+                        <input type="number" id="calcMontoOrigen" placeholder="100000" step="any" inputmode="decimal">
+                    </div>
+                </div>
+
+                <div class="calc-result calc-result-secondary" id="calcMontoDestinoBox">
+                    <span class="calc-result-label" id="calcMontoDestinoLabel">El cliente recibe</span>
+                    <span class="calc-result-value" id="calcMontoDestinoValue">—</span>
                 </div>
 
                 <div class="tasa-form-actions">
                     <button type="button" class="btn-primary btn-form" id="calcGuardarBtn" disabled>⬇️ Usar esta tasa abajo</button>
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-header">
-                    <h3>Compra y venta de USDT</h3>
-                </div>
-                <div class="form-grid">
-                    <div class="input-group">
-                        <label for="calcUsdtMoneda">Moneda local</label>
-                        <input type="text" id="calcUsdtMoneda" placeholder="CLP" maxlength="6" value="CLP">
-                    </div>
-                    <div class="input-group">
-                        <label for="calcUsdtValorMercado">Valor de mercado (1 USDT en esa moneda)</label>
-                        <input type="number" id="calcUsdtValorMercado" placeholder="940" step="any" inputmode="decimal">
-                    </div>
-                    <div class="input-group">
-                        <label for="calcUsdtMargenCompra">Margen al comprar USDT (%)</label>
-                        <input type="number" id="calcUsdtMargenCompra" value="2" step="any" inputmode="decimal">
-                    </div>
-                    <div class="input-group">
-                        <label for="calcUsdtMargenVenta">Margen al vender USDT (%)</label>
-                        <input type="number" id="calcUsdtMargenVenta" value="2" step="any" inputmode="decimal">
-                    </div>
-                    <div class="input-group">
-                        <label for="calcUsdtMonto">Monto en pesos</label>
-                        <input type="number" id="calcUsdtMonto" placeholder="100000" step="any" inputmode="decimal">
-                    </div>
-                </div>
-
-                <div class="calc-result calc-result-secondary" id="calcUsdtCompraBox">
-                    <span class="calc-result-label" id="calcUsdtCompraLabel">Tasa de compra (pagas por cada USDT que te venden)</span>
-                    <span class="calc-result-value" id="calcUsdtCompraValue">—</span>
-                </div>
-
-                <div class="calc-result" id="calcUsdtVentaBox">
-                    <span class="calc-result-label" id="calcUsdtVentaLabel">Tasa de venta (cobras por cada USDT que vendes)</span>
-                    <span class="calc-result-value" id="calcUsdtVentaValue">—</span>
-                </div>
-
-                <div class="calc-result calc-result-secondary" id="calcUsdtCompraMontoBox">
-                    <span class="calc-result-label" id="calcUsdtCompraMontoLabel">USDT que recibes al comprar con ese monto</span>
-                    <span class="calc-result-value" id="calcUsdtCompraMontoValue">—</span>
-                </div>
-
-                <div class="calc-result" id="calcUsdtVentaMontoBox">
-                    <span class="calc-result-label" id="calcUsdtVentaMontoLabel">USDT que entregas al vender por ese monto</span>
-                    <span class="calc-result-value" id="calcUsdtVentaMontoValue">—</span>
                 </div>
             </div>
 
