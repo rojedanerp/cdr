@@ -170,6 +170,30 @@
                                 <option value="completado">Completado</option>
                             </select>
                         </div>
+
+                        <div class="input-group">
+                            <label for="formaPago">Forma de pago del cliente</label>
+                            <select id="formaPago">
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                            </select>
+                        </div>
+                        <div class="input-group hidden" id="bancoGroup">
+                            <label for="bancoOrigen">Banco de la transferencia</label>
+                            <input type="text" id="bancoOrigen" placeholder="Ej. BancoEstado" list="listaBancos">
+                            <datalist id="listaBancos">
+                                <option value="BancoEstado"></option>
+                                <option value="Banco de Chile"></option>
+                                <option value="Santander"></option>
+                                <option value="BCI"></option>
+                                <option value="Scotiabank"></option>
+                                <option value="Itaú"></option>
+                                <option value="Banco Falabella"></option>
+                                <option value="Banco Security"></option>
+                                <option value="Banco Ripley"></option>
+                                <option value="Coopeuch"></option>
+                            </datalist>
+                        </div>
                     </div>
 
                     <div id="remesaMessage" class="form-message"></div>
@@ -263,6 +287,7 @@
                                 <th>Ruta</th>
                                 <th>Enviado</th>
                                 <th>Recibido</th>
+                                <th>Pago</th>
                                 <th>Estado</th>
                             </tr>
                         </thead>
