@@ -613,35 +613,45 @@ const calcOrigenCodigoInput = document.getElementById('calcOrigenCodigo');
 const calcOrigenValorInput = document.getElementById('calcOrigenValor');
 const calcDestinoCodigoInput = document.getElementById('calcDestinoCodigo');
 const calcDestinoValorInput = document.getElementById('calcDestinoValor');
+const calcMargenInput = document.getElementById('calcMargen');
 const calcResultLabel = document.getElementById('calcResultLabel');
 const calcResultValue = document.getElementById('calcResultValue');
+const calcResultValueMercado = document.getElementById('calcResultValueMercado');
 const calcGuardarBtn = document.getElementById('calcGuardarBtn');
 
-let calcTasaResultado = null;
+let calcTasaResultado = null;      // tasa final, ya con el margen descontado (la que se ofrece/guarda)
+let calcTasaMercado = null;        // tasa cruzada cruda, sin margen
 
 function recalcularTasaCruzada() {
     const origenCodigo = calcOrigenCodigoInput.value.trim().toUpperCase();
     const destinoCodigo = calcDestinoCodigoInput.value.trim().toUpperCase();
     const origenValor = parseFloat(calcOrigenValorInput.value);
     const destinoValor = parseFloat(calcDestinoValorInput.value);
+    const margen = parseFloat(calcMargenInput.value) || 0;
 
     if (!origenValor || !destinoValor || origenValor <= 0) {
         calcTasaResultado = null;
-        calcResultLabel.textContent = 'Ingresa ambos valores para calcular la tasa';
+        calcTasaMercado = null;
+        calcResultLabel.textContent = 'Tasa a ofrecer (con margen descontado)';
         calcResultValue.textContent = '—';
+        calcResultValueMercado.textContent = '—';
         calcGuardarBtn.disabled = true;
         return;
     }
 
-    calcTasaResultado = destinoValor / origenValor;
+    calcTasaMercado = destinoValor / origenValor;
+    calcTasaResultado = calcTasaMercado * (1 - margen / 100);
+
     const origenTxt = origenCodigo || 'ORIGEN';
     const destinoTxt = destinoCodigo || 'DESTINO';
-    calcResultLabel.textContent = `1 ${origenTxt} = ${calcTasaResultado.toFixed(6)} ${destinoTxt}`;
+
+    calcResultValueMercado.textContent = calcTasaMercado.toFixed(6);
+    calcResultLabel.textContent = `1 ${origenTxt} = ${calcTasaResultado.toFixed(6)} ${destinoTxt} (margen ${margen}%)`;
     calcResultValue.textContent = calcTasaResultado.toFixed(3);
     calcGuardarBtn.disabled = !(origenCodigo && destinoCodigo);
 }
 
-[calcOrigenCodigoInput, calcOrigenValorInput, calcDestinoCodigoInput, calcDestinoValorInput].forEach(el => {
+[calcOrigenCodigoInput, calcOrigenValorInput, calcDestinoCodigoInput, calcDestinoValorInput, calcMargenInput].forEach(el => {
     el.addEventListener('input', recalcularTasaCruzada);
 });
 
