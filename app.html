@@ -299,15 +299,24 @@
                         <label for="calcDestinoValor">Valor de 1 USD en esa moneda</label>
                         <input type="number" id="calcDestinoValor" placeholder="845" step="any" inputmode="decimal">
                     </div>
+                    <div class="input-group">
+                        <label for="calcMargen">Margen a descontar (%)</label>
+                        <input type="number" id="calcMargen" value="6" step="any" inputmode="decimal">
+                    </div>
+                </div>
+
+                <div class="calc-result calc-result-secondary" id="calcResultBoxMercado">
+                    <span class="calc-result-label" id="calcResultLabelMercado">Tasa de mercado (sin margen)</span>
+                    <span class="calc-result-value" id="calcResultValueMercado">—</span>
                 </div>
 
                 <div class="calc-result" id="calcResultBox">
-                    <span class="calc-result-label" id="calcResultLabel">Ingresa ambos valores para calcular la tasa</span>
+                    <span class="calc-result-label" id="calcResultLabel">Tasa a ofrecer (con margen descontado)</span>
                     <span class="calc-result-value" id="calcResultValue">—</span>
                 </div>
 
                 <div class="tasa-form-actions">
-                    <button type="button" class="btn-primary btn-form" id="calcGuardarBtn" disabled>Usar esta tasa en Configuración</button>
+                    <button type="button" class="btn-primary btn-form" id="calcGuardarBtn" disabled>Usar tasa con margen en Configuración</button>
                 </div>
             </div>
         </section>
