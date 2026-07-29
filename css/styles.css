@@ -655,6 +655,29 @@ button {
   margin: 8px 0 4px;
 }
 
+.calc-result {
+  margin-top: 20px;
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: var(--transfer-teal-light);
+  border: 1px solid var(--transfer-teal);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.calc-result-label {
+  font-size: 13px;
+  color: var(--slate);
+}
+
+.calc-result-value {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--transfer-teal);
+}
+
 .form-message-success {
   color: var(--success);
 }
