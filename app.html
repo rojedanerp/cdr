@@ -110,6 +110,7 @@
             </div>
             <div class="panel">
                 <form id="remesaForm" class="remesa-form">
+                    <input type="hidden" id="remesaDocId" value="">
                     <div class="form-grid">
                         <div class="input-group">
                             <label for="clienteNombre">Nombre del cliente</label>
@@ -201,10 +202,13 @@
 
                     <div id="remesaMessage" class="form-message"></div>
 
-                    <button type="submit" class="btn-primary btn-form" id="remesaSubmitBtn">
-                        <span class="btn-text">Registrar remesa</span>
-                        <span class="spinner hidden"></span>
-                    </button>
+                    <div class="tasa-form-actions">
+                        <button type="submit" class="btn-primary btn-form" id="remesaSubmitBtn">
+                            <span class="btn-text">Registrar remesa</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                        <button type="button" class="btn-secondary hidden" id="remesaCancelBtn">Cancelar edición</button>
+                    </div>
                 </form>
             </div>
         </section>
@@ -319,6 +323,40 @@
                     <button type="button" class="btn-primary btn-form" id="calcGuardarBtn" disabled>Usar tasa con margen en Configuración</button>
                 </div>
             </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Compra y venta de USD</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="calcUsdMoneda">Moneda local</label>
+                        <input type="text" id="calcUsdMoneda" placeholder="CLP" maxlength="6" value="CLP">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcUsdValorMercado">Valor de mercado (1 USD en esa moneda)</label>
+                        <input type="number" id="calcUsdValorMercado" placeholder="940" step="any" inputmode="decimal">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcUsdMargenCompra">Margen al comprar USD (%)</label>
+                        <input type="number" id="calcUsdMargenCompra" value="2" step="any" inputmode="decimal">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcUsdMargenVenta">Margen al vender USD (%)</label>
+                        <input type="number" id="calcUsdMargenVenta" value="2" step="any" inputmode="decimal">
+                    </div>
+                </div>
+
+                <div class="calc-result calc-result-secondary" id="calcUsdCompraBox">
+                    <span class="calc-result-label" id="calcUsdCompraLabel">Tasa de compra (pagas por cada USD que te venden)</span>
+                    <span class="calc-result-value" id="calcUsdCompraValue">—</span>
+                </div>
+
+                <div class="calc-result" id="calcUsdVentaBox">
+                    <span class="calc-result-label" id="calcUsdVentaLabel">Tasa de venta (cobras por cada USD que vendes)</span>
+                    <span class="calc-result-value" id="calcUsdVentaValue">—</span>
+                </div>
+            </div>
         </section>
 
         <!-- HISTORIAL -->
@@ -339,6 +377,7 @@
                                 <th>Recibido</th>
                                 <th>Pago</th>
                                 <th>Estado</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="historialBody"></tbody>
