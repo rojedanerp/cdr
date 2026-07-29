@@ -422,12 +422,35 @@ clienteNombreInput.addEventListener('input', () => {
 // NUEVA REMESA — envío del formulario
 // ============================================
 const remesaForm = document.getElementById('remesaForm');
+const remesaDocIdInput = document.getElementById('remesaDocId');
 const remesaSubmitBtn = document.getElementById('remesaSubmitBtn');
+const remesaCancelBtn = document.getElementById('remesaCancelBtn');
 const remesaMessage = document.getElementById('remesaMessage');
+let remesasPorId = {};
+
+function resetRemesaForm() {
+    remesaForm.reset();
+    remesaDocIdInput.value = '';
+    montoRecibidoInput.value = '—';
+    actualizarVisibilidadBanco();
+    clienteIdInput.value = '';
+    clienteHint.textContent = '';
+    clienteHint.classList.remove('input-hint-active');
+    tasaManual = false;
+    tasaHint.textContent = '';
+    tasaHint.classList.remove('input-hint-active');
+    remesaSubmitBtn.querySelector('.btn-text').textContent = 'Registrar remesa';
+    remesaCancelBtn.classList.add('hidden');
+    remesaMessage.textContent = '';
+    remesaMessage.className = 'form-message';
+}
+
+remesaCancelBtn.addEventListener('click', resetRemesaForm);
 
 remesaForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const remesaDocId = remesaDocIdInput.value;
     const montoEnviado = parseFloat(montoEnviadoInput.value);
     const tasaCambio = parseFloat(tasaCambioInput.value);
     const monedaRecibido = monedaRecibidoInput.value.trim().toUpperCase();
@@ -475,40 +498,78 @@ remesaForm.addEventListener('submit', async (e) => {
             monedaRecibido,
             estado: document.getElementById('estado').value,
             formaPago,
-            bancoOrigen,
-            creadoPor: auth.currentUser ? auth.currentUser.uid : null,
-            creadoPorEmail: auth.currentUser ? auth.currentUser.email : null,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            bancoOrigen
         };
 
-        await db.collection('remesas').add(data);
+        if (remesaDocId) {
+            data.actualizadoEn = firebase.firestore.FieldValue.serverTimestamp();
+            data.actualizadoPor = auth.currentUser ? auth.currentUser.email : null;
+            await db.collection('remesas').doc(remesaDocId).update(data);
+        } else {
+            data.creadoPor = auth.currentUser ? auth.currentUser.uid : null;
+            data.creadoPorEmail = auth.currentUser ? auth.currentUser.email : null;
+            data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection('remesas').add(data);
+        }
 
         // Marcar la fecha de última remesa en el cliente (no bloqueante para el flujo principal)
         db.collection('clientes').doc(clienteId).update({
             ultimaRemesaEn: firebase.firestore.FieldValue.serverTimestamp()
         }).catch(err => console.warn('No se pudo actualizar ultimaRemesaEn:', err));
 
-        remesaForm.reset();
-        montoRecibidoInput.value = '—';
-        actualizarVisibilidadBanco();
-        clienteIdInput.value = '';
-        clienteHint.textContent = '';
-        clienteHint.classList.remove('input-hint-active');
-        tasaManual = false;
-        tasaHint.textContent = '';
-        tasaHint.classList.remove('input-hint-active');
-        remesaMessage.textContent = 'Remesa registrada correctamente.';
+        const fueEdicion = !!remesaDocId;
+        resetRemesaForm();
+        remesaMessage.textContent = fueEdicion ? 'Remesa actualizada correctamente.' : 'Remesa registrada correctamente.';
         remesaMessage.className = 'form-message form-message-success';
     } catch (error) {
-        console.error('Error al registrar remesa:', error);
+        console.error('Error al guardar remesa:', error);
         remesaMessage.textContent = 'No se pudo guardar la remesa. Intenta de nuevo.';
         remesaMessage.className = 'form-message form-message-error';
     } finally {
         remesaSubmitBtn.disabled = false;
-        remesaSubmitBtn.querySelector('.btn-text').textContent = 'Registrar remesa';
+        remesaSubmitBtn.querySelector('.btn-text').textContent = remesaDocIdInput.value ? 'Actualizar remesa' : 'Registrar remesa';
         remesaSubmitBtn.querySelector('.spinner').classList.add('hidden');
     }
 });
+
+window.editarRemesa = (docId) => {
+    const r = remesasPorId[docId];
+    if (!r) return;
+
+    remesaDocIdInput.value = docId;
+    clienteNombreInput.value = r.clienteNombre || '';
+    clienteIdInput.value = r.clienteId || '';
+    clienteTelefonoInput.value = r.clienteTelefono || '';
+    document.getElementById('paisOrigen').value = r.paisOrigen || '';
+    document.getElementById('paisDestino').value = r.paisDestino || '';
+    montoEnviadoInput.value = r.montoEnviado != null ? r.montoEnviado : '';
+    document.getElementById('monedaEnviado').value = r.monedaEnviado || '';
+    tasaManual = true; // evita que el autocompletado pise la tasa original al editar
+    tasaCambioInput.value = r.tasaCambio != null ? r.tasaCambio : '';
+    monedaRecibidoInput.value = r.monedaRecibido || '';
+    recalcularMontoRecibido();
+    document.getElementById('estado').value = r.estado || 'pendiente';
+    formaPagoSelect.value = r.formaPago || 'efectivo';
+    actualizarVisibilidadBanco();
+    bancoOrigenInput.value = r.bancoOrigen || '';
+
+    remesaSubmitBtn.querySelector('.btn-text').textContent = 'Actualizar remesa';
+    remesaCancelBtn.classList.remove('hidden');
+    remesaMessage.textContent = '';
+    remesaMessage.className = 'form-message';
+
+    document.querySelector('.nav-links li[data-section="nueva"]').click();
+};
+
+window.eliminarRemesa = async (docId) => {
+    if (!confirm('¿Eliminar esta remesa? Esta acción no se puede deshacer.')) return;
+    try {
+        await db.collection('remesas').doc(docId).delete();
+    } catch (error) {
+        console.error('Error al eliminar remesa:', error);
+        alert('No se pudo eliminar la remesa. Intenta de nuevo.');
+    }
+};
 
 // ============================================
 // HISTORIAL + DASHBOARD — escucha en tiempo real
@@ -536,6 +597,10 @@ function renderHistorialRow(id, r) {
         <td class="mono-cell">${formatMoney(r.montoRecibido, r.monedaRecibido)}</td>
         <td>${badgePagoLabel(r.formaPago, r.bancoOrigen)}</td>
         <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
+        <td>
+            <button type="button" class="btn-icon-action" onclick="editarRemesa('${id}')">✏️ Editar</button>
+            <button type="button" class="btn-icon-action danger" onclick="eliminarRemesa('${id}')">🗑️ Eliminar</button>
+        </td>
     `;
     return tr;
 }
@@ -543,6 +608,8 @@ function renderHistorialRow(id, r) {
 db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     // --- Historial completo ---
     historialBody.innerHTML = '';
+    remesasPorId = {};
+    snapshot.forEach(doc => { remesasPorId[doc.id] = doc.data(); });
 
     if (snapshot.empty) {
         historialEmpty.style.display = 'block';
@@ -664,6 +731,44 @@ calcGuardarBtn.addEventListener('click', () => {
 
     document.querySelector('.nav-links li[data-section="config"]').click();
     tasaMonedaOrigenInput.focus();
+});
+
+// --- Compra y venta de USD ---
+const calcUsdMonedaInput = document.getElementById('calcUsdMoneda');
+const calcUsdValorMercadoInput = document.getElementById('calcUsdValorMercado');
+const calcUsdMargenCompraInput = document.getElementById('calcUsdMargenCompra');
+const calcUsdMargenVentaInput = document.getElementById('calcUsdMargenVenta');
+const calcUsdCompraLabel = document.getElementById('calcUsdCompraLabel');
+const calcUsdCompraValue = document.getElementById('calcUsdCompraValue');
+const calcUsdVentaLabel = document.getElementById('calcUsdVentaLabel');
+const calcUsdVentaValue = document.getElementById('calcUsdVentaValue');
+
+function recalcularCompraVentaUSD() {
+    const moneda = calcUsdMonedaInput.value.trim().toUpperCase() || 'MONEDA';
+    const valorMercado = parseFloat(calcUsdValorMercadoInput.value);
+    const margenCompra = parseFloat(calcUsdMargenCompraInput.value) || 0;
+    const margenVenta = parseFloat(calcUsdMargenVentaInput.value) || 0;
+
+    if (!valorMercado || valorMercado <= 0) {
+        calcUsdCompraValue.textContent = '—';
+        calcUsdVentaValue.textContent = '—';
+        calcUsdCompraLabel.textContent = 'Tasa de compra (pagas por cada USD que te venden)';
+        calcUsdVentaLabel.textContent = 'Tasa de venta (cobras por cada USD que vendes)';
+        return;
+    }
+
+    // Compras USD más barato que el mercado, vendes USD más caro que el mercado — ahí está tu margen.
+    const tasaCompra = valorMercado * (1 - margenCompra / 100);
+    const tasaVenta = valorMercado * (1 + margenVenta / 100);
+
+    calcUsdCompraLabel.textContent = `Pagas 1 USD = ${tasaCompra.toFixed(2)} ${moneda} (compra, −${margenCompra}%)`;
+    calcUsdCompraValue.textContent = tasaCompra.toFixed(2);
+    calcUsdVentaLabel.textContent = `Cobras 1 USD = ${tasaVenta.toFixed(2)} ${moneda} (venta, +${margenVenta}%)`;
+    calcUsdVentaValue.textContent = tasaVenta.toFixed(2);
+}
+
+[calcUsdMonedaInput, calcUsdValorMercadoInput, calcUsdMargenCompraInput, calcUsdMargenVentaInput].forEach(el => {
+    el.addEventListener('input', recalcularCompraVentaUSD);
 });
 const tasaForm = document.getElementById('tasaForm');
 const tasaDocIdInput = document.getElementById('tasaDocId');
