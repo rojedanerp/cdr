@@ -733,44 +733,6 @@ calcGuardarBtn.addEventListener('click', () => {
     tasaMonedaOrigenInput.focus();
 });
 
-// --- Compra y venta de USD ---
-const calcUsdMonedaInput = document.getElementById('calcUsdMoneda');
-const calcUsdValorMercadoInput = document.getElementById('calcUsdValorMercado');
-const calcUsdMargenCompraInput = document.getElementById('calcUsdMargenCompra');
-const calcUsdMargenVentaInput = document.getElementById('calcUsdMargenVenta');
-const calcUsdCompraLabel = document.getElementById('calcUsdCompraLabel');
-const calcUsdCompraValue = document.getElementById('calcUsdCompraValue');
-const calcUsdVentaLabel = document.getElementById('calcUsdVentaLabel');
-const calcUsdVentaValue = document.getElementById('calcUsdVentaValue');
-
-function recalcularCompraVentaUSD() {
-    const moneda = calcUsdMonedaInput.value.trim().toUpperCase() || 'MONEDA';
-    const valorMercado = parseFloat(calcUsdValorMercadoInput.value);
-    const margenCompra = parseFloat(calcUsdMargenCompraInput.value) || 0;
-    const margenVenta = parseFloat(calcUsdMargenVentaInput.value) || 0;
-
-    if (!valorMercado || valorMercado <= 0) {
-        calcUsdCompraValue.textContent = '—';
-        calcUsdVentaValue.textContent = '—';
-        calcUsdCompraLabel.textContent = 'Tasa de compra (pagas por cada USD que te venden)';
-        calcUsdVentaLabel.textContent = 'Tasa de venta (cobras por cada USD que vendes)';
-        return;
-    }
-
-    // Compras USD más barato que el mercado, vendes USD más caro que el mercado — ahí está tu margen.
-    const tasaCompra = valorMercado * (1 - margenCompra / 100);
-    const tasaVenta = valorMercado * (1 + margenVenta / 100);
-
-    calcUsdCompraLabel.textContent = `Pagas 1 USD = ${tasaCompra.toFixed(2)} ${moneda} (compra, −${margenCompra}%)`;
-    calcUsdCompraValue.textContent = tasaCompra.toFixed(2);
-    calcUsdVentaLabel.textContent = `Cobras 1 USD = ${tasaVenta.toFixed(2)} ${moneda} (venta, +${margenVenta}%)`;
-    calcUsdVentaValue.textContent = tasaVenta.toFixed(2);
-}
-
-[calcUsdMonedaInput, calcUsdValorMercadoInput, calcUsdMargenCompraInput, calcUsdMargenVentaInput].forEach(el => {
-    el.addEventListener('input', recalcularCompraVentaUSD);
-});
-
 // --- Compra y venta de USDT ---
 const calcUsdtMonedaInput = document.getElementById('calcUsdtMoneda');
 const calcUsdtValorMercadoInput = document.getElementById('calcUsdtValorMercado');
