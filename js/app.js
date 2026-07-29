@@ -174,7 +174,7 @@ async function intentarAutocompletarTasa() {
     // solo avisamos si existe una tasa configurada distinta.
     if (tasaManual) {
         if (guardada !== undefined) {
-            tasaHint.textContent = `Hay una tasa de compra configurada (${guardada}), pero se mantiene el valor ingresado manualmente.`;
+            tasaHint.textContent = `Hay una tasa configurada (${guardada}), pero se mantiene el valor ingresado manualmente.`;
         } else {
             tasaHint.textContent = '';
         }
@@ -185,7 +185,7 @@ async function intentarAutocompletarTasa() {
     // 1) Prioridad: tasa configurada manualmente en "Configuración"
     if (guardada !== undefined) {
         aplicarTasaAlFormulario(guardada);
-        tasaHint.textContent = `Tasa de compra configurada manualmente (1 ${origen} = ${guardada} ${destino}).`;
+        tasaHint.textContent = `Tasa configurada manualmente (1 ${origen} = ${guardada} ${destino}).`;
         tasaHint.classList.add('input-hint-active');
         return;
     }
@@ -674,21 +674,136 @@ db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
 });
 
 // ============================================
-// CALCULADORA — movida a js/calculadora.js (script independiente,
-// sin dependencia de Firebase, para que siempre funcione).
+// CALCULADORA DE TASAS — tasa cruzada a partir del valor de cada moneda vs USD
 // ============================================
+const calcOrigenCodigoInput = document.getElementById('calcOrigenCodigo');
+const calcOrigenValorInput = document.getElementById('calcOrigenValor');
+const calcDestinoCodigoInput = document.getElementById('calcDestinoCodigo');
+const calcDestinoValorInput = document.getElementById('calcDestinoValor');
+const calcMargenInput = document.getElementById('calcMargen');
+const calcResultLabel = document.getElementById('calcResultLabel');
+const calcResultValue = document.getElementById('calcResultValue');
+const calcResultValueMercado = document.getElementById('calcResultValueMercado');
+const calcGuardarBtn = document.getElementById('calcGuardarBtn');
+
+let calcTasaResultado = null;      // tasa final, ya con el margen descontado (la que se ofrece/guarda)
+let calcTasaMercado = null;        // tasa cruzada cruda, sin margen
+
+function recalcularTasaCruzada() {
+    const origenCodigo = calcOrigenCodigoInput.value.trim().toUpperCase();
+    const destinoCodigo = calcDestinoCodigoInput.value.trim().toUpperCase();
+    const origenValor = parseFloat(calcOrigenValorInput.value);
+    const destinoValor = parseFloat(calcDestinoValorInput.value);
+    const margen = parseFloat(calcMargenInput.value) || 0;
+
+    if (!origenValor || !destinoValor || origenValor <= 0) {
+        calcTasaResultado = null;
+        calcTasaMercado = null;
+        calcResultLabel.textContent = 'Tasa a ofrecer (con margen descontado)';
+        calcResultValue.textContent = '—';
+        calcResultValueMercado.textContent = '—';
+        calcGuardarBtn.disabled = true;
+        return;
+    }
+
+    calcTasaMercado = destinoValor / origenValor;
+    calcTasaResultado = calcTasaMercado * (1 - margen / 100);
+
+    const origenTxt = origenCodigo || 'ORIGEN';
+    const destinoTxt = destinoCodigo || 'DESTINO';
+
+    calcResultValueMercado.textContent = calcTasaMercado.toFixed(6);
+    calcResultLabel.textContent = `1 ${origenTxt} = ${calcTasaResultado.toFixed(6)} ${destinoTxt} (margen ${margen}%)`;
+    calcResultValue.textContent = calcTasaResultado.toFixed(3);
+    calcGuardarBtn.disabled = !(origenCodigo && destinoCodigo);
+}
+
+[calcOrigenCodigoInput, calcOrigenValorInput, calcDestinoCodigoInput, calcDestinoValorInput, calcMargenInput].forEach(el => {
+    el.addEventListener('input', recalcularTasaCruzada);
+});
+
+calcGuardarBtn.addEventListener('click', () => {
+    if (calcTasaResultado === null) return;
+
+    tasaMonedaOrigenInput.value = calcOrigenCodigoInput.value.trim().toUpperCase();
+    tasaMonedaDestinoInput.value = calcDestinoCodigoInput.value.trim().toUpperCase();
+    tasaValorInput.value = Number(calcTasaResultado.toFixed(6));
+
+    document.querySelector('.nav-links li[data-section="config"]').click();
+    tasaMonedaOrigenInput.focus();
+});
+
+// --- Compra y venta de USDT ---
+const calcUsdtMonedaInput = document.getElementById('calcUsdtMoneda');
+const calcUsdtValorMercadoInput = document.getElementById('calcUsdtValorMercado');
+const calcUsdtMargenCompraInput = document.getElementById('calcUsdtMargenCompra');
+const calcUsdtMargenVentaInput = document.getElementById('calcUsdtMargenVenta');
+const calcUsdtMontoInput = document.getElementById('calcUsdtMonto');
+const calcUsdtCompraLabel = document.getElementById('calcUsdtCompraLabel');
+const calcUsdtCompraValue = document.getElementById('calcUsdtCompraValue');
+const calcUsdtVentaLabel = document.getElementById('calcUsdtVentaLabel');
+const calcUsdtVentaValue = document.getElementById('calcUsdtVentaValue');
+const calcUsdtCompraMontoLabel = document.getElementById('calcUsdtCompraMontoLabel');
+const calcUsdtCompraMontoValue = document.getElementById('calcUsdtCompraMontoValue');
+const calcUsdtVentaMontoLabel = document.getElementById('calcUsdtVentaMontoLabel');
+const calcUsdtVentaMontoValue = document.getElementById('calcUsdtVentaMontoValue');
+
+function recalcularCompraVentaUSDT() {
+    const moneda = calcUsdtMonedaInput.value.trim().toUpperCase() || 'MONEDA';
+    const valorMercado = parseFloat(calcUsdtValorMercadoInput.value);
+    const margenCompra = parseFloat(calcUsdtMargenCompraInput.value) || 0;
+    const margenVenta = parseFloat(calcUsdtMargenVentaInput.value) || 0;
+    const monto = parseFloat(calcUsdtMontoInput.value);
+
+    if (!valorMercado || valorMercado <= 0) {
+        calcUsdtCompraValue.textContent = '—';
+        calcUsdtVentaValue.textContent = '—';
+        calcUsdtCompraMontoValue.textContent = '—';
+        calcUsdtVentaMontoValue.textContent = '—';
+        calcUsdtCompraLabel.textContent = 'Tasa de compra (pagas por cada USDT que te venden)';
+        calcUsdtVentaLabel.textContent = 'Tasa de venta (cobras por cada USDT que vendes)';
+        calcUsdtCompraMontoLabel.textContent = 'USDT que recibes al comprar con ese monto';
+        calcUsdtVentaMontoLabel.textContent = 'USDT que entregas al vender por ese monto';
+        return;
+    }
+
+    // Compras USDT más barato que el mercado, vendes USDT más caro que el mercado — ahí está tu margen.
+    const tasaCompra = valorMercado * (1 - margenCompra / 100);
+    const tasaVenta = valorMercado * (1 + margenVenta / 100);
+
+    calcUsdtCompraLabel.textContent = `Pagas 1 USDT = ${tasaCompra.toFixed(2)} ${moneda} (compra, −${margenCompra}%)`;
+    calcUsdtCompraValue.textContent = tasaCompra.toFixed(2);
+    calcUsdtVentaLabel.textContent = `Cobras 1 USDT = ${tasaVenta.toFixed(2)} ${moneda} (venta, +${margenVenta}%)`;
+    calcUsdtVentaValue.textContent = tasaVenta.toFixed(2);
+
+    if (!monto || monto <= 0) {
+        calcUsdtCompraMontoValue.textContent = '—';
+        calcUsdtVentaMontoValue.textContent = '—';
+        calcUsdtCompraMontoLabel.textContent = 'USDT que recibes al comprar con ese monto';
+        calcUsdtVentaMontoLabel.textContent = 'USDT que entregas al vender por ese monto';
+        return;
+    }
+
+    // Con ese monto en pesos: cuántos USDT te entrega el cliente (a la tasa de compra)
+    // y cuántos USDT le entregas tú al cliente (a la tasa de venta).
+    const usdtCompra = monto / tasaCompra;
+    const usdtVenta = monto / tasaVenta;
+
+    calcUsdtCompraMontoLabel.textContent = `Con ${monto.toLocaleString('es')} ${moneda} compras ${usdtCompra.toFixed(2)} USDT`;
+    calcUsdtCompraMontoValue.textContent = `${usdtCompra.toFixed(2)} USDT`;
+    calcUsdtVentaMontoLabel.textContent = `Con ${monto.toLocaleString('es')} ${moneda} vendes ${usdtVenta.toFixed(2)} USDT`;
+    calcUsdtVentaMontoValue.textContent = `${usdtVenta.toFixed(2)} USDT`;
+}
+
+[calcUsdtMonedaInput, calcUsdtValorMercadoInput, calcUsdtMargenCompraInput, calcUsdtMargenVentaInput, calcUsdtMontoInput].forEach(el => {
+    el.addEventListener('input', recalcularCompraVentaUSDT);
+});
 
 const tasaForm = document.getElementById('tasaForm');
 const tasaDocIdInput = document.getElementById('tasaDocId');
 const tasaMonedaOrigenInput = document.getElementById('tasaMonedaOrigen');
 const tasaMonedaDestinoInput = document.getElementById('tasaMonedaDestino');
-const tasaBaseInput = document.getElementById('tasaBase');
-const tasaMargenCompraInput = document.getElementById('tasaMargenCompra');
-const tasaMargenVentaInput = document.getElementById('tasaMargenVenta');
-const tasaPreviewCompraLabel = document.getElementById('tasaPreviewCompraLabel');
-const tasaPreviewCompraValue = document.getElementById('tasaPreviewCompraValue');
-const tasaPreviewVentaLabel = document.getElementById('tasaPreviewVentaLabel');
-const tasaPreviewVentaValue = document.getElementById('tasaPreviewVentaValue');
+const tasaValorInput = document.getElementById('tasaValor');
 const tasaSubmitBtn = document.getElementById('tasaSubmitBtn');
 const tasaCancelBtn = document.getElementById('tasaCancelBtn');
 const tasaLiveBtn = document.getElementById('tasaLiveBtn');
@@ -697,62 +812,18 @@ const tasasBody = document.getElementById('tasasBody');
 const tasasEmpty = document.getElementById('tasasEmpty');
 const tasasTableWrap = document.querySelector('#config .table-wrap');
 
-// A partir de los datos crudos de un documento de tasasCambio (nuevos o legados
-// con un solo campo "tasa"), calcula el par compra/venta a usar en toda la app.
-function calcularCompraVenta(data) {
-    const tasaBase = data.tasaBase != null ? data.tasaBase : data.tasa;
-    const margenCompra = data.margenCompra || 0;
-    const margenVenta = data.margenVenta || 0;
-    const tasaCompra = data.tasaCompra != null ? data.tasaCompra : tasaBase * (1 - margenCompra / 100);
-    const tasaVenta = data.tasaVenta != null ? data.tasaVenta : tasaBase * (1 + margenVenta / 100);
-    return { tasaBase, margenCompra, margenVenta, tasaCompra, tasaVenta };
-}
-
 function formatTasaFecha(timestamp) {
     if (!timestamp || !timestamp.toDate) return '—';
     return timestamp.toDate().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function recalcularTasaAdminPreview() {
-    const base = parseFloat(tasaBaseInput.value);
-    const margenCompra = parseFloat(tasaMargenCompraInput.value) || 0;
-    const margenVenta = parseFloat(tasaMargenVentaInput.value) || 0;
-    const origen = tasaMonedaOrigenInput.value.trim().toUpperCase() || 'ORIGEN';
-    const destino = tasaMonedaDestinoInput.value.trim().toUpperCase() || 'DESTINO';
-
-    if (!base || base <= 0) {
-        tasaPreviewCompraValue.textContent = '—';
-        tasaPreviewVentaValue.textContent = '—';
-        tasaPreviewCompraLabel.textContent = 'Tasa de compra (la que se usa para autocompletar remesas)';
-        tasaPreviewVentaLabel.textContent = 'Tasa de venta';
-        return null;
-    }
-
-    const tasaCompra = base * (1 - margenCompra / 100);
-    const tasaVenta = base * (1 + margenVenta / 100);
-
-    tasaPreviewCompraLabel.textContent = `1 ${origen} = ${tasaCompra.toFixed(6)} ${destino} (compra, −${margenCompra}%)`;
-    tasaPreviewCompraValue.textContent = tasaCompra.toFixed(6);
-    tasaPreviewVentaLabel.textContent = `1 ${origen} = ${tasaVenta.toFixed(6)} ${destino} (venta, +${margenVenta}%)`;
-    tasaPreviewVentaValue.textContent = tasaVenta.toFixed(6);
-
-    return { tasaCompra, tasaVenta };
-}
-
-[tasaBaseInput, tasaMargenCompraInput, tasaMargenVentaInput, tasaMonedaOrigenInput, tasaMonedaDestinoInput].forEach(el => {
-    el.addEventListener('input', recalcularTasaAdminPreview);
-});
-
 function resetTasaForm() {
     tasaForm.reset();
     tasaDocIdInput.value = '';
-    tasaMargenCompraInput.value = '0';
-    tasaMargenVentaInput.value = '0';
     tasaSubmitBtn.querySelector('.btn-text').textContent = 'Guardar tasa';
     tasaCancelBtn.classList.add('hidden');
     tasaMessage.textContent = '';
     tasaMessage.className = 'form-message';
-    recalcularTasaAdminPreview();
 }
 
 tasaCancelBtn.addEventListener('click', resetTasaForm);
@@ -774,9 +845,8 @@ tasaLiveBtn.addEventListener('click', async () => {
     try {
         const tasaViva = await obtenerTasaEnVivo(origen, destino);
         if (tasaViva !== undefined) {
-            tasaBaseInput.value = Number(tasaViva.toFixed(6));
-            recalcularTasaAdminPreview();
-            tasaMessage.textContent = `Valor de mercado cargado: 1 ${origen} = ${tasaViva.toFixed(4)} ${destino}. Ajusta los márgenes y guarda si te parece correcto.`;
+            tasaValorInput.value = Number(tasaViva.toFixed(6));
+            tasaMessage.textContent = `Tasa en vivo cargada: 1 ${origen} = ${tasaViva.toFixed(4)} ${destino}. Revísala y guárdala si te parece correcta.`;
             tasaMessage.className = 'form-message form-message-success';
         } else {
             tasaMessage.textContent = `No se encontró una tasa en vivo para ${origen} → ${destino}.`;
@@ -797,13 +867,8 @@ tasaForm.addEventListener('submit', async (e) => {
 
     const origen = tasaMonedaOrigenInput.value.trim().toUpperCase();
     const destino = tasaMonedaDestinoInput.value.trim().toUpperCase();
-    const tasaBase = parseFloat(tasaBaseInput.value);
-    const margenCompra = parseFloat(tasaMargenCompraInput.value) || 0;
-    const margenVenta = parseFloat(tasaMargenVentaInput.value) || 0;
+    const tasa = parseFloat(tasaValorInput.value);
     const docId = claveTasa(origen, destino);
-
-    const tasaCompra = tasaBase * (1 - margenCompra / 100);
-    const tasaVenta = tasaBase * (1 + margenVenta / 100);
 
     tasaSubmitBtn.disabled = true;
     tasaSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
@@ -815,11 +880,7 @@ tasaForm.addEventListener('submit', async (e) => {
         await db.collection('tasasCambio').doc(docId).set({
             monedaOrigen: origen,
             monedaDestino: destino,
-            tasaBase,
-            margenCompra,
-            margenVenta,
-            tasaCompra,
-            tasaVenta,
+            tasa,
             actualizadoEn: firebase.firestore.FieldValue.serverTimestamp(),
             actualizadoPor: auth.currentUser ? auth.currentUser.email : null
         }, { merge: true });
@@ -841,15 +902,10 @@ window.editarTasa = (docId) => {
     const data = tasasCache[`__doc_${docId}`];
     if (!data) return;
 
-    const { tasaBase, margenCompra, margenVenta } = calcularCompraVenta(data);
-
     tasaDocIdInput.value = docId;
     tasaMonedaOrigenInput.value = data.monedaOrigen;
     tasaMonedaDestinoInput.value = data.monedaDestino;
-    tasaBaseInput.value = tasaBase;
-    tasaMargenCompraInput.value = margenCompra;
-    tasaMargenVentaInput.value = margenVenta;
-    recalcularTasaAdminPreview();
+    tasaValorInput.value = data.tasa;
     tasaSubmitBtn.querySelector('.btn-text').textContent = 'Actualizar tasa';
     tasaCancelBtn.classList.remove('hidden');
     tasaMessage.textContent = '';
@@ -868,13 +924,11 @@ window.eliminarTasa = async (docId) => {
 };
 
 function renderTasaRow(docId, data) {
-    const { margenCompra, margenVenta, tasaCompra, tasaVenta } = calcularCompraVenta(data);
     const tr = document.createElement('tr');
     tr.innerHTML = `
         <td>${data.monedaOrigen}</td>
         <td>${data.monedaDestino}</td>
-        <td class="mono-cell">${tasaCompra.toFixed(6)}<br><span class="tasa-margin-note">−${margenCompra}%</span></td>
-        <td class="mono-cell">${tasaVenta.toFixed(6)}<br><span class="tasa-margin-note">+${margenVenta}%</span></td>
+        <td class="mono-cell">${data.tasa}</td>
         <td>${formatTasaFecha(data.actualizadoEn)}</td>
         <td>
             <button type="button" class="btn-icon-action" onclick="editarTasa('${docId}')">✏️ Editar</button>
@@ -889,8 +943,7 @@ db.collection('tasasCambio').orderBy('monedaOrigen').onSnapshot(snapshot => {
     tasasCache = {};
     snapshot.forEach(doc => {
         const data = doc.data();
-        const { tasaCompra } = calcularCompraVenta(data);
-        tasasCache[claveTasa(data.monedaOrigen, data.monedaDestino)] = tasaCompra;
+        tasasCache[claveTasa(data.monedaOrigen, data.monedaDestino)] = data.tasa;
         tasasCache[`__doc_${doc.id}`] = data;
     });
 
