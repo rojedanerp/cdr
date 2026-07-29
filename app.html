@@ -330,74 +330,11 @@
 
             <div class="panel">
                 <div class="panel-header">
-                    <h3>Calculadora de tasa (vía USDT)</h3>
-                </div>
-                <p class="tasa-intro">
-                    Registra a cómo compras el USDT y a cómo lo vendes. La calculadora arma la tasa cruzada,
-                    le descuenta tu margen y te entrega la tasa final para tus clientes — en ambos sentidos.
-                </p>
-                <div class="form-grid">
-                    <div class="input-group">
-                        <label for="calcMonedaOrigen">Moneda de origen</label>
-                        <input type="text" id="calcMonedaOrigen" placeholder="CLP" maxlength="6" value="CLP">
-                    </div>
-                    <div class="input-group">
-                        <label for="calcMonedaDestino">Moneda de destino</label>
-                        <input type="text" id="calcMonedaDestino" placeholder="VES" maxlength="6" value="VES">
-                    </div>
-                    <div class="input-group">
-                        <label for="calcCompraValor">Compras 1 USDT pagando</label>
-                        <input type="number" id="calcCompraValor" placeholder="940" step="any" inputmode="decimal">
-                    </div>
-                    <div class="input-group">
-                        <label for="calcVentaValor">Vendes ese USDT y recibes</label>
-                        <input type="number" id="calcVentaValor" placeholder="850" step="any" inputmode="decimal">
-                    </div>
-                    <div class="input-group">
-                        <label for="calcMargen">Margen adicional a descontar (%)</label>
-                        <input type="number" id="calcMargen" value="6" step="any" inputmode="decimal">
-                    </div>
-                </div>
-
-                <div class="calc-result calc-result-secondary" id="calcTasaFullBox">
-                    <span class="calc-result-label" id="calcTasaFullLabel">Tasa full (cruce sin margen)</span>
-                    <span class="calc-result-value" id="calcTasaFullValue">—</span>
-                </div>
-
-                <div class="calc-result" id="calcTasaFinalBox">
-                    <span class="calc-result-label" id="calcTasaFinalLabel">Tasa final a ofrecer</span>
-                    <span class="calc-result-value" id="calcTasaFinalValue">—</span>
-                </div>
-
-                <div class="calc-result calc-result-secondary" id="calcTasaInversaBox">
-                    <span class="calc-result-label" id="calcTasaInversaLabel">Tasa inversa</span>
-                    <span class="calc-result-value" id="calcTasaInversaValue">—</span>
-                </div>
-
-                <div class="form-grid">
-                    <div class="input-group">
-                        <label for="calcMontoOrigen">Simular envío: monto en origen</label>
-                        <input type="number" id="calcMontoOrigen" placeholder="100000" step="any" inputmode="decimal">
-                    </div>
-                </div>
-
-                <div class="calc-result calc-result-secondary" id="calcMontoDestinoBox">
-                    <span class="calc-result-label" id="calcMontoDestinoLabel">El cliente recibe</span>
-                    <span class="calc-result-value" id="calcMontoDestinoValue">—</span>
-                </div>
-
-                <div class="tasa-form-actions">
-                    <button type="button" class="btn-primary btn-form" id="calcGuardarBtn" disabled>⬇️ Usar esta tasa abajo</button>
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-header">
                     <h3>Tasas de cambio</h3>
                 </div>
                 <p class="tasa-intro">
-                    En "Nueva Remesa" la tasa se completa sola: primero usa la tasa de <strong>compra</strong> que configures aquí manualmente y,
-                    si no hay ninguna guardada para ese par de monedas, busca una tasa en vivo automáticamente.
+                    Registra a cómo compras el USDT y a cómo lo vendes; la tasa full sale sola. Ajusta tus márgenes
+                    y esta es la tasa que se usa para autocompletar "Nueva Remesa". Si no guardas ninguna, se busca una tasa en vivo.
                 </p>
 
                 <form id="tasaForm" class="tasa-form">
@@ -405,15 +342,23 @@
                     <div class="tasa-form-grid">
                         <div class="input-group">
                             <label for="tasaMonedaOrigen">Moneda de origen</label>
-                            <input type="text" id="tasaMonedaOrigen" required placeholder="CLP" maxlength="6">
+                            <input type="text" id="tasaMonedaOrigen" required placeholder="CLP" maxlength="6" value="CLP">
                         </div>
                         <div class="input-group">
                             <label for="tasaMonedaDestino">Moneda de destino</label>
-                            <input type="text" id="tasaMonedaDestino" required placeholder="PEN" maxlength="6">
+                            <input type="text" id="tasaMonedaDestino" required placeholder="VES" maxlength="6" value="VES">
                         </div>
                         <div class="input-group">
-                            <label for="tasaBase">Valor de mercado (1 origen = X destino)</label>
-                            <input type="number" id="tasaBase" required min="0" step="0.0001" placeholder="0">
+                            <label for="calcCompraValor">Compras 1 USDT pagando</label>
+                            <input type="number" id="calcCompraValor" placeholder="940" step="any" inputmode="decimal">
+                        </div>
+                        <div class="input-group">
+                            <label for="calcVentaValor">Vendes ese USDT y recibes</label>
+                            <input type="number" id="calcVentaValor" placeholder="850" step="any" inputmode="decimal">
+                        </div>
+                        <div class="input-group">
+                            <label for="tasaBase">Tasa full (calculada, o pega la de "buscar en vivo")</label>
+                            <input type="number" id="tasaBase" class="input-readonly" required min="0" step="0.000001" placeholder="0" readonly>
                         </div>
                         <div class="input-group">
                             <label for="tasaMargenCompra">Margen al comprar (%)</label>
