@@ -38,6 +38,9 @@
             <li data-section="historial">
                 <span>📋</span> Historial
             </li>
+            <li data-section="conciliacion">
+                <span>🧾</span> Conciliación SII
+            </li>
             <li data-section="reportes">
                 <span>📈</span> Reportes
             </li>
@@ -401,6 +404,93 @@
                     <span class="empty-state-icon">📭</span>
                     <p>Todavía no hay remesas registradas.</p>
                     <span class="empty-state-hint">Usa "Nueva Remesa" para registrar la primera.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONCILIACIÓN SII -->
+        <section id="conciliacion" class="section">
+            <div class="section-header">
+                <h2>Conciliación de Boletas SII</h2>
+                <p class="section-subtitle">Compara las boletas exentas emitidas en el SII con las remesas registradas aquí</p>
+            </div>
+
+            <div class="panel">
+                <p class="tasa-intro">
+                    Ve a tu "Consulta de boletas emitidas" en el sistema gratuito del SII, selecciona y copia la tabla
+                    (o pega el contenido de un CSV exportado) y pégala abajo, con encabezados incluidos.
+                    Reconocemos automáticamente columnas como Folio, Fecha y Monto. La comparación cruza cada boleta
+                    con la remesa que tenga el mismo monto en CLP y la fecha más cercana.
+                </p>
+
+                <div class="tasa-form">
+                    <div class="input-group">
+                        <label for="conciliacionInput">Boletas emitidas (pegadas desde el SII o CSV)</label>
+                        <textarea id="conciliacionInput" rows="8" placeholder="Folio&#9;Fecha&#9;Monto Total&#9;Estado&#10;123&#9;01-07-2026&#9;15000&#9;Vigente"></textarea>
+                        <span class="input-hint" id="conciliacionParseHint"></span>
+                    </div>
+
+                    <div id="conciliacionMessage" class="form-message"></div>
+
+                    <div class="tasa-form-actions">
+                        <button type="button" class="btn-primary btn-form" id="conciliacionBtn">Comparar con remesas</button>
+                        <button type="button" class="btn-secondary hidden" id="conciliacionLimpiarBtn">Limpiar resultados</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid conciliacion-stats hidden" id="conciliacionResumen">
+                    <div class="stat-card">
+                        <span class="stat-label">Boletas leídas</span>
+                        <span class="stat-value" id="conciliacionStatBoletas">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Remesas en CLP</span>
+                        <span class="stat-value" id="conciliacionStatRemesas">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Coincidencias</span>
+                        <span class="stat-value" id="conciliacionStatMatch">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Sin boleta / sin remesa</span>
+                        <span class="stat-value" id="conciliacionStatSinPar">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel hidden" id="conciliacionCoincidenciasPanel">
+                <div class="panel-header"><h3>✅ Coincidencias</h3></div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Fecha remesa</th><th>Cliente</th><th>Monto CLP</th><th>Folio boleta</th><th>Fecha boleta</th></tr>
+                        </thead>
+                        <tbody id="conciliacionCoincidenciasBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel hidden" id="conciliacionSinBoletaPanel">
+                <div class="panel-header"><h3>⚠️ Remesas sin boleta encontrada</h3></div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Fecha</th><th>Cliente</th><th>Monto CLP</th><th>Estado remesa</th></tr>
+                        </thead>
+                        <tbody id="conciliacionSinBoletaBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel hidden" id="conciliacionSinRemesaPanel">
+                <div class="panel-header"><h3>❓ Boletas sin remesa asociada</h3></div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Folio</th><th>Fecha</th><th>Monto</th></tr>
+                        </thead>
+                        <tbody id="conciliacionSinRemesaBody"></tbody>
+                    </table>
                 </div>
             </div>
         </section>
