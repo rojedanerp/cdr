@@ -41,9 +41,22 @@ document.getElementById('menuToggle').addEventListener('click', () => {
 // ============================================
 // UTILIDADES
 // ============================================
+
+// Escapa texto antes de insertarlo con innerHTML, para evitar XSS si algún
+// campo (nombre, país, banco, etc.) contuviera caracteres HTML.
+const escapeHtml = (str) => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 const formatMoney = (num, currency) => {
     if (num === null || num === undefined || isNaN(num)) return '—';
-    return `${Number(num).toLocaleString('es-CL', { maximumFractionDigits: 2 })} ${currency || ''}`.trim();
+    return `${Number(num).toLocaleString('es-CL', { maximumFractionDigits: 2 })} ${escapeHtml(currency || '')}`.trim();
 };
 
 const formatDate = (timestamp) => {
@@ -110,7 +123,7 @@ formaPagoSelect.addEventListener('change', actualizarVisibilidadBanco);
 actualizarVisibilidadBanco();
 
 const badgePagoLabel = (formaPago, banco) => {
-    if (formaPago === 'transferencia') return `Transferencia${banco ? ' · ' + banco : ''}`;
+    if (formaPago === 'transferencia') return `Transferencia${banco ? ' · ' + escapeHtml(banco) : ''}`;
     return 'Efectivo';
 };
 
@@ -353,9 +366,9 @@ window.eliminarCliente = async (docId) => {
 function renderClienteRow(docId, data) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-        <td>${data.nombre || '—'}</td>
-        <td class="mono-cell">${data.telefono || '—'}</td>
-        <td>${data.paisDestino || '—'}</td>
+        <td>${escapeHtml(data.nombre) || '—'}</td>
+        <td class="mono-cell">${escapeHtml(data.telefono) || '—'}</td>
+        <td>${escapeHtml(data.paisDestino) || '—'}</td>
         <td>${formatClienteFecha(data.ultimaRemesaEn)}</td>
         <td>
             <button type="button" class="btn-icon-action" onclick="editarCliente('${docId}')">✏️ Editar</button>
@@ -579,11 +592,13 @@ const historialEmpty = document.getElementById('historialEmpty');
 const dashboardPanel = document.querySelector('#dashboard .panel');
 
 function routeTagHTML(origen, destino) {
+    const o = escapeHtml(origen);
+    const d = escapeHtml(destino);
     return `
-        <span class="route-tag" title="${origen} → ${destino}">
+        <span class="route-tag" title="${o} → ${d}">
             <i class="dot dot-origin"></i><i class="route-line"></i><i class="dot dot-dest"></i>
         </span>
-        <span class="route-text">${origen} → ${destino}</span>
+        <span class="route-text">${o} → ${d}</span>
     `;
 }
 
@@ -591,7 +606,7 @@ function renderHistorialRow(id, r) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
         <td>${formatDate(r.createdAt)}</td>
-        <td>${r.clienteNombre || '—'}</td>
+        <td>${escapeHtml(r.clienteNombre) || '—'}</td>
         <td class="route-cell">${routeTagHTML(r.paisOrigen || '?', r.paisDestino || '?')}</td>
         <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
         <td class="mono-cell">${formatMoney(r.montoRecibido, r.monedaRecibido)}</td>
@@ -661,7 +676,7 @@ db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${formatDate(r.createdAt)}</td>
-                <td>${r.clienteNombre || '—'}</td>
+                <td>${escapeHtml(r.clienteNombre) || '—'}</td>
                 <td class="route-cell">${routeTagHTML(r.paisOrigen || '?', r.paisDestino || '?')}</td>
                 <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
                 <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
@@ -805,8 +820,8 @@ window.eliminarTasa = async (docId) => {
 function renderTasaRow(docId, data) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-        <td>${data.monedaOrigen}</td>
-        <td>${data.monedaDestino}</td>
+        <td>${escapeHtml(data.monedaOrigen)}</td>
+        <td>${escapeHtml(data.monedaDestino)}</td>
         <td class="mono-cell">${data.tasa}</td>
         <td>${formatTasaFecha(data.actualizadoEn)}</td>
         <td>
