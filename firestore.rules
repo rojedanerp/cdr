@@ -9,19 +9,49 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function autenticado() {
+      return request.auth != null;
+    }
+
     // Remesas: cada envío registrado
     match /remesas/{remesaId} {
-      allow read, write: if request.auth != null;
+      allow read, delete: if autenticado();
+
+      allow create: if autenticado()
+        && request.resource.data.clienteNombre is string
+        && request.resource.data.clienteNombre.size() > 0
+        && request.resource.data.montoEnviado is number
+        && request.resource.data.montoEnviado > 0
+        && request.resource.data.monedaEnviado is string
+        && request.resource.data.tasaCambio is number
+        && request.resource.data.tasaCambio > 0
+        && request.resource.data.monedaRecibido is string
+        && request.resource.data.estado in ['pendiente', 'completado', 'cancelado'];
+
+      allow update: if autenticado()
+        && (!('montoEnviado' in request.resource.data) || request.resource.data.montoEnviado is number && request.resource.data.montoEnviado > 0)
+        && (!('tasaCambio' in request.resource.data) || request.resource.data.tasaCambio is number && request.resource.data.tasaCambio > 0)
+        && (!('estado' in request.resource.data) || request.resource.data.estado in ['pendiente', 'completado', 'cancelado']);
     }
 
     // Clientes: personas que envían/reciben dinero
     match /clientes/{clienteId} {
-      allow read, write: if request.auth != null;
+      allow read, delete: if autenticado();
+
+      allow create, update: if autenticado()
+        && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() > 0;
     }
 
     // Tasas de cambio: valores usados para autocompletar "Nueva Remesa"
     match /tasasCambio/{tasaId} {
-      allow read, write: if request.auth != null;
+      allow read, delete: if autenticado();
+
+      allow create, update: if autenticado()
+        && request.resource.data.monedaOrigen is string
+        && request.resource.data.monedaDestino is string
+        && request.resource.data.tasa is number
+        && request.resource.data.tasa > 0;
     }
 
     // Por defecto, todo lo demás queda bloqueado
