@@ -770,6 +770,73 @@ function recalcularCompraVentaUSD() {
 [calcUsdMonedaInput, calcUsdValorMercadoInput, calcUsdMargenCompraInput, calcUsdMargenVentaInput].forEach(el => {
     el.addEventListener('input', recalcularCompraVentaUSD);
 });
+
+// --- Compra y venta de USDT ---
+const calcUsdtMonedaInput = document.getElementById('calcUsdtMoneda');
+const calcUsdtValorMercadoInput = document.getElementById('calcUsdtValorMercado');
+const calcUsdtMargenCompraInput = document.getElementById('calcUsdtMargenCompra');
+const calcUsdtMargenVentaInput = document.getElementById('calcUsdtMargenVenta');
+const calcUsdtMontoInput = document.getElementById('calcUsdtMonto');
+const calcUsdtCompraLabel = document.getElementById('calcUsdtCompraLabel');
+const calcUsdtCompraValue = document.getElementById('calcUsdtCompraValue');
+const calcUsdtVentaLabel = document.getElementById('calcUsdtVentaLabel');
+const calcUsdtVentaValue = document.getElementById('calcUsdtVentaValue');
+const calcUsdtCompraMontoLabel = document.getElementById('calcUsdtCompraMontoLabel');
+const calcUsdtCompraMontoValue = document.getElementById('calcUsdtCompraMontoValue');
+const calcUsdtVentaMontoLabel = document.getElementById('calcUsdtVentaMontoLabel');
+const calcUsdtVentaMontoValue = document.getElementById('calcUsdtVentaMontoValue');
+
+function recalcularCompraVentaUSDT() {
+    const moneda = calcUsdtMonedaInput.value.trim().toUpperCase() || 'MONEDA';
+    const valorMercado = parseFloat(calcUsdtValorMercadoInput.value);
+    const margenCompra = parseFloat(calcUsdtMargenCompraInput.value) || 0;
+    const margenVenta = parseFloat(calcUsdtMargenVentaInput.value) || 0;
+    const monto = parseFloat(calcUsdtMontoInput.value);
+
+    if (!valorMercado || valorMercado <= 0) {
+        calcUsdtCompraValue.textContent = '—';
+        calcUsdtVentaValue.textContent = '—';
+        calcUsdtCompraMontoValue.textContent = '—';
+        calcUsdtVentaMontoValue.textContent = '—';
+        calcUsdtCompraLabel.textContent = 'Tasa de compra (pagas por cada USDT que te venden)';
+        calcUsdtVentaLabel.textContent = 'Tasa de venta (cobras por cada USDT que vendes)';
+        calcUsdtCompraMontoLabel.textContent = 'USDT que recibes al comprar con ese monto';
+        calcUsdtVentaMontoLabel.textContent = 'USDT que entregas al vender por ese monto';
+        return;
+    }
+
+    // Compras USDT más barato que el mercado, vendes USDT más caro que el mercado — ahí está tu margen.
+    const tasaCompra = valorMercado * (1 - margenCompra / 100);
+    const tasaVenta = valorMercado * (1 + margenVenta / 100);
+
+    calcUsdtCompraLabel.textContent = `Pagas 1 USDT = ${tasaCompra.toFixed(2)} ${moneda} (compra, −${margenCompra}%)`;
+    calcUsdtCompraValue.textContent = tasaCompra.toFixed(2);
+    calcUsdtVentaLabel.textContent = `Cobras 1 USDT = ${tasaVenta.toFixed(2)} ${moneda} (venta, +${margenVenta}%)`;
+    calcUsdtVentaValue.textContent = tasaVenta.toFixed(2);
+
+    if (!monto || monto <= 0) {
+        calcUsdtCompraMontoValue.textContent = '—';
+        calcUsdtVentaMontoValue.textContent = '—';
+        calcUsdtCompraMontoLabel.textContent = 'USDT que recibes al comprar con ese monto';
+        calcUsdtVentaMontoLabel.textContent = 'USDT que entregas al vender por ese monto';
+        return;
+    }
+
+    // Con ese monto en pesos: cuántos USDT te entrega el cliente (a la tasa de compra)
+    // y cuántos USDT le entregas tú al cliente (a la tasa de venta).
+    const usdtCompra = monto / tasaCompra;
+    const usdtVenta = monto / tasaVenta;
+
+    calcUsdtCompraMontoLabel.textContent = `Con ${monto.toLocaleString('es')} ${moneda} compras ${usdtCompra.toFixed(2)} USDT`;
+    calcUsdtCompraMontoValue.textContent = `${usdtCompra.toFixed(2)} USDT`;
+    calcUsdtVentaMontoLabel.textContent = `Con ${monto.toLocaleString('es')} ${moneda} vendes ${usdtVenta.toFixed(2)} USDT`;
+    calcUsdtVentaMontoValue.textContent = `${usdtVenta.toFixed(2)} USDT`;
+}
+
+[calcUsdtMonedaInput, calcUsdtValorMercadoInput, calcUsdtMargenCompraInput, calcUsdtMargenVentaInput, calcUsdtMontoInput].forEach(el => {
+    el.addEventListener('input', recalcularCompraVentaUSDT);
+});
+
 const tasaForm = document.getElementById('tasaForm');
 const tasaDocIdInput = document.getElementById('tasaDocId');
 const tasaMonedaOrigenInput = document.getElementById('tasaMonedaOrigen');
