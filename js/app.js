@@ -89,6 +89,32 @@ function recalcularMontoRecibido() {
 });
 
 // ============================================
+// FORMA DE PAGO — mostrar banco solo si es transferencia
+// ============================================
+const formaPagoSelect = document.getElementById('formaPago');
+const bancoGroup = document.getElementById('bancoGroup');
+const bancoOrigenInput = document.getElementById('bancoOrigen');
+
+function actualizarVisibilidadBanco() {
+    if (formaPagoSelect.value === 'transferencia') {
+        bancoGroup.classList.remove('hidden');
+        bancoOrigenInput.required = true;
+    } else {
+        bancoGroup.classList.add('hidden');
+        bancoOrigenInput.required = false;
+        bancoOrigenInput.value = '';
+    }
+}
+
+formaPagoSelect.addEventListener('change', actualizarVisibilidadBanco);
+actualizarVisibilidadBanco();
+
+const badgePagoLabel = (formaPago, banco) => {
+    if (formaPago === 'transferencia') return `Transferencia${banco ? ' · ' + banco : ''}`;
+    return 'Efectivo';
+};
+
+// ============================================
 // TASAS DE CAMBIO — automáticas (API en vivo) + manuales (Configuración)
 // ============================================
 let tasasCache = {};          // { "CLP_PEN": 0.1234, ... } — configuradas manualmente en Configuración
@@ -408,6 +434,8 @@ remesaForm.addEventListener('submit', async (e) => {
     const montoRecibido = montoEnviado * tasaCambio;
     const clienteNombre = clienteNombreInput.value.trim();
     const clienteTelefono = clienteTelefonoInput.value.trim();
+    const formaPago = formaPagoSelect.value;
+    const bancoOrigen = formaPago === 'transferencia' ? bancoOrigenInput.value.trim() : '';
 
     remesaSubmitBtn.disabled = true;
     remesaSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
@@ -446,6 +474,8 @@ remesaForm.addEventListener('submit', async (e) => {
             montoRecibido,
             monedaRecibido,
             estado: document.getElementById('estado').value,
+            formaPago,
+            bancoOrigen,
             creadoPor: auth.currentUser ? auth.currentUser.uid : null,
             creadoPorEmail: auth.currentUser ? auth.currentUser.email : null,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -460,6 +490,7 @@ remesaForm.addEventListener('submit', async (e) => {
 
         remesaForm.reset();
         montoRecibidoInput.value = '—';
+        actualizarVisibilidadBanco();
         clienteIdInput.value = '';
         clienteHint.textContent = '';
         clienteHint.classList.remove('input-hint-active');
@@ -503,6 +534,7 @@ function renderHistorialRow(id, r) {
         <td class="route-cell">${routeTagHTML(r.paisOrigen || '?', r.paisDestino || '?')}</td>
         <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
         <td class="mono-cell">${formatMoney(r.montoRecibido, r.monedaRecibido)}</td>
+        <td>${badgePagoLabel(r.formaPago, r.bancoOrigen)}</td>
         <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
     `;
     return tr;
