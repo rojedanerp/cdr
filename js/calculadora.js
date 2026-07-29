@@ -54,25 +54,15 @@ function recalcularTasaCruzada() {
 });
 
 calcGuardarBtn.addEventListener('click', () => {
-    if (calcTasaMercado === null) return;
+    if (calcTasaResultado === null) return;
 
     const tasaMonedaOrigenInput = document.getElementById('tasaMonedaOrigen');
     const tasaMonedaDestinoInput = document.getElementById('tasaMonedaDestino');
-    const tasaBaseInput = document.getElementById('tasaBase');
-    const tasaMargenCompraInput = document.getElementById('tasaMargenCompra');
-    const tasaMargenVentaInput = document.getElementById('tasaMargenVenta');
-    const margen = calcMargenInput.value;
+    const tasaValorInput = document.getElementById('tasaValor');
 
     tasaMonedaOrigenInput.value = calcOrigenCodigoInput.value.trim().toUpperCase();
     tasaMonedaDestinoInput.value = calcDestinoCodigoInput.value.trim().toUpperCase();
-    tasaBaseInput.value = Number(calcTasaMercado.toFixed(6));
-    tasaMargenCompraInput.value = margen;
-    tasaMargenVentaInput.value = margen;
-
-    // Disparar 'input' para que app.js (módulo aparte) recalcule su vista previa.
-    [tasaMonedaOrigenInput, tasaMonedaDestinoInput, tasaBaseInput, tasaMargenCompraInput, tasaMargenVentaInput].forEach(el => {
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+    tasaValorInput.value = Number(calcTasaResultado.toFixed(6));
 
     document.querySelector('.nav-links li[data-section="config"]').click();
     tasaMonedaOrigenInput.focus();

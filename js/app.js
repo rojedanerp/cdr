@@ -174,7 +174,7 @@ async function intentarAutocompletarTasa() {
     // solo avisamos si existe una tasa configurada distinta.
     if (tasaManual) {
         if (guardada !== undefined) {
-            tasaHint.textContent = `Hay una tasa de compra configurada (${guardada}), pero se mantiene el valor ingresado manualmente.`;
+            tasaHint.textContent = `Hay una tasa configurada (${guardada}), pero se mantiene el valor ingresado manualmente.`;
         } else {
             tasaHint.textContent = '';
         }
@@ -185,7 +185,7 @@ async function intentarAutocompletarTasa() {
     // 1) Prioridad: tasa configurada manualmente en "Configuración"
     if (guardada !== undefined) {
         aplicarTasaAlFormulario(guardada);
-        tasaHint.textContent = `Tasa de compra configurada manualmente (1 ${origen} = ${guardada} ${destino}).`;
+        tasaHint.textContent = `Tasa configurada manualmente (1 ${origen} = ${guardada} ${destino}).`;
         tasaHint.classList.add('input-hint-active');
         return;
     }
@@ -682,13 +682,7 @@ const tasaForm = document.getElementById('tasaForm');
 const tasaDocIdInput = document.getElementById('tasaDocId');
 const tasaMonedaOrigenInput = document.getElementById('tasaMonedaOrigen');
 const tasaMonedaDestinoInput = document.getElementById('tasaMonedaDestino');
-const tasaBaseInput = document.getElementById('tasaBase');
-const tasaMargenCompraInput = document.getElementById('tasaMargenCompra');
-const tasaMargenVentaInput = document.getElementById('tasaMargenVenta');
-const tasaPreviewCompraLabel = document.getElementById('tasaPreviewCompraLabel');
-const tasaPreviewCompraValue = document.getElementById('tasaPreviewCompraValue');
-const tasaPreviewVentaLabel = document.getElementById('tasaPreviewVentaLabel');
-const tasaPreviewVentaValue = document.getElementById('tasaPreviewVentaValue');
+const tasaValorInput = document.getElementById('tasaValor');
 const tasaSubmitBtn = document.getElementById('tasaSubmitBtn');
 const tasaCancelBtn = document.getElementById('tasaCancelBtn');
 const tasaLiveBtn = document.getElementById('tasaLiveBtn');
@@ -697,62 +691,18 @@ const tasasBody = document.getElementById('tasasBody');
 const tasasEmpty = document.getElementById('tasasEmpty');
 const tasasTableWrap = document.querySelector('#config .table-wrap');
 
-// A partir de los datos crudos de un documento de tasasCambio (nuevos o legados
-// con un solo campo "tasa"), calcula el par compra/venta a usar en toda la app.
-function calcularCompraVenta(data) {
-    const tasaBase = data.tasaBase != null ? data.tasaBase : data.tasa;
-    const margenCompra = data.margenCompra || 0;
-    const margenVenta = data.margenVenta || 0;
-    const tasaCompra = data.tasaCompra != null ? data.tasaCompra : tasaBase * (1 - margenCompra / 100);
-    const tasaVenta = data.tasaVenta != null ? data.tasaVenta : tasaBase * (1 + margenVenta / 100);
-    return { tasaBase, margenCompra, margenVenta, tasaCompra, tasaVenta };
-}
-
 function formatTasaFecha(timestamp) {
     if (!timestamp || !timestamp.toDate) return '—';
     return timestamp.toDate().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function recalcularTasaAdminPreview() {
-    const base = parseFloat(tasaBaseInput.value);
-    const margenCompra = parseFloat(tasaMargenCompraInput.value) || 0;
-    const margenVenta = parseFloat(tasaMargenVentaInput.value) || 0;
-    const origen = tasaMonedaOrigenInput.value.trim().toUpperCase() || 'ORIGEN';
-    const destino = tasaMonedaDestinoInput.value.trim().toUpperCase() || 'DESTINO';
-
-    if (!base || base <= 0) {
-        tasaPreviewCompraValue.textContent = '—';
-        tasaPreviewVentaValue.textContent = '—';
-        tasaPreviewCompraLabel.textContent = 'Tasa de compra (la que se usa para autocompletar remesas)';
-        tasaPreviewVentaLabel.textContent = 'Tasa de venta';
-        return null;
-    }
-
-    const tasaCompra = base * (1 - margenCompra / 100);
-    const tasaVenta = base * (1 + margenVenta / 100);
-
-    tasaPreviewCompraLabel.textContent = `1 ${origen} = ${tasaCompra.toFixed(6)} ${destino} (compra, −${margenCompra}%)`;
-    tasaPreviewCompraValue.textContent = tasaCompra.toFixed(6);
-    tasaPreviewVentaLabel.textContent = `1 ${origen} = ${tasaVenta.toFixed(6)} ${destino} (venta, +${margenVenta}%)`;
-    tasaPreviewVentaValue.textContent = tasaVenta.toFixed(6);
-
-    return { tasaCompra, tasaVenta };
-}
-
-[tasaBaseInput, tasaMargenCompraInput, tasaMargenVentaInput, tasaMonedaOrigenInput, tasaMonedaDestinoInput].forEach(el => {
-    el.addEventListener('input', recalcularTasaAdminPreview);
-});
-
 function resetTasaForm() {
     tasaForm.reset();
     tasaDocIdInput.value = '';
-    tasaMargenCompraInput.value = '0';
-    tasaMargenVentaInput.value = '0';
     tasaSubmitBtn.querySelector('.btn-text').textContent = 'Guardar tasa';
     tasaCancelBtn.classList.add('hidden');
     tasaMessage.textContent = '';
     tasaMessage.className = 'form-message';
-    recalcularTasaAdminPreview();
 }
 
 tasaCancelBtn.addEventListener('click', resetTasaForm);
@@ -774,9 +724,8 @@ tasaLiveBtn.addEventListener('click', async () => {
     try {
         const tasaViva = await obtenerTasaEnVivo(origen, destino);
         if (tasaViva !== undefined) {
-            tasaBaseInput.value = Number(tasaViva.toFixed(6));
-            recalcularTasaAdminPreview();
-            tasaMessage.textContent = `Valor de mercado cargado: 1 ${origen} = ${tasaViva.toFixed(4)} ${destino}. Ajusta los márgenes y guarda si te parece correcto.`;
+            tasaValorInput.value = Number(tasaViva.toFixed(6));
+            tasaMessage.textContent = `Tasa en vivo cargada: 1 ${origen} = ${tasaViva.toFixed(4)} ${destino}. Revísala y guárdala si te parece correcta.`;
             tasaMessage.className = 'form-message form-message-success';
         } else {
             tasaMessage.textContent = `No se encontró una tasa en vivo para ${origen} → ${destino}.`;
@@ -797,13 +746,8 @@ tasaForm.addEventListener('submit', async (e) => {
 
     const origen = tasaMonedaOrigenInput.value.trim().toUpperCase();
     const destino = tasaMonedaDestinoInput.value.trim().toUpperCase();
-    const tasaBase = parseFloat(tasaBaseInput.value);
-    const margenCompra = parseFloat(tasaMargenCompraInput.value) || 0;
-    const margenVenta = parseFloat(tasaMargenVentaInput.value) || 0;
+    const tasa = parseFloat(tasaValorInput.value);
     const docId = claveTasa(origen, destino);
-
-    const tasaCompra = tasaBase * (1 - margenCompra / 100);
-    const tasaVenta = tasaBase * (1 + margenVenta / 100);
 
     tasaSubmitBtn.disabled = true;
     tasaSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
@@ -815,11 +759,7 @@ tasaForm.addEventListener('submit', async (e) => {
         await db.collection('tasasCambio').doc(docId).set({
             monedaOrigen: origen,
             monedaDestino: destino,
-            tasaBase,
-            margenCompra,
-            margenVenta,
-            tasaCompra,
-            tasaVenta,
+            tasa,
             actualizadoEn: firebase.firestore.FieldValue.serverTimestamp(),
             actualizadoPor: auth.currentUser ? auth.currentUser.email : null
         }, { merge: true });
@@ -841,15 +781,10 @@ window.editarTasa = (docId) => {
     const data = tasasCache[`__doc_${docId}`];
     if (!data) return;
 
-    const { tasaBase, margenCompra, margenVenta } = calcularCompraVenta(data);
-
     tasaDocIdInput.value = docId;
     tasaMonedaOrigenInput.value = data.monedaOrigen;
     tasaMonedaDestinoInput.value = data.monedaDestino;
-    tasaBaseInput.value = tasaBase;
-    tasaMargenCompraInput.value = margenCompra;
-    tasaMargenVentaInput.value = margenVenta;
-    recalcularTasaAdminPreview();
+    tasaValorInput.value = data.tasa;
     tasaSubmitBtn.querySelector('.btn-text').textContent = 'Actualizar tasa';
     tasaCancelBtn.classList.remove('hidden');
     tasaMessage.textContent = '';
@@ -868,13 +803,11 @@ window.eliminarTasa = async (docId) => {
 };
 
 function renderTasaRow(docId, data) {
-    const { margenCompra, margenVenta, tasaCompra, tasaVenta } = calcularCompraVenta(data);
     const tr = document.createElement('tr');
     tr.innerHTML = `
         <td>${data.monedaOrigen}</td>
         <td>${data.monedaDestino}</td>
-        <td class="mono-cell">${tasaCompra.toFixed(6)}<br><span class="tasa-margin-note">−${margenCompra}%</span></td>
-        <td class="mono-cell">${tasaVenta.toFixed(6)}<br><span class="tasa-margin-note">+${margenVenta}%</span></td>
+        <td class="mono-cell">${data.tasa}</td>
         <td>${formatTasaFecha(data.actualizadoEn)}</td>
         <td>
             <button type="button" class="btn-icon-action" onclick="editarTasa('${docId}')">✏️ Editar</button>
@@ -889,8 +822,7 @@ db.collection('tasasCambio').orderBy('monedaOrigen').onSnapshot(snapshot => {
     tasasCache = {};
     snapshot.forEach(doc => {
         const data = doc.data();
-        const { tasaCompra } = calcularCompraVenta(data);
-        tasasCache[claveTasa(data.monedaOrigen, data.monedaDestino)] = tasaCompra;
+        tasasCache[claveTasa(data.monedaOrigen, data.monedaDestino)] = data.tasa;
         tasasCache[`__doc_${doc.id}`] = data;
     });
 
