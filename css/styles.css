@@ -178,6 +178,25 @@ button {
   box-shadow: 0 0 0 3px var(--route-blue-light);
 }
 
+.input-group textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--surface);
+  resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-group textarea:focus {
+  outline: none;
+  border-color: var(--route-blue);
+  box-shadow: 0 0 0 3px var(--route-blue-light);
+}
+
 .input-group input::placeholder {
   color: var(--slate-light);
 }
@@ -243,6 +262,14 @@ button {
 
 .spinner.hidden {
   display: none;
+}
+
+/* Utilidad genérica: oculta cualquier elemento al que se le agregue
+   la clase "hidden" desde JS (antes solo existían reglas específicas
+   para .spinner y .btn-secondary, así que elementos como #bancoGroup
+   nunca llegaban a ocultarse realmente). */
+.hidden {
+  display: none !important;
 }
 
 @keyframes spin {
@@ -408,6 +435,11 @@ button {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   margin-bottom: 28px;
+}
+
+.conciliacion-stats {
+  margin: 0;
+  padding: 20px 24px 24px;
 }
 
 .stat-card {
