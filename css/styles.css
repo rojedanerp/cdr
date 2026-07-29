@@ -750,6 +750,13 @@ button {
   font-weight: 500;
 }
 
+.tasa-margin-note {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted, #6b7280);
+}
+
 .route-cell {
   display: flex;
   align-items: center;
