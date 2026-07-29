@@ -32,6 +32,9 @@
             <li data-section="clientes">
                 <span>👥</span> Clientes
             </li>
+            <li data-section="calculadora">
+                <span>🧮</span> Calculadora de Tasas
+            </li>
             <li data-section="historial">
                 <span>📋</span> Historial
             </li>
@@ -267,6 +270,44 @@
                     <span class="empty-state-icon">👥</span>
                     <p>Todavía no hay clientes registrados.</p>
                     <span class="empty-state-hint">Se crean automáticamente al registrar una remesa, o agrégalos aquí.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- CALCULADORA DE TASAS -->
+        <section id="calculadora" class="section">
+            <div class="section-header">
+                <h2>Calculadora de Tasas</h2>
+                <p class="section-subtitle">Calcula la tasa cruzada del día a partir del valor de cada moneda frente al dólar</p>
+            </div>
+
+            <div class="panel">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="calcOrigenCodigo">Moneda de origen</label>
+                        <input type="text" id="calcOrigenCodigo" placeholder="CLP" maxlength="6">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcOrigenValor">Valor de 1 USD en esa moneda</label>
+                        <input type="number" id="calcOrigenValor" placeholder="940" step="any" inputmode="decimal">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcDestinoCodigo">Moneda de destino</label>
+                        <input type="text" id="calcDestinoCodigo" placeholder="VES" maxlength="6">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcDestinoValor">Valor de 1 USD en esa moneda</label>
+                        <input type="number" id="calcDestinoValor" placeholder="845" step="any" inputmode="decimal">
+                    </div>
+                </div>
+
+                <div class="calc-result" id="calcResultBox">
+                    <span class="calc-result-label" id="calcResultLabel">Ingresa ambos valores para calcular la tasa</span>
+                    <span class="calc-result-value" id="calcResultValue">—</span>
+                </div>
+
+                <div class="tasa-form-actions">
+                    <button type="button" class="btn-primary btn-form" id="calcGuardarBtn" disabled>Usar esta tasa en Configuración</button>
                 </div>
             </div>
         </section>
