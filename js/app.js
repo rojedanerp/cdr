@@ -607,8 +607,54 @@ db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
 });
 
 // ============================================
-// CONFIGURACIÓN — CRUD de tasas de cambio
+// CALCULADORA DE TASAS — tasa cruzada a partir del valor de cada moneda vs USD
 // ============================================
+const calcOrigenCodigoInput = document.getElementById('calcOrigenCodigo');
+const calcOrigenValorInput = document.getElementById('calcOrigenValor');
+const calcDestinoCodigoInput = document.getElementById('calcDestinoCodigo');
+const calcDestinoValorInput = document.getElementById('calcDestinoValor');
+const calcResultLabel = document.getElementById('calcResultLabel');
+const calcResultValue = document.getElementById('calcResultValue');
+const calcGuardarBtn = document.getElementById('calcGuardarBtn');
+
+let calcTasaResultado = null;
+
+function recalcularTasaCruzada() {
+    const origenCodigo = calcOrigenCodigoInput.value.trim().toUpperCase();
+    const destinoCodigo = calcDestinoCodigoInput.value.trim().toUpperCase();
+    const origenValor = parseFloat(calcOrigenValorInput.value);
+    const destinoValor = parseFloat(calcDestinoValorInput.value);
+
+    if (!origenValor || !destinoValor || origenValor <= 0) {
+        calcTasaResultado = null;
+        calcResultLabel.textContent = 'Ingresa ambos valores para calcular la tasa';
+        calcResultValue.textContent = '—';
+        calcGuardarBtn.disabled = true;
+        return;
+    }
+
+    calcTasaResultado = destinoValor / origenValor;
+    const origenTxt = origenCodigo || 'ORIGEN';
+    const destinoTxt = destinoCodigo || 'DESTINO';
+    calcResultLabel.textContent = `1 ${origenTxt} = ${calcTasaResultado.toFixed(6)} ${destinoTxt}`;
+    calcResultValue.textContent = calcTasaResultado.toFixed(3);
+    calcGuardarBtn.disabled = !(origenCodigo && destinoCodigo);
+}
+
+[calcOrigenCodigoInput, calcOrigenValorInput, calcDestinoCodigoInput, calcDestinoValorInput].forEach(el => {
+    el.addEventListener('input', recalcularTasaCruzada);
+});
+
+calcGuardarBtn.addEventListener('click', () => {
+    if (calcTasaResultado === null) return;
+
+    tasaMonedaOrigenInput.value = calcOrigenCodigoInput.value.trim().toUpperCase();
+    tasaMonedaDestinoInput.value = calcDestinoCodigoInput.value.trim().toUpperCase();
+    tasaValorInput.value = Number(calcTasaResultado.toFixed(6));
+
+    document.querySelector('.nav-links li[data-section="config"]').click();
+    tasaMonedaOrigenInput.focus();
+});
 const tasaForm = document.getElementById('tasaForm');
 const tasaDocIdInput = document.getElementById('tasaDocId');
 const tasaMonedaOrigenInput = document.getElementById('tasaMonedaOrigen');
