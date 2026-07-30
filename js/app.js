@@ -867,6 +867,8 @@ db.collection('tasasCambio').orderBy('monedaOrigen').onSnapshot(snapshot => {
 // registradas en la app.
 // ============================================
 const conciliacionInput = document.getElementById('conciliacionInput');
+const conciliacionArchivo = document.getElementById('conciliacionArchivo');
+const conciliacionArchivoHint = document.getElementById('conciliacionArchivoHint');
 const conciliacionBtn = document.getElementById('conciliacionBtn');
 const conciliacionLimpiarBtn = document.getElementById('conciliacionLimpiarBtn');
 const conciliacionMessage = document.getElementById('conciliacionMessage');
@@ -1018,7 +1020,7 @@ function limpiarResultadosConciliacion() {
 
 conciliacionLimpiarBtn.addEventListener('click', limpiarResultadosConciliacion);
 
-conciliacionBtn.addEventListener('click', () => {
+function ejecutarConciliacion() {
     conciliacionMessage.textContent = '';
     conciliacionMessage.className = 'form-message';
 
@@ -1127,4 +1129,28 @@ conciliacionBtn.addEventListener('click', () => {
     conciliacionLimpiarBtn.classList.remove('hidden');
     conciliacionMessage.textContent = `Comparación lista: ${coincidencias.length} coincidencia(s) de ${boletas.length} boleta(s) y ${remesas.length} remesa(s) en CLP.`;
     conciliacionMessage.className = 'form-message form-message-success';
+}
+
+conciliacionBtn.addEventListener('click', ejecutarConciliacion);
+
+// --- Subir archivo CSV directamente (en vez de copiar y pegar) ---
+conciliacionArchivo.addEventListener('change', () => {
+    const file = conciliacionArchivo.files[0];
+    if (!file) return;
+
+    conciliacionArchivoHint.textContent = 'Leyendo archivo...';
+    conciliacionArchivoHint.classList.remove('input-hint-active');
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        conciliacionInput.value = reader.result;
+        conciliacionArchivoHint.textContent = `Archivo "${file.name}" cargado. Revisa el texto y presiona "Comparar con remesas".`;
+        conciliacionArchivoHint.classList.add('input-hint-active');
+        ejecutarConciliacion();
+    };
+    reader.onerror = () => {
+        conciliacionArchivoHint.textContent = 'No se pudo leer el archivo. Intenta pegarlo manualmente abajo.';
+        conciliacionArchivoHint.classList.remove('input-hint-active');
+    };
+    reader.readAsText(file, 'UTF-8');
 });
