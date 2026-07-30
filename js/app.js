@@ -135,6 +135,7 @@ let liveRatesCache = {};      // { CLP: { PEN: 0.12, USD: 0.001, ... }, ... } �
 let liveRateFetchInFlight = {};
 let isAutoFilling = false;    // evita marcar como "manual" el autollenado
 let tasaManual = false;       // el usuario editó la tasa a mano para este par
+let tasaReferenciaActual = null; // última tasa configurada/en vivo sugerida (para calcular margen luego)
 let autocompletarTimeout = null;
 let autocompletarToken = 0;
 
@@ -168,6 +169,7 @@ function aplicarTasaAlFormulario(valor) {
     isAutoFilling = true;
     tasaCambioInput.value = valor;
     isAutoFilling = false;
+    tasaReferenciaActual = valor; // guarda la tasa sugerida (config o en vivo) para calcular margen después
     recalcularMontoRecibido();
 }
 
@@ -450,6 +452,7 @@ function resetRemesaForm() {
     clienteHint.textContent = '';
     clienteHint.classList.remove('input-hint-active');
     tasaManual = false;
+    tasaReferenciaActual = null;
     tasaHint.textContent = '';
     tasaHint.classList.remove('input-hint-active');
     remesaSubmitBtn.querySelector('.btn-text').textContent = 'Registrar remesa';
@@ -507,6 +510,7 @@ remesaForm.addEventListener('submit', async (e) => {
             montoEnviado,
             monedaEnviado: document.getElementById('monedaEnviado').value.trim().toUpperCase(),
             tasaCambio,
+            tasaReferencia: tasaReferenciaActual, // tasa configurada/en vivo sugerida al momento del registro, para calcular margen
             montoRecibido,
             monedaRecibido,
             estado: document.getElementById('estado').value,
@@ -558,6 +562,7 @@ window.editarRemesa = (docId) => {
     montoEnviadoInput.value = r.montoEnviado != null ? r.montoEnviado : '';
     document.getElementById('monedaEnviado').value = r.monedaEnviado || '';
     tasaManual = true; // evita que el autocompletado pise la tasa original al editar
+    tasaReferenciaActual = r.tasaReferencia != null ? r.tasaReferencia : null;
     tasaCambioInput.value = r.tasaCambio != null ? r.tasaCambio : '';
     monedaRecibidoInput.value = r.monedaRecibido || '';
     recalcularMontoRecibido();
@@ -685,6 +690,8 @@ db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
             tbody.appendChild(tr);
         });
     }
+
+    renderizarReportes();
 }, error => {
     console.error('Error escuchando remesas:', error);
 });
@@ -1154,3 +1161,234 @@ conciliacionArchivo.addEventListener('change', () => {
     };
     reader.readAsText(file, 'UTF-8');
 });
+
+// ============================================
+// REPORTES — ganancia por remesa (margen de tasa), volumen mensual
+// por moneda destino, y gráfico de remesas por día.
+// ============================================
+const reportesPeriodo = document.getElementById('reportesPeriodo');
+const repStatCantidad = document.getElementById('repStatCantidad');
+const repStatTicket = document.getElementById('repStatTicket');
+const repStatGanancia = document.getElementById('repStatGanancia');
+const repStatSinRef = document.getElementById('repStatSinRef');
+const repChart = document.getElementById('repChart');
+const repChartWrap = document.getElementById('repChartWrap');
+const repChartEmpty = document.getElementById('repChartEmpty');
+const repChartSubtitulo = document.getElementById('repChartSubtitulo');
+const repVolumenBody = document.getElementById('repVolumenBody');
+const repVolumenWrap = document.getElementById('repVolumenWrap');
+const repVolumenEmpty = document.getElementById('repVolumenEmpty');
+const repGananciaBody = document.getElementById('repGananciaBody');
+const repGananciaWrap = document.getElementById('repGananciaWrap');
+const repGananciaEmpty = document.getElementById('repGananciaEmpty');
+
+reportesPeriodo.addEventListener('change', renderizarReportes);
+
+function claveDiaLocal(fecha) {
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function claveMesLocal(fecha) {
+    const y = fecha.getFullYear();
+    const m = String(fecha.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+}
+
+function nombreMesCapitalizado(claveMes) {
+    const [y, m] = claveMes.split('-').map(Number);
+    const fecha = new Date(y, m - 1, 1);
+    const texto = fecha.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function renderizarReportes() {
+    if (!reportesPeriodo) return;
+
+    const periodo = reportesPeriodo.value;
+    const ahora = new Date();
+    let desde = null;
+
+    if (periodo === '30d') {
+        desde = new Date(ahora);
+        desde.setDate(desde.getDate() - 29);
+        desde.setHours(0, 0, 0, 0);
+    } else if (periodo === 'mes') {
+        desde = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+    } // 'todo' -> sin límite inferior
+
+    const enPeriodo = Object.entries(remesasPorId)
+        .map(([id, r]) => ({ id, ...r }))
+        .filter(r => {
+            if (r.estado === 'cancelado') return false;
+            if (!r.createdAt || !r.createdAt.toDate) return false;
+            const fecha = r.createdAt.toDate();
+            return !desde || fecha >= desde;
+        });
+
+    // --- Stat: cantidad ---
+    repStatCantidad.textContent = enPeriodo.length;
+
+    // --- Stat: ticket promedio (en la moneda de envío más frecuente del periodo) ---
+    const conteoMonedaEnviado = {};
+    enPeriodo.forEach(r => {
+        const m = (r.monedaEnviado || '').toUpperCase();
+        if (m) conteoMonedaEnviado[m] = (conteoMonedaEnviado[m] || 0) + 1;
+    });
+    const monedaPrincipal = Object.entries(conteoMonedaEnviado).sort((a, b) => b[1] - a[1])[0];
+
+    if (monedaPrincipal) {
+        const moneda = monedaPrincipal[0];
+        const delGrupo = enPeriodo.filter(r => (r.monedaEnviado || '').toUpperCase() === moneda);
+        const totalEnviado = delGrupo.reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
+        repStatTicket.textContent = formatMoney(delGrupo.length ? totalEnviado / delGrupo.length : 0, moneda);
+    } else {
+        repStatTicket.textContent = '—';
+    }
+
+    // --- Stat: ganancia estimada (solo remesas con tasa de referencia guardada) ---
+    const conReferencia = enPeriodo.filter(r => r.tasaReferencia != null && r.tasaReferencia > 0 && r.tasaCambio != null && r.montoRecibido != null);
+    repStatSinRef.textContent = enPeriodo.length - conReferencia.length;
+
+    const gananciaPorMoneda = {};
+    conReferencia.forEach(r => {
+        const ganancia = r.montoEnviado - (r.montoRecibido / r.tasaReferencia);
+        const moneda = (r.monedaEnviado || '').toUpperCase();
+        gananciaPorMoneda[moneda] = (gananciaPorMoneda[moneda] || 0) + ganancia;
+    });
+    const entradasGanancia = Object.entries(gananciaPorMoneda);
+    repStatGanancia.textContent = entradasGanancia.length === 0
+        ? '—'
+        : entradasGanancia.map(([moneda, total]) => formatMoney(total, moneda)).join(' · ');
+
+    renderizarGraficoDiario(enPeriodo, periodo);
+    renderizarVolumenMensual(enPeriodo);
+    renderizarGananciaPorRemesa(conReferencia);
+}
+
+function renderizarGraficoDiario(remesas, periodo) {
+    const ahora = new Date();
+    const dias = [];
+
+    if (periodo === 'mes') {
+        const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+        const fin = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
+        for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) dias.push(new Date(d));
+        repChartSubtitulo.textContent = 'Este mes';
+    } else {
+        // '30d' y 'todo' (el gráfico siempre se acota a los últimos 30 días para que sea legible)
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(ahora);
+            d.setDate(d.getDate() - i);
+            dias.push(d);
+        }
+        repChartSubtitulo.textContent = periodo === 'todo' ? 'Últimos 30 días (de todo el historial)' : 'Últimos 30 días';
+    }
+
+    const conteoPorDia = {};
+    remesas.forEach(r => {
+        if (!r.createdAt || !r.createdAt.toDate) return;
+        const clave = claveDiaLocal(r.createdAt.toDate());
+        conteoPorDia[clave] = (conteoPorDia[clave] || 0) + 1;
+    });
+
+    const valores = dias.map(d => conteoPorDia[claveDiaLocal(d)] || 0);
+    const totalEnRango = valores.reduce((a, b) => a + b, 0);
+
+    if (totalEnRango === 0) {
+        repChartWrap.style.display = 'none';
+        repChartEmpty.style.display = 'block';
+        return;
+    }
+    repChartWrap.style.display = 'block';
+    repChartEmpty.style.display = 'none';
+
+    const max = Math.max(...valores, 1);
+    repChart.innerHTML = '';
+    dias.forEach((d, i) => {
+        const valor = valores[i];
+        const alturaPct = valor > 0 ? Math.max((valor / max) * 100, 4) : 0;
+        const mostrarEtiqueta = d.getDate() === 1 || i === 0 || i === dias.length - 1;
+        const bar = document.createElement('div');
+        bar.className = 'rep-chart-bar';
+        bar.title = `${d.toLocaleDateString('es-CL')}: ${valor} remesa(s)`;
+        bar.innerHTML = `
+            <div class="rep-chart-bar-fill" style="height:${alturaPct}%"></div>
+            ${mostrarEtiqueta ? `<span class="rep-chart-bar-label">${d.getDate()}/${d.getMonth() + 1}</span>` : ''}
+        `;
+        repChart.appendChild(bar);
+    });
+}
+
+function renderizarVolumenMensual(remesas) {
+    const grupos = {};
+    remesas.forEach(r => {
+        if (!r.createdAt || !r.createdAt.toDate) return;
+        const mes = claveMesLocal(r.createdAt.toDate());
+        const moneda = (r.monedaRecibido || '—').toUpperCase();
+        const clave = `${mes}|${moneda}`;
+        if (!grupos[clave]) grupos[clave] = { mes, moneda, count: 0, total: 0 };
+        grupos[clave].count += 1;
+        grupos[clave].total += (r.montoRecibido || 0);
+    });
+
+    const filas = Object.values(grupos).sort((a, b) => {
+        if (a.mes !== b.mes) return b.mes.localeCompare(a.mes);
+        return b.total - a.total;
+    });
+
+    repVolumenBody.innerHTML = '';
+    if (filas.length === 0) {
+        repVolumenWrap.style.display = 'none';
+        repVolumenEmpty.style.display = 'block';
+        return;
+    }
+    repVolumenWrap.style.display = 'block';
+    repVolumenEmpty.style.display = 'none';
+
+    filas.forEach(f => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${nombreMesCapitalizado(f.mes)}</td>
+            <td>${escapeHtml(f.moneda)}</td>
+            <td>${f.count}</td>
+            <td class="mono-cell">${formatMoney(f.total, f.moneda)}</td>
+        `;
+        repVolumenBody.appendChild(tr);
+    });
+}
+
+function renderizarGananciaPorRemesa(conReferencia) {
+    const filas = [...conReferencia].sort((a, b) => {
+        const fa = a.createdAt && a.createdAt.toDate ? a.createdAt.toDate().getTime() : 0;
+        const fb = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate().getTime() : 0;
+        return fb - fa;
+    });
+
+    repGananciaBody.innerHTML = '';
+    if (filas.length === 0) {
+        repGananciaWrap.style.display = 'none';
+        repGananciaEmpty.style.display = 'block';
+        return;
+    }
+    repGananciaWrap.style.display = 'block';
+    repGananciaEmpty.style.display = 'none';
+
+    filas.forEach(r => {
+        const ganancia = r.montoEnviado - (r.montoRecibido / r.tasaReferencia);
+        const moneda = (r.monedaEnviado || '').toUpperCase();
+        const claseGanancia = ganancia > 0 ? 'rep-ganancia-positiva' : (ganancia < 0 ? 'rep-ganancia-negativa' : 'rep-ganancia-cero');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${formatDate(r.createdAt)}</td>
+            <td>${escapeHtml(r.clienteNombre) || '—'}</td>
+            <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
+            <td class="mono-cell">${r.tasaCambio}</td>
+            <td class="mono-cell">${r.tasaReferencia}</td>
+            <td class="mono-cell ${claseGanancia}">${formatMoney(ganancia, moneda)}</td>
+        `;
+        repGananciaBody.appendChild(tr);
+    });
+}
