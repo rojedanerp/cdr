@@ -442,6 +442,85 @@ button {
   padding: 20px 24px 24px;
 }
 
+/* ============================================
+   REPORTES
+   ============================================ */
+.reportes-filtro-panel {
+  padding: 16px 24px;
+  margin-bottom: 16px;
+}
+
+.reportes-filtro {
+  max-width: 260px;
+  margin: 0;
+}
+
+.reportes-filtro select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.rep-chart-wrap {
+  padding: 24px;
+  overflow-x: auto;
+}
+
+.rep-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 180px;
+  min-width: 100%;
+}
+
+.rep-chart-bar {
+  flex: 1 0 10px;
+  min-width: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.rep-chart-bar-fill {
+  width: 100%;
+  background: var(--route-blue);
+  border-radius: 3px 3px 0 0;
+  transition: background 0.15s ease;
+}
+
+.rep-chart-bar:hover .rep-chart-bar-fill {
+  background: var(--transfer-teal);
+}
+
+.rep-chart-bar-label {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--slate-light);
+  white-space: nowrap;
+}
+
+.rep-ganancia-positiva {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.rep-ganancia-negativa {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.rep-ganancia-cero {
+  color: var(--slate-light);
+}
+
 .stat-card {
   background: var(--surface);
   border: 1px solid var(--border);
