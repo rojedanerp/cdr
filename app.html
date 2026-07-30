@@ -507,10 +507,85 @@
                 <h2>Reportes</h2>
                 <p class="section-subtitle">Métricas y tendencias</p>
             </div>
+
+            <div class="panel reportes-filtro-panel">
+                <div class="input-group reportes-filtro">
+                    <label for="reportesPeriodo">Periodo</label>
+                    <select id="reportesPeriodo">
+                        <option value="30d">Últimos 30 días</option>
+                        <option value="mes" selected>Este mes</option>
+                        <option value="todo">Todo el historial</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="stats-grid" id="reportesStatsGrid">
+                <div class="stat-card">
+                    <span class="stat-label">Remesas en el periodo</span>
+                    <span class="stat-value" id="repStatCantidad">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Ticket promedio</span>
+                    <span class="stat-value" id="repStatTicket">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Ganancia estimada</span>
+                    <span class="stat-value" id="repStatGanancia">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Sin tasa de referencia</span>
+                    <span class="stat-value" id="repStatSinRef">0</span>
+                </div>
+            </div>
+
             <div class="panel">
-                <div class="empty-state">
-                    <span class="empty-state-icon">📈</span>
-                    <p>Los reportes se implementarán en la siguiente etapa.</p>
+                <div class="panel-header">
+                    <h3>Remesas por día</h3>
+                    <span class="input-hint" id="repChartSubtitulo"></span>
+                </div>
+                <div id="repChartWrap" class="rep-chart-wrap">
+                    <div id="repChart" class="rep-chart"></div>
+                </div>
+                <div class="empty-state" id="repChartEmpty">
+                    <span class="empty-state-icon">📭</span>
+                    <p>No hay remesas en este periodo.</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><h3>Volumen mensual por moneda destino</h3></div>
+                <div class="table-wrap" id="repVolumenWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Mes</th><th>Moneda</th><th># Remesas</th><th>Monto total recibido</th></tr>
+                        </thead>
+                        <tbody id="repVolumenBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="repVolumenEmpty">
+                    <span class="empty-state-icon">📊</span>
+                    <p>No hay datos suficientes todavía.</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><h3>Ganancia por remesa</h3></div>
+                <p class="tasa-intro">
+                    Ganancia = diferencia entre la tasa configurada/en vivo al momento del registro y la tasa
+                    realmente aplicada al cliente. Las remesas registradas antes de esta actualización no tienen
+                    tasa de referencia guardada, así que no aparecen aquí.
+                </p>
+                <div class="table-wrap" id="repGananciaWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Fecha</th><th>Cliente</th><th>Enviado</th><th>Tasa aplicada</th><th>Tasa referencia</th><th>Ganancia</th></tr>
+                        </thead>
+                        <tbody id="repGananciaBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="repGananciaEmpty">
+                    <span class="empty-state-icon">💰</span>
+                    <p>Ninguna remesa en este periodo tiene tasa de referencia registrada.</p>
                 </div>
             </div>
         </section>
