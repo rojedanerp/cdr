@@ -425,6 +425,12 @@
 
                 <div class="tasa-form">
                     <div class="input-group">
+                        <label for="conciliacionArchivo">Subir CSV del SII (o pega el contenido abajo)</label>
+                        <input type="file" id="conciliacionArchivo" accept=".csv,.txt">
+                        <span class="input-hint" id="conciliacionArchivoHint"></span>
+                    </div>
+
+                    <div class="input-group">
                         <label for="conciliacionInput">Boletas emitidas (pegadas desde el SII o CSV)</label>
                         <textarea id="conciliacionInput" rows="8" placeholder="Folio&#9;Fecha&#9;Monto Total&#9;Estado&#10;123&#9;01-07-2026&#9;15000&#9;Vigente"></textarea>
                         <span class="input-hint" id="conciliacionParseHint"></span>
