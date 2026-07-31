@@ -131,6 +131,7 @@ const badgePagoLabel = (formaPago, banco) => {
 // TASAS DE CAMBIO — automáticas (API en vivo) + manuales (Configuración)
 // ============================================
 let tasasCache = {};          // { "CLP_PEN": 0.1234, ... } — configuradas manualmente en Configuración
+let tasasMercadoCache = {};   // { "CLP_PEN": 0.1234, ... } — tasa de mercado (sin margen) para calcular ganancia real
 let liveRatesCache = {};      // { CLP: { PEN: 0.12, USD: 0.001, ... }, ... } — cacheadas por sesión
 let liveRateFetchInFlight = {};
 let isAutoFilling = false;    // evita marcar como "manual" el autollenado
@@ -165,11 +166,15 @@ async function obtenerTasaEnVivo(origen, destino) {
     return rates ? rates[destino] : undefined;
 }
 
-function aplicarTasaAlFormulario(valor) {
+function aplicarTasaAlFormulario(valor, tasaReferenciaReal) {
     isAutoFilling = true;
     tasaCambioInput.value = valor;
     isAutoFilling = false;
-    tasaReferenciaActual = valor; // guarda la tasa sugerida (config o en vivo) para calcular margen después
+    // Si hay una tasa de mercado real guardada (costo, sin margen), esa es la referencia
+    // para calcular ganancia. Si no, se usa la misma tasa ofrecida (comportamiento anterior).
+    tasaReferenciaActual = (tasaReferenciaReal !== undefined && tasaReferenciaReal !== null)
+        ? tasaReferenciaReal
+        : valor;
     recalcularMontoRecibido();
 }
 
@@ -184,6 +189,7 @@ async function intentarAutocompletarTasa() {
     }
 
     const guardada = tasasCache[claveTasa(origen, destino)];
+    const mercadoGuardada = tasasMercadoCache[claveTasa(origen, destino)];
 
     // El usuario ya editó la tasa a mano para este par: no la pisamos,
     // solo avisamos si existe una tasa configurada distinta.
@@ -199,7 +205,7 @@ async function intentarAutocompletarTasa() {
 
     // 1) Prioridad: tasa configurada manualmente en "Configuración"
     if (guardada !== undefined) {
-        aplicarTasaAlFormulario(guardada);
+        aplicarTasaAlFormulario(guardada, mercadoGuardada);
         tasaHint.textContent = `Tasa configurada manualmente (1 ${origen} = ${guardada} ${destino}).`;
         tasaHint.classList.add('input-hint-active');
         return;
@@ -771,6 +777,9 @@ tasaForm.addEventListener('submit', async (e) => {
     const origen = tasaMonedaOrigenInput.value.trim().toUpperCase();
     const destino = tasaMonedaDestinoInput.value.trim().toUpperCase();
     const tasa = parseFloat(tasaValorInput.value);
+    const tasaMercadoValorInput = document.getElementById('tasaMercadoValor');
+    const tasaMercadoRaw = tasaMercadoValorInput ? parseFloat(tasaMercadoValorInput.value) : NaN;
+    const tasaMercado = isNaN(tasaMercadoRaw) ? null : tasaMercadoRaw;
     const docId = claveTasa(origen, destino);
 
     tasaSubmitBtn.disabled = true;
@@ -784,6 +793,7 @@ tasaForm.addEventListener('submit', async (e) => {
             monedaOrigen: origen,
             monedaDestino: destino,
             tasa,
+            tasaMercado,
             actualizadoEn: firebase.firestore.FieldValue.serverTimestamp(),
             actualizadoPor: auth.currentUser ? auth.currentUser.email : null
         }, { merge: true });
@@ -805,10 +815,12 @@ window.editarTasa = (docId) => {
     const data = tasasCache[`__doc_${docId}`];
     if (!data) return;
 
+    const tasaMercadoValorInput = document.getElementById('tasaMercadoValor');
     tasaDocIdInput.value = docId;
     tasaMonedaOrigenInput.value = data.monedaOrigen;
     tasaMonedaDestinoInput.value = data.monedaDestino;
     tasaValorInput.value = data.tasa;
+    if (tasaMercadoValorInput) tasaMercadoValorInput.value = data.tasaMercado != null ? data.tasaMercado : '';
     tasaSubmitBtn.querySelector('.btn-text').textContent = 'Actualizar tasa';
     tasaCancelBtn.classList.remove('hidden');
     tasaMessage.textContent = '';
@@ -832,6 +844,7 @@ function renderTasaRow(docId, data) {
         <td>${escapeHtml(data.monedaOrigen)}</td>
         <td>${escapeHtml(data.monedaDestino)}</td>
         <td class="mono-cell">${data.tasa}</td>
+        <td class="mono-cell">${data.tasaMercado != null ? data.tasaMercado : '—'}</td>
         <td>${formatTasaFecha(data.actualizadoEn)}</td>
         <td>
             <button type="button" class="btn-icon-action" onclick="editarTasa('${docId}')">✏️ Editar</button>
@@ -844,9 +857,12 @@ function renderTasaRow(docId, data) {
 db.collection('tasasCambio').orderBy('monedaOrigen').onSnapshot(snapshot => {
     // Reconstruir la caché usada para el autocompletado en Nueva Remesa
     tasasCache = {};
+    tasasMercadoCache = {};
     snapshot.forEach(doc => {
         const data = doc.data();
-        tasasCache[claveTasa(data.monedaOrigen, data.monedaDestino)] = data.tasa;
+        const clave = claveTasa(data.monedaOrigen, data.monedaDestino);
+        tasasCache[clave] = data.tasa;
+        if (data.tasaMercado != null) tasasMercadoCache[clave] = data.tasaMercado;
         tasasCache[`__doc_${doc.id}`] = data;
     });
 

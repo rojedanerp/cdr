@@ -59,10 +59,16 @@ calcGuardarBtn.addEventListener('click', () => {
     const tasaMonedaOrigenInput = document.getElementById('tasaMonedaOrigen');
     const tasaMonedaDestinoInput = document.getElementById('tasaMonedaDestino');
     const tasaValorInput = document.getElementById('tasaValor');
+    const tasaMercadoValorInput = document.getElementById('tasaMercadoValor');
 
     tasaMonedaOrigenInput.value = calcOrigenCodigoInput.value.trim().toUpperCase();
     tasaMonedaDestinoInput.value = calcDestinoCodigoInput.value.trim().toUpperCase();
     tasaValorInput.value = Number(calcTasaResultado.toFixed(6));
+    // Se guarda también la tasa de mercado (sin margen) para que el reporte
+    // de ganancia pueda comparar contra el costo real, no contra la tasa ya con margen.
+    if (tasaMercadoValorInput && calcTasaMercado !== null) {
+        tasaMercadoValorInput.value = Number(calcTasaMercado.toFixed(6));
+    }
 
     document.querySelector('.nav-links li[data-section="config"]').click();
     tasaMonedaOrigenInput.focus();
