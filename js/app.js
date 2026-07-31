@@ -1424,16 +1424,45 @@ function renderizarGananciaPorRemesa(conReferencia) {
 // ============================================
 const cajaColeccion = db.collection('movimientosCaja');
 
-// --- Sincronización automática: cada remesa pagada en efectivo genera
-// un único movimiento de entrada en movimientosCaja, ligado por remesaId.
+// --- Sincronización automática: cada remesa puede generar hasta DOS
+// movimientos en movimientosCaja, ligados por remesaId y diferenciados por "rol":
+//   - "ingreso_cliente": entrada en la moneda que paga el cliente, SIEMPRE que la
+//      remesa esté activa, sin importar si pagó en efectivo o por transferencia.
+//   - "salida_destino": salida en la moneda de destino, SIEMPRE que la remesa esté
+//      activa, porque el envío al destino siempre se transfiere desde el saldo de
+//      esa moneda en caja, sin importar cómo pagó el cliente.
 // Si la remesa se edita (cambia forma de pago, monto, moneda o se cancela)
-// o se elimina, el movimiento se actualiza/borra solo. ---
+// o se elimina, ambos movimientos se actualizan/borran solos. ---
 async function sincronizarCajaDeRemesa(remesaId, data) {
     if (!remesaId) return;
 
-    const existentes = await cajaColeccion.where('remesaId', '==', remesaId).limit(1).get();
-    const debeExistir = data.formaPago === 'efectivo' && data.estado !== 'cancelado'
-        && data.montoEnviado > 0 && data.monedaEnviado;
+    const activa = data.estado !== 'cancelado';
+
+    await sincronizarMovimientoCajaDeRemesa(remesaId, 'ingreso_cliente', {
+        debeExistir: activa && data.montoEnviado > 0 && !!data.monedaEnviado,
+        tipo: 'entrada',
+        moneda: data.monedaEnviado,
+        monto: data.montoEnviado,
+        concepto: data.formaPago === 'efectivo'
+            ? `Remesa en efectivo — ${data.clienteNombre}`
+            : `Remesa por transferencia — ${data.clienteNombre}`
+    });
+
+    await sincronizarMovimientoCajaDeRemesa(remesaId, 'salida_destino', {
+        debeExistir: activa && data.montoRecibido > 0 && !!data.monedaRecibido,
+        tipo: 'salida',
+        moneda: data.monedaRecibido,
+        monto: data.montoRecibido,
+        concepto: `Envío a destino — ${data.clienteNombre}`
+    });
+}
+
+async function sincronizarMovimientoCajaDeRemesa(remesaId, rol, { debeExistir, tipo, moneda, monto, concepto }) {
+    const existentes = await cajaColeccion
+        .where('remesaId', '==', remesaId)
+        .where('rol', '==', rol)
+        .limit(1)
+        .get();
 
     if (!debeExistir) {
         if (!existentes.empty) {
@@ -1443,19 +1472,18 @@ async function sincronizarCajaDeRemesa(remesaId, data) {
     }
 
     const payload = {
-        tipo: 'entrada',
-        moneda: data.monedaEnviado,
-        monto: data.montoEnviado,
-        concepto: `Remesa en efectivo — ${data.clienteNombre}`,
+        tipo,
+        moneda,
+        monto,
+        concepto,
         origen: 'remesa',
         remesaId,
-        clienteNombre: data.clienteNombre || null,
+        rol,
         actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
     };
 
     if (existentes.empty) {
         payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        payload.creadoPorEmail = auth.currentUser ? auth.currentUser.email : null;
         await cajaColeccion.add(payload);
     } else {
         await existentes.docs[0].ref.update(payload);
