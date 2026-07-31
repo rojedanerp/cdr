@@ -54,6 +54,19 @@ service cloud.firestore {
         && request.resource.data.tasa > 0;
     }
 
+    // Caja: movimientos de efectivo (manuales o generados por remesas)
+    match /movimientosCaja/{movId} {
+      allow read, delete: if autenticado();
+
+      allow create, update: if autenticado()
+        && request.resource.data.tipo in ['entrada', 'salida']
+        && request.resource.data.moneda is string
+        && request.resource.data.moneda.size() > 0
+        && request.resource.data.monto is number
+        && request.resource.data.monto > 0
+        && request.resource.data.origen in ['manual', 'remesa'];
+    }
+
     // Por defecto, todo lo demás queda bloqueado
     match /{document=**} {
       allow read, write: if false;

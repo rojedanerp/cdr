@@ -32,6 +32,9 @@
             <li data-section="clientes">
                 <span>👥</span> Clientes
             </li>
+            <li data-section="caja">
+                <span>💵</span> Caja
+            </li>
             <li data-section="calculadora">
                 <span>🧮</span> Calculadora de Tasas
             </li>
@@ -277,6 +280,90 @@
                     <span class="empty-state-icon">👥</span>
                     <p>Todavía no hay clientes registrados.</p>
                     <span class="empty-state-hint">Se crean automáticamente al registrar una remesa, o agrégalos aquí.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- CAJA -->
+        <section id="caja" class="section">
+            <div class="section-header">
+                <h2>Caja</h2>
+                <p class="section-subtitle">Control de efectivo por moneda</p>
+            </div>
+
+            <div class="stats-grid" id="cajaSaldosGrid"></div>
+            <div class="empty-state" id="cajaSaldosEmpty">
+                <span class="empty-state-icon">💵</span>
+                <p>Todavía no hay movimientos de caja.</p>
+                <span class="empty-state-hint">Se generan solos con las remesas pagadas en efectivo, o regístralos manualmente abajo.</span>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Registrar movimiento manual</h3>
+                </div>
+                <form id="cajaForm" class="tasa-form">
+                    <div class="tasa-form-grid">
+                        <div class="input-group">
+                            <label for="cajaTipo">Tipo</label>
+                            <select id="cajaTipo" required>
+                                <option value="entrada">Entrada (ingreso)</option>
+                                <option value="salida">Salida (egreso)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="cajaMoneda">Moneda</label>
+                            <input type="text" id="cajaMoneda" required placeholder="CLP" maxlength="6">
+                        </div>
+                        <div class="input-group">
+                            <label for="cajaMonto">Monto</label>
+                            <input type="number" id="cajaMonto" required min="0.01" step="0.01" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="cajaConcepto">Concepto</label>
+                            <input type="text" id="cajaConcepto" required placeholder="Ej. Retiro para gastos de oficina">
+                        </div>
+                    </div>
+
+                    <div id="cajaMessage" class="form-message"></div>
+
+                    <div class="tasa-form-actions">
+                        <button type="submit" class="btn-primary btn-form" id="cajaSubmitBtn">
+                            <span class="btn-text">Registrar movimiento</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Movimientos</h3>
+                </div>
+                <p class="tasa-intro">
+                    Las remesas pagadas en efectivo generan aquí una entrada automática. Si editas o eliminas
+                    esa remesa, el movimiento se actualiza solo. Los movimientos manuales (aportes, retiros,
+                    pagos de gastos, etc.) se pueden eliminar directamente.
+                </p>
+                <div class="table-wrap" id="cajaTableWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Moneda</th>
+                                <th>Monto</th>
+                                <th>Concepto</th>
+                                <th>Origen</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cajaBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="cajaEmpty">
+                    <span class="empty-state-icon">📭</span>
+                    <p>Todavía no hay movimientos registrados.</p>
                 </div>
             </div>
         </section>
