@@ -902,6 +902,15 @@ button {
   color: var(--danger);
 }
 
+.badge-neutral {
+  background: var(--route-blue-light);
+  color: var(--route-blue);
+}
+
+.stat-value-negative {
+  color: var(--danger);
+}
+
 /* ============================================
    RESPONSIVE
    ============================================ */
