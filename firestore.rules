@@ -67,6 +67,18 @@ service cloud.firestore {
         && request.resource.data.origen in ['manual', 'remesa'];
     }
 
+    // Cierres de caja: apertura y cierre diario, con saldo esperado vs contado
+    match /cierresCaja/{cierreId} {
+      allow read, delete: if autenticado();
+
+      allow create: if autenticado()
+        && request.resource.data.estado == 'abierto'
+        && request.resource.data.saldosIniciales is map;
+
+      allow update: if autenticado()
+        && request.resource.data.estado in ['abierto', 'cerrado'];
+    }
+
     // Por defecto, todo lo demás queda bloqueado
     match /{document=**} {
       allow read, write: if false;
