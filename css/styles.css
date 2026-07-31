@@ -911,6 +911,27 @@ button {
   color: var(--danger);
 }
 
+.apertura-filas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.apertura-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.apertura-fila input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
 /* ============================================
    RESPONSIVE
    ============================================ */
