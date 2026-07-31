@@ -458,6 +458,7 @@ function resetRemesaForm() {
     remesaSubmitBtn.querySelector('.btn-text').textContent = 'Registrar remesa';
     remesaCancelBtn.classList.add('hidden');
     remesaMessage.textContent = '';
+    intentarAutocompletarTasa(); // CLP/VES quedan precargados por defecto tras el reset, así que se reintenta el autocompletado
     remesaMessage.className = 'form-message';
 }
 
