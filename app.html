@@ -618,10 +618,18 @@
                             <input type="text" id="tasaMonedaDestino" required placeholder="PEN" maxlength="6">
                         </div>
                         <div class="input-group">
-                            <label for="tasaValor">Tasa (1 origen = X destino)</label>
+                            <label for="tasaValor">Tasa a ofrecer (1 origen = X destino)</label>
                             <input type="number" id="tasaValor" required min="0" step="0.0001" placeholder="0">
                         </div>
+                        <div class="input-group">
+                            <label for="tasaMercadoValor">Tasa de mercado (opcional, sin margen)</label>
+                            <input type="number" id="tasaMercadoValor" min="0" step="0.0001" placeholder="Se llena sola desde la Calculadora">
+                        </div>
                     </div>
+                    <p class="tasa-intro" style="margin-top:-8px;">
+                        La "tasa de mercado" es tu costo real, sin margen. Guárdala para que el reporte
+                        "Ganancia por remesa" calcule tu ganancia de verdad, no solo si te desviaste de tu propia tasa.
+                    </p>
 
                     <div id="tasaMessage" class="form-message"></div>
 
@@ -641,7 +649,8 @@
                             <tr>
                                 <th>Origen</th>
                                 <th>Destino</th>
-                                <th>Tasa</th>
+                                <th>Tasa ofrecida</th>
+                                <th>Tasa mercado</th>
                                 <th>Actualizada</th>
                                 <th>Acciones</th>
                             </tr>
