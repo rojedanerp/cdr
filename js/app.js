@@ -1600,6 +1600,9 @@ cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     snapshot.forEach(doc => movimientos.push(doc.data()));
     renderCajaSaldos(movimientos);
 
+    movimientosCajaActuales = movimientos;
+    actualizarVistaCierre();
+
     if (snapshot.empty) {
         cajaEmpty.style.display = 'block';
         cajaTableWrap.style.display = 'none';
@@ -1612,4 +1615,304 @@ cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     });
 }, error => {
     console.error('Error al escuchar movimientos de caja:', error);
+});
+
+// ============================================
+// CIERRE DE CAJA DIARIO — apertura, resumen en vivo y cierre
+// ============================================
+const cierresColeccion = db.collection('cierresCaja');
+let movimientosCajaActuales = [];
+let cierreAbiertoActual = null; // { id, data } | null
+let resumenPorMoneda = {}; // saldo esperado por moneda de la caja abierta, recalculado en cada render
+
+const cierreCerradoView = document.getElementById('cierreCerradoView');
+const cierreAbiertoView = document.getElementById('cierreAbiertoView');
+const cierreEstadoBadge = document.getElementById('cierreEstadoBadge');
+const cierreAbiertoInfo = document.getElementById('cierreAbiertoInfo');
+const cierreResumenBody = document.getElementById('cierreResumenBody');
+const cierreFormWrap = document.getElementById('cierreFormWrap');
+const cierreFormBody = document.getElementById('cierreFormBody');
+const cierreNotasInput = document.getElementById('cierreNotas');
+const cierreMessage = document.getElementById('cierreMessage');
+const cierreSubmitBtn = document.getElementById('cierreSubmitBtn');
+const abrirCierreFormBtn = document.getElementById('abrirCierreFormBtn');
+const cierreCancelBtn = document.getElementById('cierreCancelBtn');
+const cierresHistorialBody = document.getElementById('cierresHistorialBody');
+const cierresHistorialEmpty = document.getElementById('cierresHistorialEmpty');
+const cierresHistorialWrap = document.getElementById('cierresHistorialWrap');
+
+// --- Apertura: filas dinámicas de moneda + saldo inicial ---
+const aperturaFilas = document.getElementById('aperturaFilas');
+const aperturaAgregarFilaBtn = document.getElementById('aperturaAgregarFilaBtn');
+const aperturaSubmitBtn = document.getElementById('aperturaSubmitBtn');
+const aperturaMessage = document.getElementById('aperturaMessage');
+
+function agregarFilaApertura() {
+    const fila = document.createElement('div');
+    fila.className = 'apertura-fila';
+    fila.innerHTML = `
+        <input type="text" class="apertura-moneda" placeholder="Moneda (ej. CLP)" maxlength="6">
+        <input type="number" class="apertura-monto" placeholder="Saldo inicial" min="0" step="0.01">
+        <button type="button" class="btn-icon-action danger">✕</button>
+    `;
+    fila.querySelector('button').addEventListener('click', () => {
+        if (aperturaFilas.children.length > 1) fila.remove();
+    });
+    aperturaFilas.appendChild(fila);
+}
+agregarFilaApertura();
+aperturaAgregarFilaBtn.addEventListener('click', agregarFilaApertura);
+
+aperturaSubmitBtn.addEventListener('click', async () => {
+    const saldosIniciales = {};
+    aperturaFilas.querySelectorAll('.apertura-fila').forEach(fila => {
+        const moneda = fila.querySelector('.apertura-moneda').value.trim().toUpperCase();
+        const monto = parseFloat(fila.querySelector('.apertura-monto').value);
+        if (moneda && !isNaN(monto) && monto >= 0) {
+            saldosIniciales[moneda] = monto;
+        }
+    });
+
+    if (Object.keys(saldosIniciales).length === 0) {
+        aperturaMessage.textContent = 'Agrega al menos una moneda con su saldo inicial.';
+        aperturaMessage.className = 'form-message form-message-error';
+        return;
+    }
+
+    aperturaSubmitBtn.disabled = true;
+    aperturaSubmitBtn.querySelector('.btn-text').textContent = 'Abriendo...';
+    aperturaSubmitBtn.querySelector('.spinner').classList.remove('hidden');
+    aperturaMessage.textContent = '';
+    aperturaMessage.className = 'form-message';
+
+    try {
+        await cierresColeccion.add({
+            estado: 'abierto',
+            fecha: new Date().toISOString().slice(0, 10),
+            saldosIniciales,
+            abiertoEn: firebase.firestore.FieldValue.serverTimestamp(),
+            abiertoPorEmail: auth.currentUser ? auth.currentUser.email : null,
+            cerradoEn: null,
+            cerradoPorEmail: null,
+            saldosEsperados: null,
+            saldosContados: null,
+            diferencias: null,
+            notas: ''
+        });
+        aperturaFilas.innerHTML = '';
+        agregarFilaApertura();
+        aperturaMessage.textContent = '';
+    } catch (error) {
+        console.error('Error al abrir caja:', error);
+        aperturaMessage.textContent = 'No se pudo abrir la caja. Intenta de nuevo.';
+        aperturaMessage.className = 'form-message form-message-error';
+    } finally {
+        aperturaSubmitBtn.disabled = false;
+        aperturaSubmitBtn.querySelector('.btn-text').textContent = 'Abrir caja';
+        aperturaSubmitBtn.querySelector('.spinner').classList.add('hidden');
+    }
+});
+
+// --- Vista de caja abierta: resumen en vivo (inicial + movimientos desde la apertura) ---
+function actualizarVistaCierre() {
+    if (!cierreAbiertoActual) {
+        cierreCerradoView.classList.remove('hidden');
+        cierreAbiertoView.classList.add('hidden');
+        cierreFormWrap.classList.add('hidden');
+        cierreEstadoBadge.textContent = 'Sin abrir';
+        cierreEstadoBadge.className = 'badge badge-neutral';
+        return;
+    }
+
+    cierreCerradoView.classList.add('hidden');
+    cierreAbiertoView.classList.remove('hidden');
+    cierreEstadoBadge.textContent = 'Abierta';
+    cierreEstadoBadge.className = 'badge badge-success';
+
+    const { data } = cierreAbiertoActual;
+    const abiertoEnFecha = data.abiertoEn && data.abiertoEn.toDate ? data.abiertoEn.toDate() : null;
+    cierreAbiertoInfo.textContent = abiertoEnFecha
+        ? `Abierta el ${abiertoEnFecha.toLocaleString('es-CL')} por ${data.abiertoPorEmail || '—'}.`
+        : `Abierta por ${data.abiertoPorEmail || '—'}.`;
+
+    const abiertoEnMs = abiertoEnFecha ? abiertoEnFecha.getTime() : 0;
+    const movsDesdeApertura = movimientosCajaActuales.filter(m => {
+        const t = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate().getTime() : 0;
+        return t >= abiertoEnMs;
+    });
+
+    const monedas = new Set(Object.keys(data.saldosIniciales || {}));
+    movsDesdeApertura.forEach(m => { if (m.moneda) monedas.add(m.moneda); });
+
+    resumenPorMoneda = {};
+    cierreResumenBody.innerHTML = '';
+    cierreFormBody.innerHTML = '';
+
+    [...monedas].sort().forEach(moneda => {
+        const inicial = (data.saldosIniciales && data.saldosIniciales[moneda]) || 0;
+        const entradas = movsDesdeApertura
+            .filter(m => m.moneda === moneda && m.tipo === 'entrada')
+            .reduce((s, m) => s + (m.monto || 0), 0);
+        const salidas = movsDesdeApertura
+            .filter(m => m.moneda === moneda && m.tipo === 'salida')
+            .reduce((s, m) => s + (m.monto || 0), 0);
+        const esperado = inicial + entradas - salidas;
+        resumenPorMoneda[moneda] = esperado;
+
+        const trResumen = document.createElement('tr');
+        trResumen.innerHTML = `
+            <td>${escapeHtml(moneda)}</td>
+            <td class="mono-cell">${formatMoney(inicial, '')}</td>
+            <td class="mono-cell">${formatMoney(entradas, '')}</td>
+            <td class="mono-cell">${formatMoney(salidas, '')}</td>
+            <td class="mono-cell">${formatMoney(esperado, '')}</td>
+        `;
+        cierreResumenBody.appendChild(trResumen);
+
+        const trForm = document.createElement('tr');
+        trForm.innerHTML = `
+            <td>${escapeHtml(moneda)}</td>
+            <td class="mono-cell">${formatMoney(esperado, '')}</td>
+            <td><input type="number" step="0.01" min="0" class="cierre-contado-input" data-moneda="${escapeHtml(moneda)}" placeholder="0"></td>
+            <td class="mono-cell" data-moneda-diff="${escapeHtml(moneda)}">—</td>
+        `;
+        cierreFormBody.appendChild(trForm);
+    });
+
+    cierreFormBody.querySelectorAll('.cierre-contado-input').forEach(input => {
+        input.addEventListener('input', () => {
+            const moneda = input.dataset.moneda;
+            const celda = cierreFormBody.querySelector(`[data-moneda-diff="${moneda}"]`);
+            const contado = parseFloat(input.value);
+            if (isNaN(contado)) {
+                celda.textContent = '—';
+                celda.className = 'mono-cell';
+                return;
+            }
+            const diferencia = contado - resumenPorMoneda[moneda];
+            celda.textContent = formatMoney(diferencia, '');
+            celda.className = 'mono-cell ' + (diferencia === 0 ? '' : (diferencia > 0 ? 'rep-ganancia-positiva' : 'rep-ganancia-negativa'));
+        });
+    });
+}
+
+abrirCierreFormBtn.addEventListener('click', () => {
+    cierreFormWrap.classList.remove('hidden');
+});
+
+cierreCancelBtn.addEventListener('click', () => {
+    cierreFormWrap.classList.add('hidden');
+    cierreMessage.textContent = '';
+    cierreMessage.className = 'form-message';
+});
+
+cierreSubmitBtn.addEventListener('click', async () => {
+    if (!cierreAbiertoActual) return;
+
+    const saldosContados = {};
+    let faltaAlguno = false;
+    cierreFormBody.querySelectorAll('.cierre-contado-input').forEach(input => {
+        const contado = parseFloat(input.value);
+        if (isNaN(contado)) { faltaAlguno = true; return; }
+        saldosContados[input.dataset.moneda] = contado;
+    });
+
+    if (faltaAlguno || Object.keys(saldosContados).length === 0) {
+        cierreMessage.textContent = 'Ingresa el saldo contado para cada moneda antes de confirmar.';
+        cierreMessage.className = 'form-message form-message-error';
+        return;
+    }
+
+    const saldosEsperados = { ...resumenPorMoneda };
+    const diferencias = {};
+    Object.keys(saldosContados).forEach(moneda => {
+        diferencias[moneda] = saldosContados[moneda] - (saldosEsperados[moneda] || 0);
+    });
+
+    cierreSubmitBtn.disabled = true;
+    cierreSubmitBtn.querySelector('.btn-text').textContent = 'Cerrando...';
+    cierreSubmitBtn.querySelector('.spinner').classList.remove('hidden');
+    cierreMessage.textContent = '';
+    cierreMessage.className = 'form-message';
+
+    try {
+        await cierresColeccion.doc(cierreAbiertoActual.id).update({
+            estado: 'cerrado',
+            cerradoEn: firebase.firestore.FieldValue.serverTimestamp(),
+            cerradoPorEmail: auth.currentUser ? auth.currentUser.email : null,
+            saldosEsperados,
+            saldosContados,
+            diferencias,
+            notas: cierreNotasInput.value.trim()
+        });
+        cierreFormWrap.classList.add('hidden');
+        cierreNotasInput.value = '';
+    } catch (error) {
+        console.error('Error al cerrar caja:', error);
+        cierreMessage.textContent = 'No se pudo cerrar la caja. Intenta de nuevo.';
+        cierreMessage.className = 'form-message form-message-error';
+    } finally {
+        cierreSubmitBtn.disabled = false;
+        cierreSubmitBtn.querySelector('.btn-text').textContent = 'Confirmar cierre';
+        cierreSubmitBtn.querySelector('.spinner').classList.add('hidden');
+    }
+});
+
+// --- Historial de cierres cerrados ---
+function renderHistorialCierres(cerrados) {
+    cierresHistorialBody.innerHTML = '';
+    let filas = 0;
+
+    cerrados.forEach(({ data }) => {
+        const monedas = new Set([
+            ...Object.keys(data.saldosIniciales || {}),
+            ...Object.keys(data.saldosContados || {})
+        ]);
+        monedas.forEach(moneda => {
+            filas++;
+            const inicial = (data.saldosIniciales && data.saldosIniciales[moneda]) || 0;
+            const esperado = (data.saldosEsperados && data.saldosEsperados[moneda]) || 0;
+            const contado = (data.saldosContados && data.saldosContados[moneda]) || 0;
+            const diferencia = (data.diferencias && data.diferencias[moneda]) || 0;
+            const claseDiff = diferencia === 0 ? '' : (diferencia > 0 ? 'rep-ganancia-positiva' : 'rep-ganancia-negativa');
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${formatDate(data.cerradoEn || data.abiertoEn)}</td>
+                <td>${escapeHtml(moneda)}</td>
+                <td class="mono-cell">${formatMoney(inicial, '')}</td>
+                <td class="mono-cell">${formatMoney(esperado, '')}</td>
+                <td class="mono-cell">${formatMoney(contado, '')}</td>
+                <td class="mono-cell ${claseDiff}">${formatMoney(diferencia, '')}</td>
+                <td>${escapeHtml(data.cerradoPorEmail) || '—'}</td>
+            `;
+            cierresHistorialBody.appendChild(tr);
+        });
+    });
+
+    if (filas === 0) {
+        cierresHistorialEmpty.style.display = 'block';
+        cierresHistorialWrap.style.display = 'none';
+    } else {
+        cierresHistorialEmpty.style.display = 'none';
+        cierresHistorialWrap.style.display = 'block';
+    }
+}
+
+cierresColeccion.orderBy('abiertoEn', 'desc').onSnapshot(snapshot => {
+    let abierto = null;
+    const cerrados = [];
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.estado === 'abierto' && !abierto) {
+            abierto = { id: doc.id, data };
+        } else if (data.estado === 'cerrado') {
+            cerrados.push({ id: doc.id, data });
+        }
+    });
+    cierreAbiertoActual = abierto;
+    actualizarVistaCierre();
+    renderHistorialCierres(cerrados);
+}, error => {
+    console.error('Error al escuchar cierres de caja:', error);
 });
