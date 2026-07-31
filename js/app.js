@@ -525,6 +525,7 @@ remesaForm.addEventListener('submit', async (e) => {
             bancoOrigen
         };
 
+        let remesaIdGuardada = remesaDocId;
         if (remesaDocId) {
             data.actualizadoEn = firebase.firestore.FieldValue.serverTimestamp();
             data.actualizadoPor = auth.currentUser ? auth.currentUser.email : null;
@@ -533,8 +534,15 @@ remesaForm.addEventListener('submit', async (e) => {
             data.creadoPor = auth.currentUser ? auth.currentUser.uid : null;
             data.creadoPorEmail = auth.currentUser ? auth.currentUser.email : null;
             data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            await db.collection('remesas').add(data);
+            const nuevaRemesa = await db.collection('remesas').add(data);
+            remesaIdGuardada = nuevaRemesa.id;
         }
+
+        // Crear/actualizar/quitar el movimiento de caja automático ligado a esta remesa
+        // (no bloqueante: si falla, la remesa igual queda guardada)
+        sincronizarCajaDeRemesa(remesaIdGuardada, data).catch(err =>
+            console.warn('No se pudo sincronizar la caja con la remesa:', err)
+        );
 
         // Marcar la fecha de última remesa en el cliente (no bloqueante para el flujo principal)
         db.collection('clientes').doc(clienteId).update({
@@ -590,6 +598,7 @@ window.eliminarRemesa = async (docId) => {
     if (!confirm('¿Eliminar esta remesa? Esta acción no se puede deshacer.')) return;
     try {
         await db.collection('remesas').doc(docId).delete();
+        await eliminarMovimientosCajaDeRemesa(docId);
     } catch (error) {
         console.error('Error al eliminar remesa:', error);
         alert('No se pudo eliminar la remesa. Intenta de nuevo.');
@@ -1409,3 +1418,198 @@ function renderizarGananciaPorRemesa(conReferencia) {
         repGananciaBody.appendChild(tr);
     });
 }
+
+// ============================================
+// CAJA — control de efectivo por moneda
+// ============================================
+const cajaColeccion = db.collection('movimientosCaja');
+
+// --- Sincronización automática: cada remesa pagada en efectivo genera
+// un único movimiento de entrada en movimientosCaja, ligado por remesaId.
+// Si la remesa se edita (cambia forma de pago, monto, moneda o se cancela)
+// o se elimina, el movimiento se actualiza/borra solo. ---
+async function sincronizarCajaDeRemesa(remesaId, data) {
+    if (!remesaId) return;
+
+    const existentes = await cajaColeccion.where('remesaId', '==', remesaId).limit(1).get();
+    const debeExistir = data.formaPago === 'efectivo' && data.estado !== 'cancelado'
+        && data.montoEnviado > 0 && data.monedaEnviado;
+
+    if (!debeExistir) {
+        if (!existentes.empty) {
+            await Promise.all(existentes.docs.map(doc => doc.ref.delete()));
+        }
+        return;
+    }
+
+    const payload = {
+        tipo: 'entrada',
+        moneda: data.monedaEnviado,
+        monto: data.montoEnviado,
+        concepto: `Remesa en efectivo — ${data.clienteNombre}`,
+        origen: 'remesa',
+        remesaId,
+        clienteNombre: data.clienteNombre || null,
+        actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (existentes.empty) {
+        payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        payload.creadoPorEmail = auth.currentUser ? auth.currentUser.email : null;
+        await cajaColeccion.add(payload);
+    } else {
+        await existentes.docs[0].ref.update(payload);
+    }
+}
+
+async function eliminarMovimientosCajaDeRemesa(remesaId) {
+    const existentes = await cajaColeccion.where('remesaId', '==', remesaId).get();
+    if (existentes.empty) return;
+    await Promise.all(existentes.docs.map(doc => doc.ref.delete()));
+}
+
+// --- Formulario de movimiento manual ---
+const cajaForm = document.getElementById('cajaForm');
+const cajaSubmitBtn = document.getElementById('cajaSubmitBtn');
+const cajaMessage = document.getElementById('cajaMessage');
+
+cajaForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const tipo = document.getElementById('cajaTipo').value;
+    const moneda = document.getElementById('cajaMoneda').value.trim().toUpperCase();
+    const monto = parseFloat(document.getElementById('cajaMonto').value);
+    const concepto = document.getElementById('cajaConcepto').value.trim();
+
+    cajaSubmitBtn.disabled = true;
+    cajaSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
+    cajaSubmitBtn.querySelector('.spinner').classList.remove('hidden');
+    cajaMessage.textContent = '';
+    cajaMessage.className = 'form-message';
+
+    try {
+        await cajaColeccion.add({
+            tipo,
+            moneda,
+            monto,
+            concepto,
+            origen: 'manual',
+            remesaId: null,
+            clienteNombre: null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            creadoPorEmail: auth.currentUser ? auth.currentUser.email : null
+        });
+
+        cajaForm.reset();
+        document.getElementById('cajaTipo').value = 'entrada';
+        cajaMessage.textContent = 'Movimiento registrado correctamente.';
+        cajaMessage.className = 'form-message form-message-success';
+    } catch (error) {
+        console.error('Error al registrar movimiento de caja:', error);
+        cajaMessage.textContent = 'No se pudo registrar el movimiento. Intenta de nuevo.';
+        cajaMessage.className = 'form-message form-message-error';
+    } finally {
+        cajaSubmitBtn.disabled = false;
+        cajaSubmitBtn.querySelector('.btn-text').textContent = 'Registrar movimiento';
+        cajaSubmitBtn.querySelector('.spinner').classList.add('hidden');
+    }
+});
+
+window.eliminarMovimientoCaja = async (docId) => {
+    if (!confirm('¿Eliminar este movimiento de caja? Esta acción no se puede deshacer.')) return;
+    try {
+        await cajaColeccion.doc(docId).delete();
+    } catch (error) {
+        console.error('Error al eliminar movimiento de caja:', error);
+        alert('No se pudo eliminar el movimiento. Intenta de nuevo.');
+    }
+};
+
+// --- Listado + saldos por moneda, en tiempo real ---
+const cajaBody = document.getElementById('cajaBody');
+const cajaEmpty = document.getElementById('cajaEmpty');
+const cajaTableWrap = document.getElementById('cajaTableWrap');
+const cajaSaldosGrid = document.getElementById('cajaSaldosGrid');
+const cajaSaldosEmpty = document.getElementById('cajaSaldosEmpty');
+
+function origenBadgeHTML(mov) {
+    return mov.origen === 'remesa'
+        ? '<span class="badge badge-neutral">Remesa automática</span>'
+        : '<span class="badge badge-pending">Manual</span>';
+}
+
+function tipoBadgeHTML(tipo) {
+    return tipo === 'entrada'
+        ? '<span class="badge badge-success">Entrada</span>'
+        : '<span class="badge badge-danger">Salida</span>';
+}
+
+function renderCajaRow(id, mov) {
+    const tr = document.createElement('tr');
+    const signo = mov.tipo === 'entrada' ? '+' : '−';
+    tr.innerHTML = `
+        <td>${formatDate(mov.createdAt)}</td>
+        <td>${tipoBadgeHTML(mov.tipo)}</td>
+        <td>${escapeHtml(mov.moneda)}</td>
+        <td class="mono-cell">${signo} ${formatMoney(mov.monto, '')}</td>
+        <td>${escapeHtml(mov.concepto) || '—'}</td>
+        <td>${origenBadgeHTML(mov)}</td>
+        <td>
+            ${mov.origen === 'remesa'
+                ? '<span class="input-hint">Se edita desde la remesa</span>'
+                : `<button type="button" class="btn-icon-action danger" onclick="eliminarMovimientoCaja('${id}')">🗑️ Eliminar</button>`}
+        </td>
+    `;
+    return tr;
+}
+
+function renderCajaSaldos(movimientos) {
+    const saldosPorMoneda = {};
+    movimientos.forEach(mov => {
+        const moneda = mov.moneda || '?';
+        const signo = mov.tipo === 'entrada' ? 1 : -1;
+        saldosPorMoneda[moneda] = (saldosPorMoneda[moneda] || 0) + signo * (mov.monto || 0);
+    });
+
+    const monedas = Object.keys(saldosPorMoneda).sort();
+    cajaSaldosGrid.innerHTML = '';
+
+    if (monedas.length === 0) {
+        cajaSaldosGrid.style.display = 'none';
+        cajaSaldosEmpty.style.display = 'block';
+        return;
+    }
+    cajaSaldosGrid.style.display = 'grid';
+    cajaSaldosEmpty.style.display = 'none';
+
+    monedas.forEach(moneda => {
+        const saldo = saldosPorMoneda[moneda];
+        const card = document.createElement('div');
+        card.className = 'stat-card';
+        card.innerHTML = `
+            <span class="stat-label">Saldo en caja · ${escapeHtml(moneda)}</span>
+            <span class="stat-value ${saldo < 0 ? 'stat-value-negative' : ''}">${formatMoney(saldo, moneda)}</span>
+        `;
+        cajaSaldosGrid.appendChild(card);
+    });
+}
+
+cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    cajaBody.innerHTML = '';
+    const movimientos = [];
+    snapshot.forEach(doc => movimientos.push(doc.data()));
+    renderCajaSaldos(movimientos);
+
+    if (snapshot.empty) {
+        cajaEmpty.style.display = 'block';
+        cajaTableWrap.style.display = 'none';
+        return;
+    }
+    cajaEmpty.style.display = 'none';
+    cajaTableWrap.style.display = 'block';
+    snapshot.forEach(doc => {
+        cajaBody.appendChild(renderCajaRow(doc.id, doc.data()));
+    });
+}, error => {
+    console.error('Error al escuchar movimientos de caja:', error);
+});
