@@ -190,9 +190,12 @@
                             </select>
                         </div>
                         <div class="input-group">
-                            <label for="comisionDestino">Comisión bancaria en destino (%)</label>
-                            <input type="number" id="comisionDestino" min="0" step="any" placeholder="0" value="0">
-                            <span class="input-hint">Se descuenta de tu saldo ADEMÁS del monto recibido (el destinatario recibe el monto completo). Ej. 0.3 para pago móvil/transferencia interbancaria en Venezuela.</span>
+                            <label class="checkbox-label" for="comisionDestinoActiva">
+                                <input type="checkbox" id="comisionDestinoActiva" checked>
+                                Aplicar comisión bancaria en destino
+                            </label>
+                            <input type="number" id="comisionDestino" min="0" step="any" placeholder="0" value="0.3">
+                            <span class="input-hint">Se descuenta de tu saldo ADEMÁS del monto recibido (el destinatario recibe el monto completo). Desmarca la casilla si esta remesa no tiene comisión (ej. pago en efectivo).</span>
                         </div>
                         <div class="input-group hidden" id="bancoGroup">
                             <label for="bancoOrigen">Banco de la transferencia</label>
