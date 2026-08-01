@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lagomarcambios - Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+            </svg>
+            <span>Lagomarcambios</span>
+        </div>
+        
+        <ul class="nav-links">
+            <li class="active" data-section="dashboard">
+                <span>📊</span> Dashboard
+            </li>
+            <li data-section="nueva">
+                <span>➕</span> Nueva Remesa
+            </li>
+            <li data-section="clientes">
+                <span>👥</span> Clientes
+            </li>
+            <li data-section="caja">
+                <span>💵</span> Caja
+            </li>
+            <li data-section="calculadora">
+                <span>🧮</span> Calculadora de Tasas
+            </li>
+            <li data-section="historial">
+                <span>📋</span> Historial
+            </li>
+            <li data-section="conciliacion">
+                <span>🧾</span> Conciliación SII
+            </li>
+            <li data-section="reportes">
+                <span>📈</span> Reportes
+            </li>
+            <li data-section="config">
+                <span>⚙️</span> Configuración
+            </li>
+        </ul>
+        
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <span id="userEmail">usuario@empresa.com</span>
+            </div>
+            <button onclick="logout()" class="btn-logout">🚪 Cerrar Sesión</button>
+        </div>
+    </nav>
+
+    <!-- Mobile toggle -->
+    <button class="menu-toggle" id="menuToggle">☰</button>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="section active">
+            <div class="section-header">
+                <h2>Panel de Control</h2>
+                <p class="section-subtitle">Resumen de operaciones de hoy</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Enviado hoy</span>
+                    <span class="stat-value" data-stat="enviado-hoy">—</span>
+                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Remesas del mes</span>
+                    <span class="stat-value" data-stat="remesas-mes">—</span>
+                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Pendientes</span>
+                    <span class="stat-value" data-stat="pendientes">—</span>
+                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Clientes activos</span>
+                    <span class="stat-value" data-stat="clientes-activos">—</span>
+                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Últimas remesas</h3>
+                    <span class="route-tag"><i class="dot dot-origin"></i><i class="route-line"></i><i class="dot dot-dest"></i></span>
+                </div>
+                <div class="empty-state">
+                    <span class="empty-state-icon">📭</span>
+                    <p>Todavía no hay remesas registradas.</p>
+                    <span class="empty-state-hint">Esta tabla se llenará cuando conectemos la lógica de Firestore.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- NUEVA REMESA -->
+        <section id="nueva" class="section">
+            <div class="section-header">
+                <h2>Nueva Remesa</h2>
+                <p class="section-subtitle">Registrar un nuevo envío</p>
+            </div>
+            <div class="panel">
+                <form id="remesaForm" class="remesa-form">
+                    <input type="hidden" id="remesaDocId" value="">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="clienteNombre">Nombre del cliente</label>
+                            <input type="text" id="clienteNombre" required placeholder="Ej. Juan Pérez" list="listaClientes" autocomplete="off">
+                            <input type="hidden" id="clienteId" value="">
+                            <datalist id="listaClientes"></datalist>
+                            <span class="input-hint" id="clienteHint"></span>
+                        </div>
+                        <div class="input-group">
+                            <label for="clienteTelefono">Teléfono</label>
+                            <input type="tel" id="clienteTelefono" required placeholder="+56 9 1234 5678">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="paisOrigen">País de origen</label>
+                            <input type="text" id="paisOrigen" required placeholder="Chile" list="listaPaises" value="Chile">
+                        </div>
+                        <div class="input-group">
+                            <label for="paisDestino">País de destino</label>
+                            <input type="text" id="paisDestino" required placeholder="Perú" list="listaPaises" value="Venezuela">
+                        </div>
+                        <datalist id="listaPaises">
+                            <option value="Chile"></option>
+                            <option value="Perú"></option>
+                            <option value="Bolivia"></option>
+                            <option value="Colombia"></option>
+                            <option value="Venezuela"></option>
+                            <option value="Argentina"></option>
+                            <option value="Ecuador"></option>
+                            <option value="Haití"></option>
+                            <option value="República Dominicana"></option>
+                        </datalist>
+
+                        <div class="input-group">
+                            <label for="montoEnviado">Monto enviado</label>
+                            <input type="number" id="montoEnviado" required min="0" step="0.01" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="monedaEnviado">Moneda de envío</label>
+                            <input type="text" id="monedaEnviado" required placeholder="CLP" maxlength="6" value="CLP">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="tasaCambio">Tasa de cambio</label>
+                            <input type="number" id="tasaCambio" required min="0" step="0.0001" placeholder="0">
+                            <span class="input-hint" id="tasaHint"></span>
+                        </div>
+                        <div class="input-group">
+                            <label for="monedaRecibido">Moneda a recibir</label>
+                            <input type="text" id="monedaRecibido" required placeholder="PEN" maxlength="6" value="VES">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="montoRecibido">Monto a recibir (calculado)</label>
+                            <input type="text" id="montoRecibido" class="input-readonly" readonly value="—">
+                        </div>
+                        <div class="input-group">
+                            <label for="estado">Estado</label>
+                            <select id="estado">
+                                <option value="pendiente">Pendiente</option>
+                                <option value="completado">Completado</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="formaPago">Forma de pago del cliente</label>
+                            <select id="formaPago">
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="caja_vecina">Caja Vecina</option>
+                            </select>
+                        </div>
+                        <div class="input-group hidden" id="bancoGroup">
+                            <label for="bancoOrigen">Banco de la transferencia</label>
+                            <input type="text" id="bancoOrigen" placeholder="Ej. BancoEstado" list="listaBancos">
+                            <datalist id="listaBancos">
+                                <option value="BancoEstado"></option>
+                                <option value="Banco de Chile"></option>
+                                <option value="Santander"></option>
+                                <option value="BCI"></option>
+                                <option value="Scotiabank"></option>
+                                <option value="Itaú"></option>
+                                <option value="Banco Falabella"></option>
+                                <option value="Banco Security"></option>
+                                <option value="Banco Ripley"></option>
+                                <option value="Coopeuch"></option>
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div id="remesaMessage" class="form-message"></div>
+
+                    <div class="tasa-form-actions">
+                        <button type="submit" class="btn-primary btn-form" id="remesaSubmitBtn">
+                            <span class="btn-text">Registrar remesa</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                        <button type="button" class="btn-secondary hidden" id="remesaCancelBtn">Cancelar edición</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- CLIENTES -->
+        <section id="clientes" class="section">
+            <div class="section-header">
+                <h2>Clientes</h2>
+                <p class="section-subtitle">Personas que envían dinero a través de nosotros</p>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 id="clienteFormTitle">Nuevo cliente</h3>
+                </div>
+                <form id="clienteForm" class="remesa-form">
+                    <input type="hidden" id="clienteDocId" value="">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="clienteFormNombre">Nombre</label>
+                            <input type="text" id="clienteFormNombre" required placeholder="Ej. Juan Pérez">
+                        </div>
+                        <div class="input-group">
+                            <label for="clienteFormTelefono">Teléfono</label>
+                            <input type="tel" id="clienteFormTelefono" placeholder="+56 9 1234 5678">
+                        </div>
+                        <div class="input-group">
+                            <label for="clienteFormPaisDestino">País de destino habitual</label>
+                            <input type="text" id="clienteFormPaisDestino" placeholder="Venezuela" list="listaPaises">
+                        </div>
+                        <div class="input-group">
+                            <label for="clienteFormNotas">Notas</label>
+                            <input type="text" id="clienteFormNotas" placeholder="Opcional">
+                        </div>
+                    </div>
+
+                    <div id="clienteMessage" class="form-message"></div>
+
+                    <div class="tasa-form-actions">
+                        <button type="submit" class="btn-primary btn-form" id="clienteSubmitBtn">
+                            <span class="btn-text">Guardar cliente</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                        <button type="button" class="btn-secondary hidden" id="clienteCancelBtn">Cancelar edición</button>
+                    </div>
+                </form>
+
+                <div class="table-wrap" id="clientesTableWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>País destino</th>
+                                <th>Última remesa</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientesBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="clientesEmpty">
+                    <span class="empty-state-icon">👥</span>
+                    <p>Todavía no hay clientes registrados.</p>
+                    <span class="empty-state-hint">Se crean automáticamente al registrar una remesa, o agrégalos aquí.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- CAJA -->
+        <section id="caja" class="section">
+            <div class="section-header">
+                <h2>Caja</h2>
+                <p class="section-subtitle">Control de efectivo por moneda</p>
+            </div>
+
+            <div class="stats-grid" id="cajaSaldosGrid"></div>
+            <div class="empty-state" id="cajaSaldosEmpty">
+                <span class="empty-state-icon">💵</span>
+                <p>Todavía no hay movimientos de caja.</p>
+                <span class="empty-state-hint">Se generan solos con las remesas pagadas en efectivo, o regístralos manualmente abajo.</span>
+            </div>
+
+            <div class="panel" id="cierreCajaPanel">
+                <div class="panel-header">
+                    <h3>Cierre de caja diario</h3>
+                    <span class="badge badge-neutral" id="cierreEstadoBadge">Sin abrir</span>
+                </div>
+
+                <!-- SIN CAJA ABIERTA: formulario de apertura -->
+                <div id="cierreCerradoView">
+                    <p class="tasa-intro">
+                        No hay una caja abierta. Ábrela indicando el efectivo con el que partes hoy, por moneda,
+                        para poder comparar contra lo contado al cerrar.
+                    </p>
+                    <div id="aperturaFilas" class="apertura-filas"></div>
+                    <div class="tasa-form-actions" style="margin-top:12px;">
+                        <button type="button" class="btn-secondary" id="aperturaAgregarFilaBtn">+ Agregar moneda</button>
+                    </div>
+                    <div id="aperturaMessage" class="form-message"></div>
+                    <div class="tasa-form-actions">
+                        <button type="button" class="btn-primary btn-form" id="aperturaSubmitBtn">
+                            <span class="btn-text">Abrir caja</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CAJA ABIERTA: resumen del día + cierre -->
+                <div id="cierreAbiertoView" class="hidden">
+                    <p class="tasa-intro" id="cierreAbiertoInfo"></p>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Moneda</th><th>Saldo inicial</th><th>Entradas</th><th>Salidas</th><th>Saldo esperado ahora</th></tr>
+                            </thead>
+                            <tbody id="cierreResumenBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="tasa-form-actions" style="margin-top:12px;">
+                        <button type="button" class="btn-primary btn-form" id="abrirCierreFormBtn">Cerrar caja del día</button>
+                    </div>
+
+                    <div id="cierreFormWrap" class="hidden" style="margin-top:16px;">
+                        <p class="tasa-intro">Cuenta el efectivo real en caja y regístralo por moneda.</p>
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Moneda</th><th>Saldo esperado</th><th>Saldo contado</th><th>Diferencia</th></tr>
+                                </thead>
+                                <tbody id="cierreFormBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="input-group" style="margin-top:12px;">
+                            <label for="cierreNotas">Notas (opcional)</label>
+                            <input type="text" id="cierreNotas" placeholder="Ej. Faltante por vuelto mal dado">
+                        </div>
+                        <div id="cierreMessage" class="form-message"></div>
+                        <div class="tasa-form-actions">
+                            <button type="button" class="btn-primary btn-form" id="cierreSubmitBtn">
+                                <span class="btn-text">Confirmar cierre</span>
+                                <span class="spinner hidden"></span>
+                            </button>
+                            <button type="button" class="btn-secondary" id="cierreCancelBtn">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Historial de cierres</h3>
+                </div>
+                <div class="table-wrap" id="cierresHistorialWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Fecha</th><th>Moneda</th><th>Inicial</th><th>Esperado</th><th>Contado</th><th>Diferencia</th><th>Cerrado por</th></tr>
+                        </thead>
+                        <tbody id="cierresHistorialBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="cierresHistorialEmpty">
+                    <span class="empty-state-icon">🧾</span>
+                    <p>Todavía no hay cierres de caja registrados.</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Registrar movimiento manual</h3>
+                </div>
+                <form id="cajaForm" class="tasa-form">
+                    <div class="tasa-form-grid">
+                        <div class="input-group">
+                            <label for="cajaTipo">Tipo</label>
+                            <select id="cajaTipo" required>
+                                <option value="entrada">Entrada (ingreso)</option>
+                                <option value="salida">Salida (egreso)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="cajaMoneda">Moneda</label>
+                            <input type="text" id="cajaMoneda" required placeholder="CLP" maxlength="6">
+                        </div>
+                        <div class="input-group">
+                            <label for="cajaMonto">Monto</label>
+                            <input type="number" id="cajaMonto" required min="0.01" step="0.01" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="cajaConcepto">Concepto</label>
+                            <input type="text" id="cajaConcepto" required placeholder="Ej. Retiro para gastos de oficina">
+                        </div>
+                    </div>
+
+                    <div id="cajaMessage" class="form-message"></div>
+
+                    <div class="tasa-form-actions">
+                        <button type="submit" class="btn-primary btn-form" id="cajaSubmitBtn">
+                            <span class="btn-text">Registrar movimiento</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Movimientos</h3>
+                </div>
+                <p class="tasa-intro">
+                    Las remesas pagadas en efectivo generan aquí una entrada automática. Si editas o eliminas
+                    esa remesa, el movimiento se actualiza solo. Los movimientos manuales (aportes, retiros,
+                    pagos de gastos, etc.) se pueden eliminar directamente.
+                </p>
+                <div class="table-wrap" id="cajaTableWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Moneda</th>
+                                <th>Monto</th>
+                                <th>Concepto</th>
+                                <th>Origen</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cajaBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="cajaEmpty">
+                    <span class="empty-state-icon">📭</span>
+                    <p>Todavía no hay movimientos registrados.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CALCULADORA DE TASAS -->
+        <section id="calculadora" class="section">
+            <div class="section-header">
+                <h2>Calculadora de Tasas</h2>
+                <p class="section-subtitle">Calcula la tasa cruzada del día a partir del valor de cada moneda frente al dólar</p>
+            </div>
+
+            <div class="panel">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="calcOrigenCodigo">Moneda de origen</label>
+                        <input type="text" id="calcOrigenCodigo" placeholder="CLP" maxlength="6" value="CLP">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcOrigenValor">Valor de 1 USD en esa moneda</label>
+                        <input type="number" id="calcOrigenValor" placeholder="940" step="any" inputmode="decimal">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcDestinoCodigo">Moneda de destino</label>
+                        <input type="text" id="calcDestinoCodigo" placeholder="VES" maxlength="6" value="VES">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcDestinoValor">Valor de 1 USD en esa moneda</label>
+                        <input type="number" id="calcDestinoValor" placeholder="845" step="any" inputmode="decimal">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcMargen">Margen a descontar (%)</label>
+                        <input type="number" id="calcMargen" value="6" step="any" inputmode="decimal">
+                    </div>
+                </div>
+
+                <div class="calc-result calc-result-secondary" id="calcResultBoxMercado">
+                    <span class="calc-result-label" id="calcResultLabelMercado">Tasa de mercado (sin margen)</span>
+                    <span class="calc-result-value" id="calcResultValueMercado">—</span>
+                </div>
+
+                <div class="calc-result" id="calcResultBox">
+                    <span class="calc-result-label" id="calcResultLabel">Tasa a ofrecer (con margen descontado)</span>
+                    <span class="calc-result-value" id="calcResultValue">—</span>
+                </div>
+
+                <div class="tasa-form-actions">
+                    <button type="button" class="btn-primary btn-form" id="calcGuardarBtn" disabled>Usar tasa con margen en Configuración</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Compra y venta de USDT</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label for="calcUsdtMoneda">Moneda local</label>
+                        <input type="text" id="calcUsdtMoneda" placeholder="CLP" maxlength="6" value="CLP">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcUsdtValorMercado">Valor de mercado (1 USDT en esa moneda)</label>
+                        <input type="number" id="calcUsdtValorMercado" placeholder="940" step="any" inputmode="decimal">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcUsdtMargenCompra">Margen al comprar USDT (%)</label>
+                        <input type="number" id="calcUsdtMargenCompra" value="2" step="any" inputmode="decimal">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcUsdtMargenVenta">Margen al vender USDT (%)</label>
+                        <input type="number" id="calcUsdtMargenVenta" value="2" step="any" inputmode="decimal">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcUsdtMonto">Monto en pesos</label>
+                        <input type="number" id="calcUsdtMonto" placeholder="100000" step="any" inputmode="decimal">
+                    </div>
+                </div>
+
+                <div class="calc-result calc-result-secondary" id="calcUsdtCompraBox">
+                    <span class="calc-result-label" id="calcUsdtCompraLabel">Tasa de compra (pagas por cada USDT que te venden)</span>
+                    <span class="calc-result-value" id="calcUsdtCompraValue">—</span>
+                </div>
+
+                <div class="calc-result" id="calcUsdtVentaBox">
+                    <span class="calc-result-label" id="calcUsdtVentaLabel">Tasa de venta (cobras por cada USDT que vendes)</span>
+                    <span class="calc-result-value" id="calcUsdtVentaValue">—</span>
+                </div>
+
+                <div class="calc-result calc-result-secondary" id="calcUsdtCompraMontoBox">
+                    <span class="calc-result-label" id="calcUsdtCompraMontoLabel">USDT que recibes al comprar con ese monto</span>
+                    <span class="calc-result-value" id="calcUsdtCompraMontoValue">—</span>
+                </div>
+
+                <div class="calc-result" id="calcUsdtVentaMontoBox">
+                    <span class="calc-result-label" id="calcUsdtVentaMontoLabel">USDT que entregas al vender por ese monto</span>
+                    <span class="calc-result-value" id="calcUsdtVentaMontoValue">—</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- HISTORIAL -->
+        <section id="historial" class="section">
+            <div class="section-header">
+                <h2>Historial</h2>
+                <p class="section-subtitle">Todas las remesas procesadas</p>
+            </div>
+            <div class="panel">
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Ruta</th>
+                                <th>Enviado</th>
+                                <th>Recibido</th>
+                                <th>Pago</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historialBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="historialEmpty">
+                    <span class="empty-state-icon">📭</span>
+                    <p>Todavía no hay remesas registradas.</p>
+                    <span class="empty-state-hint">Usa "Nueva Remesa" para registrar la primera.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONCILIACIÓN SII -->
+        <section id="conciliacion" class="section">
+            <div class="section-header">
+                <h2>Conciliación de Boletas SII</h2>
+                <p class="section-subtitle">Compara las boletas exentas emitidas en el SII con las remesas registradas aquí</p>
+            </div>
+
+            <div class="panel">
+                <p class="tasa-intro">
+                    Ve a tu "Consulta de boletas emitidas" en el sistema gratuito del SII, selecciona y copia la tabla
+                    (o pega el contenido de un CSV exportado) y pégala abajo, con encabezados incluidos.
+                    Reconocemos automáticamente columnas como Folio, Fecha y Monto. La comparación cruza cada boleta
+                    con la remesa que tenga el mismo monto en CLP y la fecha más cercana.
+                </p>
+
+                <div class="tasa-form">
+                    <div class="input-group">
+                        <label for="conciliacionArchivo">Subir CSV del SII (o pega el contenido abajo)</label>
+                        <input type="file" id="conciliacionArchivo" accept=".csv,.txt">
+                        <span class="input-hint" id="conciliacionArchivoHint"></span>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="conciliacionInput">Boletas emitidas (pegadas desde el SII o CSV)</label>
+                        <textarea id="conciliacionInput" rows="8" placeholder="Folio&#9;Fecha&#9;Monto Total&#9;Estado&#10;123&#9;01-07-2026&#9;15000&#9;Vigente"></textarea>
+                        <span class="input-hint" id="conciliacionParseHint"></span>
+                    </div>
+
+                    <div id="conciliacionMessage" class="form-message"></div>
+
+                    <div class="tasa-form-actions">
+                        <button type="button" class="btn-primary btn-form" id="conciliacionBtn">Comparar con remesas</button>
+                        <button type="button" class="btn-secondary hidden" id="conciliacionLimpiarBtn">Limpiar resultados</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid conciliacion-stats hidden" id="conciliacionResumen">
+                    <div class="stat-card">
+                        <span class="stat-label">Boletas leídas</span>
+                        <span class="stat-value" id="conciliacionStatBoletas">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Remesas en CLP</span>
+                        <span class="stat-value" id="conciliacionStatRemesas">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Coincidencias</span>
+                        <span class="stat-value" id="conciliacionStatMatch">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Sin boleta / sin remesa</span>
+                        <span class="stat-value" id="conciliacionStatSinPar">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel hidden" id="conciliacionCoincidenciasPanel">
+                <div class="panel-header"><h3>✅ Coincidencias</h3></div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Fecha remesa</th><th>Cliente</th><th>Monto CLP</th><th>Folio boleta</th><th>Fecha boleta</th></tr>
+                        </thead>
+                        <tbody id="conciliacionCoincidenciasBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel hidden" id="conciliacionSinBoletaPanel">
+                <div class="panel-header"><h3>⚠️ Remesas sin boleta encontrada</h3></div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Fecha</th><th>Cliente</th><th>Monto CLP</th><th>Estado remesa</th></tr>
+                        </thead>
+                        <tbody id="conciliacionSinBoletaBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel hidden" id="conciliacionSinRemesaPanel">
+                <div class="panel-header"><h3>❓ Boletas sin remesa asociada</h3></div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Folio</th><th>Fecha</th><th>Monto</th></tr>
+                        </thead>
+                        <tbody id="conciliacionSinRemesaBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- REPORTES -->
+        <section id="reportes" class="section">
+            <div class="section-header">
+                <h2>Reportes</h2>
+                <p class="section-subtitle">Métricas y tendencias</p>
+            </div>
+
+            <div class="panel reportes-filtro-panel">
+                <div class="input-group reportes-filtro">
+                    <label for="reportesPeriodo">Periodo</label>
+                    <select id="reportesPeriodo">
+                        <option value="30d">Últimos 30 días</option>
+                        <option value="mes" selected>Este mes</option>
+                        <option value="todo">Todo el historial</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="stats-grid" id="reportesStatsGrid">
+                <div class="stat-card">
+                    <span class="stat-label">Remesas en el periodo</span>
+                    <span class="stat-value" id="repStatCantidad">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Ticket promedio</span>
+                    <span class="stat-value" id="repStatTicket">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Ganancia estimada</span>
+                    <span class="stat-value" id="repStatGanancia">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Sin tasa de referencia</span>
+                    <span class="stat-value" id="repStatSinRef">0</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Remesas por día</h3>
+                    <span class="input-hint" id="repChartSubtitulo"></span>
+                </div>
+                <div id="repChartWrap" class="rep-chart-wrap">
+                    <div id="repChart" class="rep-chart"></div>
+                </div>
+                <div class="empty-state" id="repChartEmpty">
+                    <span class="empty-state-icon">📭</span>
+                    <p>No hay remesas en este periodo.</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><h3>Volumen mensual por moneda destino</h3></div>
+                <div class="table-wrap" id="repVolumenWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Mes</th><th>Moneda</th><th># Remesas</th><th>Monto total recibido</th></tr>
+                        </thead>
+                        <tbody id="repVolumenBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="repVolumenEmpty">
+                    <span class="empty-state-icon">📊</span>
+                    <p>No hay datos suficientes todavía.</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><h3>Ganancia por remesa</h3></div>
+                <p class="tasa-intro">
+                    Ganancia = diferencia entre la tasa configurada/en vivo al momento del registro y la tasa
+                    realmente aplicada al cliente. Las remesas registradas antes de esta actualización no tienen
+                    tasa de referencia guardada, así que no aparecen aquí.
+                </p>
+                <div class="table-wrap" id="repGananciaWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Fecha</th><th>Cliente</th><th>Enviado</th><th>Tasa aplicada</th><th>Tasa referencia</th><th>Ganancia</th></tr>
+                        </thead>
+                        <tbody id="repGananciaBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="repGananciaEmpty">
+                    <span class="empty-state-icon">💰</span>
+                    <p>Ninguna remesa en este periodo tiene tasa de referencia registrada.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONFIGURACIÓN -->
+        <section id="config" class="section">
+            <div class="section-header">
+                <h2>Configuración</h2>
+                <p class="section-subtitle">Preferencias del sistema</p>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Tasas de cambio</h3>
+                </div>
+                <p class="tasa-intro">
+                    En "Nueva Remesa" la tasa se completa sola: primero usa la que configures aquí manualmente y,
+                    si no hay ninguna guardada para ese par de monedas, busca una tasa en vivo automáticamente.
+                </p>
+
+                <form id="tasaForm" class="tasa-form">
+                    <input type="hidden" id="tasaDocId" value="">
+                    <div class="tasa-form-grid">
+                        <div class="input-group">
+                            <label for="tasaMonedaOrigen">Moneda de origen</label>
+                            <input type="text" id="tasaMonedaOrigen" required placeholder="CLP" maxlength="6">
+                        </div>
+                        <div class="input-group">
+                            <label for="tasaMonedaDestino">Moneda de destino</label>
+                            <input type="text" id="tasaMonedaDestino" required placeholder="PEN" maxlength="6">
+                        </div>
+                        <div class="input-group">
+                            <label for="tasaValor">Tasa a ofrecer (1 origen = X destino)</label>
+                            <input type="number" id="tasaValor" required min="0" step="0.0001" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="tasaMercadoValor">Tasa de mercado (opcional, sin margen)</label>
+                            <input type="number" id="tasaMercadoValor" min="0" step="any" placeholder="Se llena sola desde la Calculadora">
+                        </div>
+                    </div>
+                    <p class="tasa-intro" style="margin-top:-8px;">
+                        La "tasa de mercado" es tu costo real, sin margen. Guárdala para que el reporte
+                        "Ganancia por remesa" calcule tu ganancia de verdad, no solo si te desviaste de tu propia tasa.
+                    </p>
+
+                    <div id="tasaMessage" class="form-message"></div>
+
+                    <div class="tasa-form-actions">
+                        <button type="submit" class="btn-primary btn-form" id="tasaSubmitBtn">
+                            <span class="btn-text">Guardar tasa</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                        <button type="button" class="btn-secondary" id="tasaLiveBtn">🔄 Buscar tasa en vivo</button>
+                        <button type="button" class="btn-secondary hidden" id="tasaCancelBtn">Cancelar edición</button>
+                    </div>
+                </form>
+
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Origen</th>
+                                <th>Destino</th>
+                                <th>Tasa ofrecida</th>
+                                <th>Tasa mercado</th>
+                                <th>Actualizada</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasasBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="tasasEmpty">
+                    <span class="empty-state-icon">💱</span>
+                    <p>Todavía no hay tasas de cambio registradas.</p>
+                    <span class="empty-state-hint">Agrega una arriba para que se autocompleten en "Nueva Remesa".</span>
+                </div>
+
+                <p class="tasa-attribution">
+                    Las tasas en vivo son referenciales y provienen de
+                    <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">ExchangeRate-API</a>,
+                    actualizadas aproximadamente una vez al día. Para tasas fijas o negociadas, guárdalas manualmente arriba.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/calculadora.js"></script>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
