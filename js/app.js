@@ -1684,6 +1684,7 @@ function agregarFilaApertura() {
     fila.innerHTML = `
         <input type="text" class="apertura-moneda" placeholder="Moneda (ej. CLP)" maxlength="6">
         <input type="number" class="apertura-monto" placeholder="Saldo inicial" min="0" step="0.01">
+        <input type="text" class="apertura-concepto" placeholder="Concepto (ej. Efectivo caja fuerte)">
         <button type="button" class="btn-icon-action danger">✕</button>
     `;
     fila.querySelector('button').addEventListener('click', () => {
@@ -1696,11 +1697,20 @@ aperturaAgregarFilaBtn.addEventListener('click', agregarFilaApertura);
 
 aperturaSubmitBtn.addEventListener('click', async () => {
     const saldosIniciales = {};
+    const conceptosIniciales = {};
     aperturaFilas.querySelectorAll('.apertura-fila').forEach(fila => {
         const moneda = fila.querySelector('.apertura-moneda').value.trim().toUpperCase();
         const monto = parseFloat(fila.querySelector('.apertura-monto').value);
+        const concepto = fila.querySelector('.apertura-concepto').value.trim();
         if (moneda && !isNaN(monto) && monto >= 0) {
-            saldosIniciales[moneda] = monto;
+            // Si ya hay un monto cargado para esta moneda (dos filas con la misma
+            // moneda), se SUMAN en vez de sobrescribirse.
+            saldosIniciales[moneda] = (saldosIniciales[moneda] || 0) + monto;
+            if (concepto) {
+                conceptosIniciales[moneda] = conceptosIniciales[moneda]
+                    ? `${conceptosIniciales[moneda]}; ${concepto}`
+                    : concepto;
+            }
         }
     });
 
@@ -1721,6 +1731,7 @@ aperturaSubmitBtn.addEventListener('click', async () => {
             estado: 'abierto',
             fecha: new Date().toISOString().slice(0, 10),
             saldosIniciales,
+            conceptosIniciales,
             abiertoEn: firebase.firestore.FieldValue.serverTimestamp(),
             abiertoPorEmail: auth.currentUser ? auth.currentUser.email : null,
             cerradoEn: null,
@@ -1791,8 +1802,9 @@ function actualizarVistaCierre() {
         resumenPorMoneda[moneda] = esperado;
 
         const trResumen = document.createElement('tr');
+        const conceptoInicial = (data.conceptosIniciales && data.conceptosIniciales[moneda]) || '';
         trResumen.innerHTML = `
-            <td>${escapeHtml(moneda)}</td>
+            <td${conceptoInicial ? ` title="${escapeHtml(conceptoInicial)}"` : ''}>${escapeHtml(moneda)}</td>
             <td class="mono-cell">${formatMoney(inicial, '')}</td>
             <td class="mono-cell">${formatMoney(entradas, '')}</td>
             <td class="mono-cell">${formatMoney(salidas, '')}</td>
