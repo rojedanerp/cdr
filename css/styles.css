@@ -919,7 +919,7 @@ button {
 
 .apertura-fila {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 0.7fr 0.7fr 1.2fr auto;
   gap: 8px;
   align-items: center;
 }
@@ -968,6 +968,10 @@ button {
 
   .login-box {
     padding: 32px 24px 28px;
+  }
+
+  .apertura-fila {
+    grid-template-columns: 1fr;
   }
 }
 
