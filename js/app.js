@@ -107,6 +107,7 @@ function recalcularMontoRecibido() {
 const formaPagoSelect = document.getElementById('formaPago');
 const bancoGroup = document.getElementById('bancoGroup');
 const bancoOrigenInput = document.getElementById('bancoOrigen');
+const comisionDestinoInput = document.getElementById('comisionDestino');
 
 function actualizarVisibilidadBanco() {
     if (formaPagoSelect.value === 'transferencia') {
@@ -212,7 +213,14 @@ async function intentarAutocompletarTasa() {
         return;
     }
 
-    // 2) Si no hay una configurada, se busca una tasa en vivo automáticamente
+    // 2) No hay tasa configurada para este par: se limpia cualquier valor
+    // anterior (puede ser de otro par de monedas, ej. quedó de CLP→VES)
+    // para no confundir mientras se busca una tasa en vivo.
+    isAutoFilling = true;
+    tasaCambioInput.value = '';
+    isAutoFilling = false;
+    recalcularMontoRecibido();
+
     const token = ++autocompletarToken;
     tasaHint.textContent = 'Buscando tasa en vivo...';
     tasaHint.classList.remove('input-hint-active');
@@ -483,6 +491,7 @@ remesaForm.addEventListener('submit', async (e) => {
     const clienteTelefono = clienteTelefonoInput.value.trim();
     const formaPago = formaPagoSelect.value;
     const bancoOrigen = formaPago === 'transferencia' ? bancoOrigenInput.value.trim() : '';
+    const comisionDestino = parseFloat(comisionDestinoInput.value) || 0;
 
     remesaSubmitBtn.disabled = true;
     remesaSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
@@ -523,7 +532,8 @@ remesaForm.addEventListener('submit', async (e) => {
             monedaRecibido,
             estado: document.getElementById('estado').value,
             formaPago,
-            bancoOrigen
+            bancoOrigen,
+            comisionDestino
         };
 
         let remesaIdGuardada = remesaDocId;
@@ -586,6 +596,7 @@ window.editarRemesa = (docId) => {
     formaPagoSelect.value = r.formaPago || 'efectivo';
     actualizarVisibilidadBanco();
     bancoOrigenInput.value = r.bancoOrigen || '';
+    comisionDestinoInput.value = r.comisionDestino != null ? r.comisionDestino : 0;
 
     remesaSubmitBtn.querySelector('.btn-text').textContent = 'Actualizar remesa';
     remesaCancelBtn.classList.remove('hidden');
@@ -1425,19 +1436,24 @@ function renderizarGananciaPorRemesa(conReferencia) {
 // ============================================
 const cajaColeccion = db.collection('movimientosCaja');
 
-// --- Sincronización automática: cada remesa puede generar hasta DOS
+// --- Sincronización automática: cada remesa puede generar hasta TRES
 // movimientos en movimientosCaja, ligados por remesaId y diferenciados por "rol":
 //   - "ingreso_cliente": entrada en la moneda que paga el cliente, SIEMPRE que la
 //      remesa esté activa, sin importar si pagó en efectivo o por transferencia.
 //   - "salida_destino": salida en la moneda de destino, SIEMPRE que la remesa esté
 //      activa, porque el envío al destino siempre se transfiere desde el saldo de
 //      esa moneda en caja, sin importar cómo pagó el cliente.
-// Si la remesa se edita (cambia forma de pago, monto, moneda o se cancela)
-// o se elimina, ambos movimientos se actualizan/borran solos. ---
+//   - "comision_destino": salida EXTRA en la moneda de destino, solo si la remesa
+//      tiene un % de comisión bancaria de destino (ej. 0.3% en pago móvil/
+//      transferencias interbancarias en Venezuela). El destinatario recibe el
+//      monto completo; esta comisión sale aparte de tu saldo.
+// Si la remesa se edita (cambia forma de pago, monto, moneda, comisión o se
+// cancela) o se elimina, los tres movimientos se actualizan/borran solos. ---
 async function sincronizarCajaDeRemesa(remesaId, data) {
     if (!remesaId) return;
 
     const activa = data.estado !== 'cancelado';
+    const montoComision = (data.montoRecibido || 0) * ((data.comisionDestino || 0) / 100);
 
     await sincronizarMovimientoCajaDeRemesa(remesaId, 'ingreso_cliente', {
         debeExistir: activa && data.montoEnviado > 0 && !!data.monedaEnviado,
@@ -1457,6 +1473,14 @@ async function sincronizarCajaDeRemesa(remesaId, data) {
         moneda: data.monedaRecibido,
         monto: data.montoRecibido,
         concepto: `Envío a destino — ${data.clienteNombre}`
+    });
+
+    await sincronizarMovimientoCajaDeRemesa(remesaId, 'comision_destino', {
+        debeExistir: activa && montoComision > 0 && !!data.monedaRecibido,
+        tipo: 'salida',
+        moneda: data.monedaRecibido,
+        monto: montoComision,
+        concepto: `Comisión bancaria (${data.comisionDestino}%) — ${data.clienteNombre}`
     });
 }
 
