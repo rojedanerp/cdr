@@ -189,6 +189,11 @@
                                 <option value="caja_vecina">Caja Vecina</option>
                             </select>
                         </div>
+                        <div class="input-group">
+                            <label for="comisionDestino">Comisión bancaria en destino (%)</label>
+                            <input type="number" id="comisionDestino" min="0" step="any" placeholder="0" value="0">
+                            <span class="input-hint">Se descuenta de tu saldo ADEMÁS del monto recibido (el destinatario recibe el monto completo). Ej. 0.3 para pago móvil/transferencia interbancaria en Venezuela.</span>
+                        </div>
                         <div class="input-group hidden" id="bancoGroup">
                             <label for="bancoOrigen">Banco de la transferencia</label>
                             <input type="text" id="bancoOrigen" placeholder="Ej. BancoEstado" list="listaBancos">
