@@ -1684,7 +1684,7 @@ function agregarFilaApertura() {
     fila.innerHTML = `
         <input type="text" class="apertura-moneda" placeholder="Moneda (ej. CLP)" maxlength="6">
         <input type="number" class="apertura-monto" placeholder="Saldo inicial" min="0" step="0.01">
-        <input type="text" class="apertura-concepto" placeholder="Concepto (ej. Efectivo caja fuerte)">
+        <input type="text" class="apertura-concepto" placeholder="Concepto (ej. BancoEstado, Banco de Chile)">
         <button type="button" class="btn-icon-action danger">✕</button>
     `;
     fila.querySelector('button').addEventListener('click', () => {
@@ -1804,7 +1804,7 @@ function actualizarVistaCierre() {
         const trResumen = document.createElement('tr');
         const conceptoInicial = (data.conceptosIniciales && data.conceptosIniciales[moneda]) || '';
         trResumen.innerHTML = `
-            <td${conceptoInicial ? ` title="${escapeHtml(conceptoInicial)}"` : ''}>${escapeHtml(moneda)}</td>
+            <td>${escapeHtml(moneda)}${conceptoInicial ? `<div class="cell-subtext">${escapeHtml(conceptoInicial)}</div>` : ''}</td>
             <td class="mono-cell">${formatMoney(inicial, '')}</td>
             <td class="mono-cell">${formatMoney(entradas, '')}</td>
             <td class="mono-cell">${formatMoney(salidas, '')}</td>

@@ -20,7 +20,24 @@ const calcGuardarBtn = document.getElementById('calcGuardarBtn');
 let calcTasaResultado = null;      // tasa final, ya con el margen descontado (la que se ofrece/guarda)
 let calcTasaMercado = null;        // tasa cruzada cruda, sin margen
 
+// Si la moneda de origen o destino es USD o USDT, su "valor de 1 USD en esa
+// moneda" es siempre 1 por definición — se autocompleta y se bloquea para
+// que no haya que escribirlo cada vez que se usa esta calculadora para
+// sacar una tasa contra USDT (compra/venta de cripto).
+function actualizarAutoUSD(codigoInput, valorInput) {
+    const codigo = codigoInput.value.trim().toUpperCase();
+    const esDolar = codigo === 'USD' || codigo === 'USDT';
+    valorInput.readOnly = esDolar;
+    valorInput.classList.toggle('input-readonly', esDolar);
+    if (esDolar) {
+        valorInput.value = '1';
+    }
+}
+
 function recalcularTasaCruzada() {
+    actualizarAutoUSD(calcOrigenCodigoInput, calcOrigenValorInput);
+    actualizarAutoUSD(calcDestinoCodigoInput, calcDestinoValorInput);
+
     const origenCodigo = calcOrigenCodigoInput.value.trim().toUpperCase();
     const destinoCodigo = calcDestinoCodigoInput.value.trim().toUpperCase();
     const origenValor = parseFloat(calcOrigenValorInput.value);
