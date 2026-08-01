@@ -124,6 +124,7 @@ actualizarVisibilidadBanco();
 
 const badgePagoLabel = (formaPago, banco) => {
     if (formaPago === 'transferencia') return `Transferencia${banco ? ' · ' + escapeHtml(banco) : ''}`;
+    if (formaPago === 'caja_vecina') return 'Caja Vecina';
     return 'Efectivo';
 };
 
@@ -1443,9 +1444,11 @@ async function sincronizarCajaDeRemesa(remesaId, data) {
         tipo: 'entrada',
         moneda: data.monedaEnviado,
         monto: data.montoEnviado,
-        concepto: data.formaPago === 'efectivo'
-            ? `Remesa en efectivo — ${data.clienteNombre}`
-            : `Remesa por transferencia — ${data.clienteNombre}`
+        concepto: (() => {
+            if (data.formaPago === 'efectivo') return `Remesa en efectivo — ${data.clienteNombre}`;
+            if (data.formaPago === 'caja_vecina') return `Remesa por Caja Vecina — ${data.clienteNombre}`;
+            return `Remesa por transferencia — ${data.clienteNombre}`;
+        })()
     });
 
     await sincronizarMovimientoCajaDeRemesa(remesaId, 'salida_destino', {
