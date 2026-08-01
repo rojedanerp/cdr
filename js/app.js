@@ -108,6 +108,12 @@ const formaPagoSelect = document.getElementById('formaPago');
 const bancoGroup = document.getElementById('bancoGroup');
 const bancoOrigenInput = document.getElementById('bancoOrigen');
 const comisionDestinoInput = document.getElementById('comisionDestino');
+const comisionDestinoActivaInput = document.getElementById('comisionDestinoActiva');
+
+comisionDestinoActivaInput.addEventListener('change', () => {
+    comisionDestinoInput.disabled = !comisionDestinoActivaInput.checked;
+    comisionDestinoInput.classList.toggle('input-readonly', !comisionDestinoActivaInput.checked);
+});
 
 function actualizarVisibilidadBanco() {
     if (formaPagoSelect.value === 'transferencia') {
@@ -463,6 +469,8 @@ function resetRemesaForm() {
     remesaDocIdInput.value = '';
     montoRecibidoInput.value = '—';
     actualizarVisibilidadBanco();
+    comisionDestinoInput.disabled = false;
+    comisionDestinoInput.classList.remove('input-readonly');
     clienteIdInput.value = '';
     clienteHint.textContent = '';
     clienteHint.classList.remove('input-hint-active');
@@ -491,7 +499,7 @@ remesaForm.addEventListener('submit', async (e) => {
     const clienteTelefono = clienteTelefonoInput.value.trim();
     const formaPago = formaPagoSelect.value;
     const bancoOrigen = formaPago === 'transferencia' ? bancoOrigenInput.value.trim() : '';
-    const comisionDestino = parseFloat(comisionDestinoInput.value) || 0;
+    const comisionDestino = comisionDestinoActivaInput.checked ? (parseFloat(comisionDestinoInput.value) || 0) : 0;
 
     remesaSubmitBtn.disabled = true;
     remesaSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
@@ -596,7 +604,10 @@ window.editarRemesa = (docId) => {
     formaPagoSelect.value = r.formaPago || 'efectivo';
     actualizarVisibilidadBanco();
     bancoOrigenInput.value = r.bancoOrigen || '';
-    comisionDestinoInput.value = r.comisionDestino != null ? r.comisionDestino : 0;
+    comisionDestinoActivaInput.checked = !!(r.comisionDestino && r.comisionDestino > 0);
+    comisionDestinoInput.value = r.comisionDestino != null && r.comisionDestino > 0 ? r.comisionDestino : 0.3;
+    comisionDestinoInput.disabled = !comisionDestinoActivaInput.checked;
+    comisionDestinoInput.classList.toggle('input-readonly', !comisionDestinoActivaInput.checked);
 
     remesaSubmitBtn.querySelector('.btn-text').textContent = 'Actualizar remesa';
     remesaCancelBtn.classList.remove('hidden');
