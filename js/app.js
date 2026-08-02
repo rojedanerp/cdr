@@ -1642,14 +1642,51 @@ function renderCajaRow(id, mov) {
     return tr;
 }
 
-function renderCajaSaldos(movimientos) {
+// Calcula el saldo "real" por moneda: si hay una caja abierta hoy, es el
+// mismo cálculo que "Saldo esperado ahora" en el Cierre de caja diario
+// (saldo inicial de ESA apertura + entradas/salidas SOLO desde que se abrió).
+// Si no hay caja abierta, se muestra el acumulado histórico de todos los
+// movimientos (con aviso), porque no hay una apertura vigente que sirva de base.
+function calcularSaldosActuales(movimientos) {
+    if (cierreAbiertoActual) {
+        const { data } = cierreAbiertoActual;
+        const abiertoEnFecha = data.abiertoEn && data.abiertoEn.toDate ? data.abiertoEn.toDate() : null;
+        const abiertoEnMs = abiertoEnFecha ? abiertoEnFecha.getTime() : 0;
+        const movsDesdeApertura = movimientos.filter(m => {
+            const t = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate().getTime() : 0;
+            return t >= abiertoEnMs;
+        });
+
+        const monedas = new Set(Object.keys(data.saldosIniciales || {}));
+        movsDesdeApertura.forEach(m => { if (m.moneda) monedas.add(m.moneda); });
+
+        const saldosPorMoneda = {};
+        monedas.forEach(moneda => {
+            const inicial = (data.saldosIniciales && data.saldosIniciales[moneda]) || 0;
+            const entradas = movsDesdeApertura
+                .filter(m => m.moneda === moneda && m.tipo === 'entrada')
+                .reduce((s, m) => s + (m.monto || 0), 0);
+            const salidas = movsDesdeApertura
+                .filter(m => m.moneda === moneda && m.tipo === 'salida')
+                .reduce((s, m) => s + (m.monto || 0), 0);
+            saldosPorMoneda[moneda] = inicial + entradas - salidas;
+        });
+        return { saldosPorMoneda, cajaAbierta: true };
+    }
+
+    // Sin caja abierta: acumulado histórico total (no incluye saldos
+    // iniciales de aperturas pasadas, así que es solo referencial).
     const saldosPorMoneda = {};
     movimientos.forEach(mov => {
         const moneda = mov.moneda || '?';
         const signo = mov.tipo === 'entrada' ? 1 : -1;
         saldosPorMoneda[moneda] = (saldosPorMoneda[moneda] || 0) + signo * (mov.monto || 0);
     });
+    return { saldosPorMoneda, cajaAbierta: false };
+}
 
+function renderCajaSaldos(movimientos) {
+    const { saldosPorMoneda, cajaAbierta } = calcularSaldosActuales(movimientos);
     const monedas = Object.keys(saldosPorMoneda).sort();
     cajaSaldosGrid.innerHTML = '';
 
@@ -1669,6 +1706,7 @@ function renderCajaSaldos(movimientos) {
             <span class="stat-label">Saldo en caja · ${escapeHtml(moneda)}</span>
             <span class="stat-value ${saldo < 0 ? 'stat-value-negative' : ''}">${formatMoney(saldo, moneda)}</span>
             ${equivalenteClpHTML(moneda, saldo)}
+            ${!cajaAbierta ? '<span class="cell-subtext">⚠️ Sin caja abierta hoy — esto es el acumulado histórico total, no el saldo real</span>' : ''}
         `;
         cajaSaldosGrid.appendChild(card);
     });
@@ -2350,6 +2388,7 @@ cierresColeccion.orderBy('abiertoEn', 'desc').onSnapshot(snapshot => {
     cierreAbiertoActual = abierto;
     actualizarVistaCierre();
     renderHistorialCierres(cerrados);
+    renderCajaSaldos(movimientosCajaActuales); // re-sincroniza las tarjetas de arriba con la apertura vigente
 }, error => {
     console.error('Error al escuchar cierres de caja:', error);
 });
