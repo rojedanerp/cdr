@@ -38,6 +38,9 @@
             <li data-section="billetera">
                 <span>🪙</span> Billetera
             </li>
+            <li data-section="boletas">
+                <span>🧾</span> Boletas
+            </li>
             <li data-section="calculadora">
                 <span>🧮</span> Calculadora de Tasas
             </li>
@@ -652,6 +655,82 @@
             </div>
         </section>
 
+        <!-- BOLETAS SII (checklist manual, no conectado al SII) -->
+        <section id="boletas" class="section">
+            <div class="section-header">
+                <h2>Boletas</h2>
+                <p class="section-subtitle">Control de boletas SII emitidas manualmente en e-Boleta</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Remesas sin boleta</span>
+                    <span class="stat-value" id="boletasPendientesCount">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Total sin boletear (CLP)</span>
+                    <span class="stat-value" id="boletasPendientesMonto">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Boletas emitidas este mes</span>
+                    <span class="stat-value" id="boletasEmitidasMes">0</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Pendientes de boleta</h3>
+                </div>
+                <p class="tasa-intro">
+                    Remesas activas (no canceladas) a las que todavía no les has hecho la boleta en
+                    e-Boleta del SII. Cuando la emitas ahí, marca aquí "Boleta emitida" y pega el folio
+                    para llevar el control — esto no genera ni envía nada al SII, es solo tu checklist.
+                </p>
+                <div class="table-wrap" id="boletasPendientesTableWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Monto enviado</th>
+                                <th>Estado remesa</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="boletasPendientesBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="boletasPendientesEmpty">
+                    <span class="empty-state-icon">✅</span>
+                    <p>No tienes remesas pendientes de boleta.</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Boletas emitidas</h3>
+                </div>
+                <div class="table-wrap" id="boletasEmitidasTableWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha remesa</th>
+                                <th>Cliente</th>
+                                <th>Monto enviado</th>
+                                <th>Folio</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="boletasEmitidasBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="boletasEmitidasEmpty">
+                    <span class="empty-state-icon">🧾</span>
+                    <p>Todavía no has marcado ninguna boleta como emitida.</p>
+                </div>
+            </div>
+        </section>
+
         <!-- CALCULADORA DE TASAS -->
         <section id="calculadora" class="section">
             <div class="section-header">
@@ -1044,7 +1123,7 @@
         </section>
     </main>
 
-    <script src="js/calculadora.js?v=5"></script>
-    <script type="module" src="js/app.js?v=5"></script>
+    <script src="js/calculadora.js?v=6"></script>
+    <script type="module" src="js/app.js?v=6"></script>
 </body>
 </html>
