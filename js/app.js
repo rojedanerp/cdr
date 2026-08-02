@@ -682,6 +682,8 @@ db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
         });
     }
 
+    renderBoletas(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+
     // --- Estadísticas del dashboard ---
     const docs = snapshot.docs.map(d => d.data());
     const hoy = new Date();
@@ -2338,3 +2340,108 @@ cierresColeccion.orderBy('abiertoEn', 'desc').onSnapshot(snapshot => {
 }, error => {
     console.error('Error al escuchar cierres de caja:', error);
 });
+
+// ============================================
+// BOLETAS SII — checklist manual (NO conectado al SII)
+// ============================================
+const boletasPendientesCount = document.getElementById('boletasPendientesCount');
+const boletasPendientesMonto = document.getElementById('boletasPendientesMonto');
+const boletasEmitidasMes = document.getElementById('boletasEmitidasMes');
+const boletasPendientesBody = document.getElementById('boletasPendientesBody');
+const boletasPendientesTableWrap = document.getElementById('boletasPendientesTableWrap');
+const boletasPendientesEmpty = document.getElementById('boletasPendientesEmpty');
+const boletasEmitidasBody = document.getElementById('boletasEmitidasBody');
+const boletasEmitidasTableWrap = document.getElementById('boletasEmitidasTableWrap');
+const boletasEmitidasEmpty = document.getElementById('boletasEmitidasEmpty');
+
+function renderBoletas(remesas) {
+    const activas = remesas.filter(r => r.estado !== 'cancelado');
+    const pendientes = activas.filter(r => !r.boletaEmitida);
+    const emitidas = activas.filter(r => r.boletaEmitida);
+
+    // --- Resumen ---
+    boletasPendientesCount.textContent = pendientes.length;
+    const montoPendienteClp = pendientes
+        .filter(r => (r.monedaEnviado || '').toUpperCase() === 'CLP')
+        .reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
+    boletasPendientesMonto.textContent = formatMoney(montoPendienteClp, 'CLP');
+
+    const hoy = new Date();
+    const emitidasEsteMes = emitidas.filter(r => r.fechaBoleta && r.fechaBoleta.toDate
+        && r.fechaBoleta.toDate().getMonth() === hoy.getMonth()
+        && r.fechaBoleta.toDate().getFullYear() === hoy.getFullYear());
+    boletasEmitidasMes.textContent = emitidasEsteMes.length;
+
+    // --- Tabla: pendientes de boleta ---
+    boletasPendientesBody.innerHTML = '';
+    if (pendientes.length === 0) {
+        boletasPendientesEmpty.style.display = 'block';
+        boletasPendientesTableWrap.style.display = 'none';
+    } else {
+        boletasPendientesEmpty.style.display = 'none';
+        boletasPendientesTableWrap.style.display = 'block';
+        pendientes.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${formatDate(r.createdAt)}</td>
+                <td>${escapeHtml(r.clienteNombre) || '—'}</td>
+                <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
+                <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
+                <td><button type="button" class="btn-icon-action" data-id="${r.id}">🧾 Marcar boleta emitida</button></td>
+            `;
+            tr.querySelector('button').addEventListener('click', () => marcarBoletaEmitida(r.id));
+            boletasPendientesBody.appendChild(tr);
+        });
+    }
+
+    // --- Tabla: boletas emitidas ---
+    boletasEmitidasBody.innerHTML = '';
+    if (emitidas.length === 0) {
+        boletasEmitidasEmpty.style.display = 'block';
+        boletasEmitidasTableWrap.style.display = 'none';
+    } else {
+        boletasEmitidasEmpty.style.display = 'none';
+        boletasEmitidasTableWrap.style.display = 'block';
+        emitidas.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${formatDate(r.createdAt)}</td>
+                <td>${escapeHtml(r.clienteNombre) || '—'}</td>
+                <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
+                <td>${escapeHtml(r.folioBoleta) || '—'}</td>
+                <td><button type="button" class="btn-icon-action danger" data-id="${r.id}">Quitar marca</button></td>
+            `;
+            tr.querySelector('button').addEventListener('click', () => quitarMarcaBoleta(r.id));
+            boletasEmitidasBody.appendChild(tr);
+        });
+    }
+}
+
+async function marcarBoletaEmitida(remesaId) {
+    const folio = prompt('Número de folio de la boleta en e-Boleta (opcional, puedes dejarlo en blanco):', '');
+    if (folio === null) return; // canceló el prompt
+    try {
+        await db.collection('remesas').doc(remesaId).update({
+            boletaEmitida: true,
+            folioBoleta: folio.trim(),
+            fechaBoleta: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Error al marcar boleta emitida:', error);
+        alert('No se pudo marcar la boleta. Intenta de nuevo.');
+    }
+}
+
+async function quitarMarcaBoleta(remesaId) {
+    if (!confirm('¿Quitar la marca de boleta emitida de esta remesa? Volverá a aparecer como pendiente.')) return;
+    try {
+        await db.collection('remesas').doc(remesaId).update({
+            boletaEmitida: false,
+            folioBoleta: '',
+            fechaBoleta: null
+        });
+    } catch (error) {
+        console.error('Error al quitar marca de boleta:', error);
+        alert('No se pudo actualizar. Intenta de nuevo.');
+    }
+}
