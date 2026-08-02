@@ -528,6 +528,77 @@
 
             <div class="panel">
                 <div class="panel-header">
+                    <h3>Registrar venta de USDT</h3>
+                </div>
+                <p class="tasa-intro">
+                    Registra aquí cada vez que vendes USDT por VES (ej. en Binance P2P). Escribe el total
+                    de USDT que se descontó de tu cuenta (incluida la comisión del exchange) y los VES que
+                    realmente te llegaron netos — así queda reflejada la comisión sin que tengas que
+                    calcularla aparte. Genera automáticamente una salida de USDT y una entrada de VES en Caja.
+                </p>
+                <form id="billeteraVentaForm" class="tasa-form">
+                    <div class="tasa-form-grid">
+                        <div class="input-group">
+                            <label for="billeteraUsdtVendido">USDT vendido (total, con comisión incluida)</label>
+                            <input type="number" id="billeteraUsdtVendido" required min="0.01" step="any" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="billeteraVesRecibido">VES recibido (neto, lo que te llegó)</label>
+                            <input type="number" id="billeteraVesRecibido" required min="0.01" step="any" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="billeteraComisionUsdt">Comisión del exchange en USDT (opcional)</label>
+                            <input type="number" id="billeteraComisionUsdt" min="0" step="any" placeholder="0">
+                        </div>
+                        <div class="input-group">
+                            <label for="billeteraTasaVenta">Tasa efectiva (Bs por 1 USDT, calculada)</label>
+                            <input type="text" id="billeteraTasaVenta" class="input-readonly" readonly placeholder="—">
+                        </div>
+                        <div class="input-group">
+                            <label for="billeteraVentaConcepto">Concepto (opcional)</label>
+                            <input type="text" id="billeteraVentaConcepto" placeholder="Ej. Venta en Binance P2P">
+                        </div>
+                    </div>
+
+                    <div id="billeteraVentaMessage" class="form-message"></div>
+
+                    <div class="tasa-form-actions">
+                        <button type="submit" class="btn-primary btn-form" id="billeteraVentaSubmitBtn">
+                            <span class="btn-text">Registrar venta</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Historial de ventas</h3>
+                </div>
+                <div class="table-wrap" id="billeteraVentasTableWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>USDT vendido</th>
+                                <th>VES recibido</th>
+                                <th>Tasa efectiva</th>
+                                <th>Comisión</th>
+                                <th>Concepto</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="billeteraVentasBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="billeteraVentasEmpty">
+                    <span class="empty-state-icon">💱</span>
+                    <p>Todavía no has registrado ventas de USDT.</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
                     <h3>Historial de compras</h3>
                 </div>
                 <div class="table-wrap" id="billeteraTableWrap">
@@ -829,7 +900,7 @@
                     <span class="stat-value" id="repStatTicket">—</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">Ganancia estimada</span>
+                    <span class="stat-label">Ganancia neta estimada</span>
                     <span class="stat-value" id="repStatGanancia">—</span>
                 </div>
                 <div class="stat-card">
@@ -878,7 +949,7 @@
                 <div class="table-wrap" id="repGananciaWrap">
                     <table class="data-table">
                         <thead>
-                            <tr><th>Fecha</th><th>Cliente</th><th>Enviado</th><th>Tasa aplicada</th><th>Tasa referencia</th><th>Ganancia</th></tr>
+                            <tr><th>Fecha</th><th>Cliente</th><th>Enviado</th><th>Tasa aplicada</th><th>Tasa referencia</th><th>Ganancia neta</th></tr>
                         </thead>
                         <tbody id="repGananciaBody"></tbody>
                     </table>
@@ -973,7 +1044,7 @@
         </section>
     </main>
 
-    <script src="js/calculadora.js?v=3"></script>
-    <script type="module" src="js/app.js?v=3"></script>
+    <script src="js/calculadora.js?v=5"></script>
+    <script type="module" src="js/app.js?v=5"></script>
 </body>
 </html>
