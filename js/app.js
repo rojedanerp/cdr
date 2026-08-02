@@ -1764,6 +1764,7 @@ const billeteraEmpty = document.getElementById('billeteraEmpty');
 const billeteraSaldoUsdtEl = document.getElementById('billeteraSaldoUsdt');
 const billeteraClpInvertidoEl = document.getElementById('billeteraClpInvertido');
 const billeteraTasaPromedioEl = document.getElementById('billeteraTasaPromedio');
+const billeteraTasaPromedioVentaEl = document.getElementById('billeteraTasaPromedioVenta');
 const billeteraMovsBody = document.getElementById('billeteraMovsBody');
 const billeteraMovsTableWrap = document.getElementById('billeteraMovsTableWrap');
 const billeteraMovsEmpty = document.getElementById('billeteraMovsEmpty');
@@ -1808,6 +1809,8 @@ function renderBilletera(movimientos) {
     let salidasUsdt = 0;
     let clpInvertidoTotal = 0;
     let usdtCompradoTotal = 0;
+    let vesRecibidoTotal = 0;
+    let usdtVendidoTotal = 0;
     const compras = [];
     const ventas = [];
     const movimientosUsdt = [];
@@ -1825,6 +1828,8 @@ function renderBilletera(movimientos) {
         }
         if (mov.origen === 'venta_usdt' && mov.tipo === 'salida') {
             ventas.push(mov);
+            vesRecibidoTotal += (mov.vesRecibido || 0);
+            usdtVendidoTotal += (mov.monto || 0);
         }
     });
 
@@ -1834,6 +1839,9 @@ function renderBilletera(movimientos) {
     billeteraClpInvertidoEl.textContent = formatMoney(clpInvertidoTotal, 'CLP');
     billeteraTasaPromedioEl.textContent = usdtCompradoTotal > 0
         ? formatMoney(clpInvertidoTotal / usdtCompradoTotal, 'CLP')
+        : '—';
+    billeteraTasaPromedioVentaEl.textContent = usdtVendidoTotal > 0
+        ? formatMoney(vesRecibidoTotal / usdtVendidoTotal, 'VES')
         : '—';
 
     renderBilleteraCompras(compras);
