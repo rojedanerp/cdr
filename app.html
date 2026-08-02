@@ -550,6 +550,35 @@
                     <p>Todavía no has registrado compras de USDT.</p>
                 </div>
             </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Todos los movimientos de USDT</h3>
+                </div>
+                <p class="tasa-intro">
+                    Compras (entra USDT) y remesas enviadas en USDT (sale USDT), en orden — con el saldo
+                    que va quedando después de cada movimiento, para que sepas para dónde se fue cada USDT.
+                </p>
+                <div class="table-wrap" id="billeteraMovsTableWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Monto</th>
+                                <th>Concepto</th>
+                                <th>Origen</th>
+                                <th>Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="billeteraMovsBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="billeteraMovsEmpty">
+                    <span class="empty-state-icon">📭</span>
+                    <p>Todavía no hay movimientos de USDT.</p>
+                </div>
+            </div>
         </section>
 
         <!-- CALCULADORA DE TASAS -->
@@ -944,7 +973,7 @@
         </section>
     </main>
 
-    <script src="js/calculadora.js?v=2"></script>
-    <script type="module" src="js/app.js?v=2"></script>
+    <script src="js/calculadora.js?v=3"></script>
+    <script type="module" src="js/app.js?v=3"></script>
 </body>
 </html>
