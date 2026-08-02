@@ -1668,9 +1668,22 @@ function renderCajaSaldos(movimientos) {
         card.innerHTML = `
             <span class="stat-label">Saldo en caja · ${escapeHtml(moneda)}</span>
             <span class="stat-value ${saldo < 0 ? 'stat-value-negative' : ''}">${formatMoney(saldo, moneda)}</span>
+            ${equivalenteClpHTML(moneda, saldo)}
         `;
         cajaSaldosGrid.appendChild(card);
     });
+}
+
+// Muestra "≈ X CLP" debajo del saldo de una moneda distinta a CLP, usando la
+// tasa vigente guardada en Configuración para ese par (la misma que se
+// autocompleta en Nueva Remesa) — para que sepas cuánto vale tu saldo sin
+// tener que ir a calcularlo aparte.
+function equivalenteClpHTML(moneda, saldo) {
+    if (moneda === 'CLP') return '';
+    const tasa = tasasCache[claveTasa('CLP', moneda)];
+    if (!tasa || tasa <= 0) return '';
+    const equivalente = saldo / tasa;
+    return `<span class="cell-subtext">≈ ${formatMoney(equivalente, 'CLP')} (tasa vigente: 1 CLP = ${tasa} ${escapeHtml(moneda)})</span>`;
 }
 
 cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
@@ -2353,11 +2366,28 @@ const boletasPendientesEmpty = document.getElementById('boletasPendientesEmpty')
 const boletasEmitidasBody = document.getElementById('boletasEmitidasBody');
 const boletasEmitidasTableWrap = document.getElementById('boletasEmitidasTableWrap');
 const boletasEmitidasEmpty = document.getElementById('boletasEmitidasEmpty');
+const boletasMarcarGrupoBtn = document.getElementById('boletasMarcarGrupoBtn');
+const boletasSeleccionadasCount = document.getElementById('boletasSeleccionadasCount');
+
+let boletasSeleccionadas = new Set();
+let pendientesPorId = {};
+
+function actualizarBotonGrupoBoleta() {
+    boletasSeleccionadasCount.textContent = boletasSeleccionadas.size;
+    boletasMarcarGrupoBtn.disabled = boletasSeleccionadas.size < 2;
+}
 
 function renderBoletas(remesas) {
     const activas = remesas.filter(r => r.estado !== 'cancelado');
     const pendientes = activas.filter(r => !r.boletaEmitida);
     const emitidas = activas.filter(r => r.boletaEmitida);
+
+    pendientesPorId = {};
+    pendientes.forEach(r => { pendientesPorId[r.id] = r; });
+    // Si una remesa seleccionada ya no está pendiente (se marcó desde otra
+    // pestaña, por ejemplo), se quita sola de la selección.
+    boletasSeleccionadas.forEach(id => { if (!pendientesPorId[id]) boletasSeleccionadas.delete(id); });
+    actualizarBotonGrupoBoleta();
 
     // --- Resumen ---
     boletasPendientesCount.textContent = pendientes.length;
@@ -2383,12 +2413,18 @@ function renderBoletas(remesas) {
         pendientes.forEach(r => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
+                <td><input type="checkbox" class="boleta-checkbox" data-id="${r.id}" ${boletasSeleccionadas.has(r.id) ? 'checked' : ''}></td>
                 <td>${formatDate(r.createdAt)}</td>
                 <td>${escapeHtml(r.clienteNombre) || '—'}</td>
                 <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
                 <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
                 <td><button type="button" class="btn-icon-action" data-id="${r.id}">🧾 Marcar boleta emitida</button></td>
             `;
+            tr.querySelector('.boleta-checkbox').addEventListener('change', (e) => {
+                if (e.target.checked) boletasSeleccionadas.add(r.id);
+                else boletasSeleccionadas.delete(r.id);
+                actualizarBotonGrupoBoleta();
+            });
             tr.querySelector('button').addEventListener('click', () => marcarBoletaEmitida(r.id));
             boletasPendientesBody.appendChild(tr);
         });
@@ -2402,12 +2438,24 @@ function renderBoletas(remesas) {
     } else {
         boletasEmitidasEmpty.style.display = 'none';
         boletasEmitidasTableWrap.style.display = 'block';
+
+        // Para las boletas agrupadas, se calcula el total real del grupo
+        // (puede incluir remesas que no vinieron en este mismo listado).
+        const totalesPorGrupo = {};
+        emitidas.forEach(r => {
+            if (!r.grupoBoletaId) return;
+            totalesPorGrupo[r.grupoBoletaId] = (totalesPorGrupo[r.grupoBoletaId] || 0) + (r.montoEnviado || 0);
+        });
+
         emitidas.forEach(r => {
             const tr = document.createElement('tr');
+            const grupoInfo = r.grupoBoletaId
+                ? `<div class="cell-subtext">Boleta agrupada · total ${formatMoney(totalesPorGrupo[r.grupoBoletaId], r.monedaEnviado)}</div>`
+                : '';
             tr.innerHTML = `
                 <td>${formatDate(r.createdAt)}</td>
                 <td>${escapeHtml(r.clienteNombre) || '—'}</td>
-                <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
+                <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}${grupoInfo}</td>
                 <td>${escapeHtml(r.folioBoleta) || '—'}</td>
                 <td><button type="button" class="btn-icon-action danger" data-id="${r.id}">Quitar marca</button></td>
             `;
@@ -2416,6 +2464,44 @@ function renderBoletas(remesas) {
         });
     }
 }
+
+boletasMarcarGrupoBtn.addEventListener('click', async () => {
+    const ids = Array.from(boletasSeleccionadas);
+    if (ids.length < 2) return;
+    const seleccionadas = ids.map(id => pendientesPorId[id]).filter(Boolean);
+
+    const monedas = new Set(seleccionadas.map(r => (r.monedaEnviado || '').toUpperCase()));
+    if (monedas.size > 1) {
+        alert('Las remesas seleccionadas tienen monedas distintas. Solo puedes agrupar remesas en la misma moneda (lo que realmente pagó el cliente).');
+        return;
+    }
+
+    const moneda = seleccionadas[0].monedaEnviado;
+    const total = seleccionadas.reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
+    const folio = prompt(
+        `Vas a agrupar ${seleccionadas.length} remesas en una sola boleta por ${formatMoney(total, moneda)}.\n\nNúmero de folio de la boleta en e-Boleta (opcional):`,
+        ''
+    );
+    if (folio === null) return; // canceló
+
+    try {
+        const grupoBoletaId = `grupo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const batch = db.batch();
+        seleccionadas.forEach(r => {
+            batch.update(db.collection('remesas').doc(r.id), {
+                boletaEmitida: true,
+                folioBoleta: folio.trim(),
+                grupoBoletaId,
+                fechaBoleta: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        });
+        await batch.commit();
+        boletasSeleccionadas.clear();
+    } catch (error) {
+        console.error('Error al agrupar boletas:', error);
+        alert('No se pudo agrupar la boleta. Intenta de nuevo.');
+    }
+});
 
 async function marcarBoletaEmitida(remesaId) {
     const folio = prompt('Número de folio de la boleta en e-Boleta (opcional, puedes dejarlo en blanco):', '');
@@ -2438,6 +2524,7 @@ async function quitarMarcaBoleta(remesaId) {
         await db.collection('remesas').doc(remesaId).update({
             boletaEmitida: false,
             folioBoleta: '',
+            grupoBoletaId: firebase.firestore.FieldValue.delete(),
             fechaBoleta: null
         });
     } catch (error) {
