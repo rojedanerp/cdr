@@ -685,11 +685,19 @@
                     Remesas activas (no canceladas) a las que todavía no les has hecho la boleta en
                     e-Boleta del SII. Cuando la emitas ahí, marca aquí "Boleta emitida" y pega el folio
                     para llevar el control — esto no genera ni envía nada al SII, es solo tu checklist.
+                    Si un mismo pago del cliente cubrió varias remesas, marca esas filas y usa
+                    "Marcar seleccionadas como una sola boleta" para agruparlas bajo un solo folio.
                 </p>
+                <div class="tasa-form-actions" style="margin-bottom: 12px;">
+                    <button type="button" class="btn-secondary" id="boletasMarcarGrupoBtn" disabled>
+                        Marcar seleccionadas como una sola boleta (<span id="boletasSeleccionadasCount">0</span>)
+                    </button>
+                </div>
                 <div class="table-wrap" id="boletasPendientesTableWrap">
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th></th>
                                 <th>Fecha</th>
                                 <th>Cliente</th>
                                 <th>Monto enviado</th>
@@ -1123,7 +1131,7 @@
         </section>
     </main>
 
-    <script src="js/calculadora.js?v=6"></script>
-    <script type="module" src="js/app.js?v=6"></script>
+    <script src="js/calculadora.js?v=8"></script>
+    <script type="module" src="js/app.js?v=8"></script>
 </body>
 </html>
