@@ -1297,13 +1297,23 @@ function renderizarReportes() {
         repStatTicket.textContent = '—';
     }
 
-    // --- Stat: ganancia estimada (solo remesas con tasa de referencia guardada) ---
+    // Ganancia neta de una remesa: la diferencia entre lo que cobraste (montoEnviado)
+// y lo que realmente te costó en tu moneda, valorado a la tasa de mercado
+// (tasaReferencia, sin margen). Esto incluye TANTO el monto enviado al destinatario
+// COMO la comisión bancaria extra (si aplica) — ambos salen de tu bolsillo.
+function calcularGananciaNeta(r) {
+    const comisionMonto = (r.montoRecibido || 0) * ((r.comisionDestino || 0) / 100);
+    const costoTotalDestino = (r.montoRecibido || 0) + comisionMonto;
+    return r.montoEnviado - (costoTotalDestino / r.tasaReferencia);
+}
+
+// --- Stat: ganancia estimada (solo remesas con tasa de referencia guardada) ---
     const conReferencia = enPeriodo.filter(r => r.tasaReferencia != null && r.tasaReferencia > 0 && r.tasaCambio != null && r.montoRecibido != null);
     repStatSinRef.textContent = enPeriodo.length - conReferencia.length;
 
     const gananciaPorMoneda = {};
     conReferencia.forEach(r => {
-        const ganancia = r.montoEnviado - (r.montoRecibido / r.tasaReferencia);
+        const ganancia = calcularGananciaNeta(r);
         const moneda = (r.monedaEnviado || '').toUpperCase();
         gananciaPorMoneda[moneda] = (gananciaPorMoneda[moneda] || 0) + ganancia;
     });
@@ -1426,7 +1436,7 @@ function renderizarGananciaPorRemesa(conReferencia) {
     repGananciaEmpty.style.display = 'none';
 
     filas.forEach(r => {
-        const ganancia = r.montoEnviado - (r.montoRecibido / r.tasaReferencia);
+        const ganancia = calcularGananciaNeta(r);
         const moneda = (r.monedaEnviado || '').toUpperCase();
         const claseGanancia = ganancia > 0 ? 'rep-ganancia-positiva' : (ganancia < 0 ? 'rep-ganancia-negativa' : 'rep-ganancia-cero');
         const tr = document.createElement('tr');
@@ -1601,6 +1611,7 @@ const cajaSaldosEmpty = document.getElementById('cajaSaldosEmpty');
 function origenBadgeHTML(mov) {
     if (mov.origen === 'remesa') return '<span class="badge badge-neutral">Remesa automática</span>';
     if (mov.origen === 'compra_usdt') return '<span class="badge badge-neutral">Compra USDT</span>';
+    if (mov.origen === 'venta_usdt') return '<span class="badge badge-neutral">Venta USDT</span>';
     return '<span class="badge badge-pending">Manual</span>';
 }
 
@@ -1703,6 +1714,17 @@ const billeteraTasaPromedioEl = document.getElementById('billeteraTasaPromedio')
 const billeteraMovsBody = document.getElementById('billeteraMovsBody');
 const billeteraMovsTableWrap = document.getElementById('billeteraMovsTableWrap');
 const billeteraMovsEmpty = document.getElementById('billeteraMovsEmpty');
+const billeteraVentaForm = document.getElementById('billeteraVentaForm');
+const billeteraUsdtVendidoInput = document.getElementById('billeteraUsdtVendido');
+const billeteraVesRecibidoInput = document.getElementById('billeteraVesRecibido');
+const billeteraComisionUsdtInput = document.getElementById('billeteraComisionUsdt');
+const billeteraTasaVentaInput = document.getElementById('billeteraTasaVenta');
+const billeteraVentaConceptoInput = document.getElementById('billeteraVentaConcepto');
+const billeteraVentaMessage = document.getElementById('billeteraVentaMessage');
+const billeteraVentaSubmitBtn = document.getElementById('billeteraVentaSubmitBtn');
+const billeteraVentasBody = document.getElementById('billeteraVentasBody');
+const billeteraVentasTableWrap = document.getElementById('billeteraVentasTableWrap');
+const billeteraVentasEmpty = document.getElementById('billeteraVentasEmpty');
 
 function recalcularTasaCompraBilletera() {
     const clp = parseFloat(billeteraClpGastadoInput.value);
@@ -1715,6 +1737,17 @@ function recalcularTasaCompraBilletera() {
     el.addEventListener('input', recalcularTasaCompraBilletera);
 });
 
+function recalcularTasaVentaBilletera() {
+    const usdt = parseFloat(billeteraUsdtVendidoInput.value);
+    const ves = parseFloat(billeteraVesRecibidoInput.value);
+    billeteraTasaVentaInput.value = (!isNaN(usdt) && !isNaN(ves) && usdt > 0)
+        ? formatMoney(ves / usdt, 'VES')
+        : '—';
+}
+[billeteraUsdtVendidoInput, billeteraVesRecibidoInput].forEach(el => {
+    el.addEventListener('input', recalcularTasaVentaBilletera);
+});
+
 function renderBilletera(movimientos) {
     // Saldo actual de USDT: TODO lo que entra y sale en esa moneda, incluyendo
     // compras aquí y lo enviado en remesas pagadas directo en USDT.
@@ -1723,6 +1756,7 @@ function renderBilletera(movimientos) {
     let clpInvertidoTotal = 0;
     let usdtCompradoTotal = 0;
     const compras = [];
+    const ventas = [];
     const movimientosUsdt = [];
 
     movimientos.forEach(mov => {
@@ -1736,6 +1770,9 @@ function renderBilletera(movimientos) {
             clpInvertidoTotal += (mov.clpGastado || 0);
             usdtCompradoTotal += (mov.monto || 0);
         }
+        if (mov.origen === 'venta_usdt' && mov.tipo === 'salida') {
+            ventas.push(mov);
+        }
     });
 
     const saldoUsdt = entradasUsdt - salidasUsdt;
@@ -1747,6 +1784,7 @@ function renderBilletera(movimientos) {
         : '—';
 
     renderBilleteraCompras(compras);
+    renderBilleteraVentas(ventas);
     renderBilleteraMovimientos(movimientosUsdt);
 }
 
@@ -1883,6 +1921,109 @@ async function eliminarCompraUsdt(compraId) {
     } catch (error) {
         console.error('Error al eliminar compra de USDT:', error);
         alert('No se pudo eliminar la compra. Intenta de nuevo.');
+    }
+}
+
+function renderBilleteraVentas(ventas) {
+    billeteraVentasBody.innerHTML = '';
+    if (ventas.length === 0) {
+        billeteraVentasEmpty.style.display = 'block';
+        billeteraVentasTableWrap.style.display = 'none';
+        return;
+    }
+    billeteraVentasEmpty.style.display = 'none';
+    billeteraVentasTableWrap.style.display = 'block';
+
+    ventas.forEach(mov => {
+        const vesRecibido = mov.vesRecibido || 0;
+        const tasa = mov.monto > 0 ? vesRecibido / mov.monto : 0;
+        const fecha = formatDate(mov.createdAt);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${fecha}</td>
+            <td class="mono-cell">${formatMoney(mov.monto, 'USDT')}</td>
+            <td class="mono-cell">${formatMoney(vesRecibido, 'VES')}</td>
+            <td class="mono-cell">${formatMoney(tasa, 'VES')}</td>
+            <td class="mono-cell">${mov.comisionUsdt ? formatMoney(mov.comisionUsdt, 'USDT') : '—'}</td>
+            <td>${escapeHtml(mov.concepto) || '—'}</td>
+            <td><button type="button" class="btn-icon-action danger" data-venta-id="${mov.ventaId}">🗑️</button></td>
+        `;
+        tr.querySelector('button').addEventListener('click', () => eliminarVentaUsdt(mov.ventaId));
+        billeteraVentasBody.appendChild(tr);
+    });
+}
+
+billeteraVentaForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const usdtVendido = parseFloat(billeteraUsdtVendidoInput.value);
+    const vesRecibido = parseFloat(billeteraVesRecibidoInput.value);
+    const comisionUsdt = parseFloat(billeteraComisionUsdtInput.value) || 0;
+    const concepto = billeteraVentaConceptoInput.value.trim() || 'Venta de USDT';
+
+    if (isNaN(usdtVendido) || usdtVendido <= 0 || isNaN(vesRecibido) || vesRecibido <= 0) {
+        billeteraVentaMessage.textContent = 'Ingresa montos válidos en ambos campos.';
+        billeteraVentaMessage.className = 'form-message form-message-error';
+        return;
+    }
+
+    billeteraVentaSubmitBtn.disabled = true;
+    billeteraVentaSubmitBtn.querySelector('.btn-text').classList.add('hidden');
+    billeteraVentaSubmitBtn.querySelector('.spinner').classList.remove('hidden');
+
+    try {
+        const ventaId = `venta_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const batch = db.batch();
+
+        const salidaRef = cajaColeccion.doc();
+        batch.set(salidaRef, {
+            tipo: 'salida',
+            moneda: 'USDT',
+            monto: usdtVendido,
+            vesRecibido,
+            comisionUsdt,
+            concepto,
+            origen: 'venta_usdt',
+            ventaId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        const entradaRef = cajaColeccion.doc();
+        batch.set(entradaRef, {
+            tipo: 'entrada',
+            moneda: 'VES',
+            monto: vesRecibido,
+            concepto,
+            origen: 'venta_usdt',
+            ventaId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await batch.commit();
+
+        billeteraVentaMessage.textContent = 'Venta registrada. Caja se actualizó sola (USDT −, VES +).';
+        billeteraVentaMessage.className = 'form-message form-message-success';
+        billeteraVentaForm.reset();
+        billeteraTasaVentaInput.value = '—';
+    } catch (error) {
+        console.error('Error al registrar venta de USDT:', error);
+        billeteraVentaMessage.textContent = 'Ocurrió un error al registrar la venta. Intenta de nuevo.';
+        billeteraVentaMessage.className = 'form-message form-message-error';
+    } finally {
+        billeteraVentaSubmitBtn.disabled = false;
+        billeteraVentaSubmitBtn.querySelector('.btn-text').classList.remove('hidden');
+        billeteraVentaSubmitBtn.querySelector('.spinner').classList.add('hidden');
+    }
+});
+
+async function eliminarVentaUsdt(ventaId) {
+    if (!ventaId) return;
+    if (!confirm('¿Eliminar esta venta de USDT? Se borrarán también sus movimientos de Caja (USDT y VES).')) return;
+    try {
+        const existentes = await cajaColeccion.where('ventaId', '==', ventaId).get();
+        await Promise.all(existentes.docs.map(doc => doc.ref.delete()));
+    } catch (error) {
+        console.error('Error al eliminar venta de USDT:', error);
+        alert('No se pudo eliminar la venta. Intenta de nuevo.');
     }
 }
 
