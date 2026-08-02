@@ -1599,9 +1599,9 @@ const cajaSaldosGrid = document.getElementById('cajaSaldosGrid');
 const cajaSaldosEmpty = document.getElementById('cajaSaldosEmpty');
 
 function origenBadgeHTML(mov) {
-    return mov.origen === 'remesa'
-        ? '<span class="badge badge-neutral">Remesa automática</span>'
-        : '<span class="badge badge-pending">Manual</span>';
+    if (mov.origen === 'remesa') return '<span class="badge badge-neutral">Remesa automática</span>';
+    if (mov.origen === 'compra_usdt') return '<span class="badge badge-neutral">Compra USDT</span>';
+    return '<span class="badge badge-pending">Manual</span>';
 }
 
 function tipoBadgeHTML(tipo) {
@@ -1700,6 +1700,9 @@ const billeteraEmpty = document.getElementById('billeteraEmpty');
 const billeteraSaldoUsdtEl = document.getElementById('billeteraSaldoUsdt');
 const billeteraClpInvertidoEl = document.getElementById('billeteraClpInvertido');
 const billeteraTasaPromedioEl = document.getElementById('billeteraTasaPromedio');
+const billeteraMovsBody = document.getElementById('billeteraMovsBody');
+const billeteraMovsTableWrap = document.getElementById('billeteraMovsTableWrap');
+const billeteraMovsEmpty = document.getElementById('billeteraMovsEmpty');
 
 function recalcularTasaCompraBilletera() {
     const clp = parseFloat(billeteraClpGastadoInput.value);
@@ -1720,11 +1723,13 @@ function renderBilletera(movimientos) {
     let clpInvertidoTotal = 0;
     let usdtCompradoTotal = 0;
     const compras = [];
+    const movimientosUsdt = [];
 
     movimientos.forEach(mov => {
         if ((mov.moneda || '').toUpperCase() === 'USDT') {
             if (mov.tipo === 'entrada') entradasUsdt += (mov.monto || 0);
             else salidasUsdt += (mov.monto || 0);
+            movimientosUsdt.push(mov);
         }
         if (mov.origen === 'compra_usdt' && mov.tipo === 'entrada') {
             compras.push(mov);
@@ -1740,6 +1745,47 @@ function renderBilletera(movimientos) {
     billeteraTasaPromedioEl.textContent = usdtCompradoTotal > 0
         ? formatMoney(clpInvertidoTotal / usdtCompradoTotal, 'CLP')
         : '—';
+
+    renderBilleteraCompras(compras);
+    renderBilleteraMovimientos(movimientosUsdt);
+}
+
+function renderBilleteraMovimientos(movimientosUsdt) {
+    billeteraMovsBody.innerHTML = '';
+    if (movimientosUsdt.length === 0) {
+        billeteraMovsEmpty.style.display = 'block';
+        billeteraMovsTableWrap.style.display = 'none';
+        return;
+    }
+    billeteraMovsEmpty.style.display = 'none';
+    billeteraMovsTableWrap.style.display = 'block';
+
+    // movimientosUsdt viene ordenado de más nuevo a más antiguo (así llega la
+    // consulta de Caja). Para calcular el saldo acumulado hay que recorrerlo
+    // de más antiguo a más nuevo, y luego mostrarlo en el orden original.
+    const cronologico = movimientosUsdt.slice().reverse();
+    let saldoCorrido = 0;
+    const conSaldo = cronologico.map(mov => {
+        saldoCorrido += (mov.tipo === 'entrada' ? 1 : -1) * (mov.monto || 0);
+        return { mov, saldo: saldoCorrido };
+    }).reverse();
+
+    conSaldo.forEach(({ mov, saldo }) => {
+        const signo = mov.tipo === 'entrada' ? '+' : '−';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${formatDate(mov.createdAt)}</td>
+            <td>${tipoBadgeHTML(mov.tipo)}</td>
+            <td class="mono-cell">${signo} ${formatMoney(mov.monto, 'USDT')}</td>
+            <td>${escapeHtml(mov.concepto) || '—'}</td>
+            <td>${origenBadgeHTML(mov)}</td>
+            <td class="mono-cell ${saldo < 0 ? 'stat-value-negative' : ''}">${formatMoney(saldo, 'USDT')}</td>
+        `;
+        billeteraMovsBody.appendChild(tr);
+    });
+}
+
+function renderBilleteraCompras(compras) {
 
     billeteraBody.innerHTML = '';
     if (compras.length === 0) {
