@@ -64,7 +64,7 @@ service cloud.firestore {
         && request.resource.data.moneda.size() > 0
         && request.resource.data.monto is number
         && request.resource.data.monto > 0
-        && request.resource.data.origen in ['manual', 'remesa'];
+        && request.resource.data.origen in ['manual', 'remesa', 'compra_usdt'];
     }
 
     // Cierres de caja: apertura y cierre diario, con saldo esperado vs contado
