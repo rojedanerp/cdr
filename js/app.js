@@ -1663,8 +1663,9 @@ function renderCajaSaldos(movimientos) {
 cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     cajaBody.innerHTML = '';
     const movimientos = [];
-    snapshot.forEach(doc => movimientos.push(doc.data()));
+    snapshot.forEach(doc => movimientos.push({ id: doc.id, ...doc.data() }));
     renderCajaSaldos(movimientos);
+    renderBilletera(movimientos);
 
     movimientosCajaActuales = movimientos;
     actualizarVistaCierre();
@@ -1682,6 +1683,162 @@ cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
 }, error => {
     console.error('Error al escuchar movimientos de caja:', error);
 });
+
+// ============================================
+// BILLETERA — control de compras de USDT con CLP
+// ============================================
+const billeteraForm = document.getElementById('billeteraForm');
+const billeteraClpGastadoInput = document.getElementById('billeteraClpGastado');
+const billeteraUsdtCompradoInput = document.getElementById('billeteraUsdtComprado');
+const billeteraTasaCompraInput = document.getElementById('billeteraTasaCompra');
+const billeteraConceptoInput = document.getElementById('billeteraConcepto');
+const billeteraMessage = document.getElementById('billeteraMessage');
+const billeteraSubmitBtn = document.getElementById('billeteraSubmitBtn');
+const billeteraBody = document.getElementById('billeteraBody');
+const billeteraTableWrap = document.getElementById('billeteraTableWrap');
+const billeteraEmpty = document.getElementById('billeteraEmpty');
+const billeteraSaldoUsdtEl = document.getElementById('billeteraSaldoUsdt');
+const billeteraClpInvertidoEl = document.getElementById('billeteraClpInvertido');
+const billeteraTasaPromedioEl = document.getElementById('billeteraTasaPromedio');
+
+function recalcularTasaCompraBilletera() {
+    const clp = parseFloat(billeteraClpGastadoInput.value);
+    const usdt = parseFloat(billeteraUsdtCompradoInput.value);
+    billeteraTasaCompraInput.value = (!isNaN(clp) && !isNaN(usdt) && usdt > 0)
+        ? formatMoney(clp / usdt, 'CLP')
+        : '—';
+}
+[billeteraClpGastadoInput, billeteraUsdtCompradoInput].forEach(el => {
+    el.addEventListener('input', recalcularTasaCompraBilletera);
+});
+
+function renderBilletera(movimientos) {
+    // Saldo actual de USDT: TODO lo que entra y sale en esa moneda, incluyendo
+    // compras aquí y lo enviado en remesas pagadas directo en USDT.
+    let entradasUsdt = 0;
+    let salidasUsdt = 0;
+    let clpInvertidoTotal = 0;
+    let usdtCompradoTotal = 0;
+    const compras = [];
+
+    movimientos.forEach(mov => {
+        if ((mov.moneda || '').toUpperCase() === 'USDT') {
+            if (mov.tipo === 'entrada') entradasUsdt += (mov.monto || 0);
+            else salidasUsdt += (mov.monto || 0);
+        }
+        if (mov.origen === 'compra_usdt' && mov.tipo === 'entrada') {
+            compras.push(mov);
+            clpInvertidoTotal += (mov.clpGastado || 0);
+            usdtCompradoTotal += (mov.monto || 0);
+        }
+    });
+
+    const saldoUsdt = entradasUsdt - salidasUsdt;
+    billeteraSaldoUsdtEl.textContent = formatMoney(saldoUsdt, 'USDT');
+    billeteraSaldoUsdtEl.classList.toggle('stat-value-negative', saldoUsdt < 0);
+    billeteraClpInvertidoEl.textContent = formatMoney(clpInvertidoTotal, 'CLP');
+    billeteraTasaPromedioEl.textContent = usdtCompradoTotal > 0
+        ? formatMoney(clpInvertidoTotal / usdtCompradoTotal, 'CLP')
+        : '—';
+
+    billeteraBody.innerHTML = '';
+    if (compras.length === 0) {
+        billeteraEmpty.style.display = 'block';
+        billeteraTableWrap.style.display = 'none';
+        return;
+    }
+    billeteraEmpty.style.display = 'none';
+    billeteraTableWrap.style.display = 'block';
+
+    compras
+        .forEach(mov => {
+            const tasa = mov.monto > 0 ? mov.clpGastado / mov.monto : 0;
+            const fecha = formatDate(mov.createdAt);
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${fecha}</td>
+                <td class="mono-cell">${formatMoney(mov.clpGastado, 'CLP')}</td>
+                <td class="mono-cell">${formatMoney(mov.monto, 'USDT')}</td>
+                <td class="mono-cell">${formatMoney(tasa, 'CLP')}</td>
+                <td>${escapeHtml(mov.concepto) || '—'}</td>
+                <td><button type="button" class="btn-icon-action danger" data-compra-id="${mov.compraId}">🗑️</button></td>
+            `;
+            tr.querySelector('button').addEventListener('click', () => eliminarCompraUsdt(mov.compraId));
+            billeteraBody.appendChild(tr);
+        });
+}
+
+billeteraForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const clpGastado = parseFloat(billeteraClpGastadoInput.value);
+    const usdtComprado = parseFloat(billeteraUsdtCompradoInput.value);
+    const concepto = billeteraConceptoInput.value.trim() || 'Compra de USDT';
+
+    if (isNaN(clpGastado) || clpGastado <= 0 || isNaN(usdtComprado) || usdtComprado <= 0) {
+        billeteraMessage.textContent = 'Ingresa montos válidos en ambos campos.';
+        billeteraMessage.className = 'form-message form-message-error';
+        return;
+    }
+
+    billeteraSubmitBtn.disabled = true;
+    billeteraSubmitBtn.querySelector('.btn-text').classList.add('hidden');
+    billeteraSubmitBtn.querySelector('.spinner').classList.remove('hidden');
+
+    try {
+        const compraId = `compra_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const batch = db.batch();
+
+        const salidaRef = cajaColeccion.doc();
+        batch.set(salidaRef, {
+            tipo: 'salida',
+            moneda: 'CLP',
+            monto: clpGastado,
+            concepto,
+            origen: 'compra_usdt',
+            compraId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        const entradaRef = cajaColeccion.doc();
+        batch.set(entradaRef, {
+            tipo: 'entrada',
+            moneda: 'USDT',
+            monto: usdtComprado,
+            clpGastado,
+            concepto,
+            origen: 'compra_usdt',
+            compraId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await batch.commit();
+
+        billeteraMessage.textContent = 'Compra registrada. Caja se actualizó sola (CLP −, USDT +).';
+        billeteraMessage.className = 'form-message form-message-success';
+        billeteraForm.reset();
+        billeteraTasaCompraInput.value = '—';
+    } catch (error) {
+        console.error('Error al registrar compra de USDT:', error);
+        billeteraMessage.textContent = 'Ocurrió un error al registrar la compra. Intenta de nuevo.';
+        billeteraMessage.className = 'form-message form-message-error';
+    } finally {
+        billeteraSubmitBtn.disabled = false;
+        billeteraSubmitBtn.querySelector('.btn-text').classList.remove('hidden');
+        billeteraSubmitBtn.querySelector('.spinner').classList.add('hidden');
+    }
+});
+
+async function eliminarCompraUsdt(compraId) {
+    if (!compraId) return;
+    if (!confirm('¿Eliminar esta compra de USDT? Se borrarán también sus movimientos de Caja (CLP y USDT).')) return;
+    try {
+        const existentes = await cajaColeccion.where('compraId', '==', compraId).get();
+        await Promise.all(existentes.docs.map(doc => doc.ref.delete()));
+    } catch (error) {
+        console.error('Error al eliminar compra de USDT:', error);
+        alert('No se pudo eliminar la compra. Intenta de nuevo.');
+    }
+}
 
 // ============================================
 // CIERRE DE CAJA DIARIO — apertura, resumen en vivo y cierre
