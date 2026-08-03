@@ -2,7 +2,12 @@
 // CALCULADORA — script independiente, SIN dependencia de Firebase.
 // Se carga aparte para que funcione siempre, incluso si Firebase
 // tarda o falla en cargar (red lenta, bloqueador, etc.).
+//
+// El cálculo en sí (tasa cruzada, compra/venta USDT) vive en ./utils.js,
+// compartido con app.js, para no tener dos implementaciones de la misma
+// fórmula que se puedan desincronizar.
 // ============================================
+import { calcularTasaCruzada, calcularCompraVentaUSDT } from './utils.js';
 
 // ============================================
 // CALCULADORA DE TASAS — tasa cruzada a partir del valor de cada moneda vs USD
@@ -44,7 +49,8 @@ function recalcularTasaCruzada() {
     const destinoValor = parseFloat(calcDestinoValorInput.value);
     const margen = parseFloat(calcMargenInput.value) || 0;
 
-    if (!origenValor || !destinoValor || origenValor <= 0) {
+    const resultado = calcularTasaCruzada(origenValor, destinoValor, margen);
+    if (!resultado) {
         calcTasaResultado = null;
         calcTasaMercado = null;
         calcResultLabel.textContent = 'Tasa a ofrecer (con margen descontado)';
@@ -54,8 +60,8 @@ function recalcularTasaCruzada() {
         return;
     }
 
-    calcTasaMercado = destinoValor / origenValor;
-    calcTasaResultado = calcTasaMercado * (1 - margen / 100);
+    calcTasaMercado = resultado.tasaMercado;
+    calcTasaResultado = resultado.tasaResultado;
 
     const origenTxt = origenCodigo || 'ORIGEN';
     const destinoTxt = destinoCodigo || 'DESTINO';
@@ -113,7 +119,9 @@ function recalcularCompraVentaUSDT() {
     const margenVenta = parseFloat(calcUsdtMargenVentaInput.value) || 0;
     const monto = parseFloat(calcUsdtMontoInput.value);
 
-    if (!valorMercado || valorMercado <= 0) {
+    // Compras USDT más barato que el mercado, vendes USDT más caro que el mercado — ahí está tu margen.
+    const resultado = calcularCompraVentaUSDT(valorMercado, margenCompra, margenVenta);
+    if (!resultado) {
         calcUsdtCompraValue.textContent = '—';
         calcUsdtVentaValue.textContent = '—';
         calcUsdtCompraMontoValue.textContent = '—';
@@ -124,10 +132,7 @@ function recalcularCompraVentaUSDT() {
         calcUsdtVentaMontoLabel.textContent = 'USDT que entregas al vender por ese monto';
         return;
     }
-
-    // Compras USDT más barato que el mercado, vendes USDT más caro que el mercado — ahí está tu margen.
-    const tasaCompra = valorMercado * (1 - margenCompra / 100);
-    const tasaVenta = valorMercado * (1 + margenVenta / 100);
+    const { tasaCompra, tasaVenta } = resultado;
 
     calcUsdtCompraLabel.textContent = `Pagas 1 USDT = ${tasaCompra.toFixed(2)} ${moneda} (compra, −${margenCompra}%)`;
     calcUsdtCompraValue.textContent = tasaCompra.toFixed(2);
