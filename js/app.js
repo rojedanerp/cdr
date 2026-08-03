@@ -858,6 +858,8 @@ db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     const paisesDestino = [...new Set(historialCache.map(({ r }) => r.paisDestino).filter(Boolean))].sort();
     poblarSelectPaises(historialFiltroOrigen, paisesOrigen);
     poblarSelectPaises(historialFiltroDestino, paisesDestino);
+    poblarSelectPaises(reportesFiltroOrigen, paisesOrigen);
+    poblarSelectPaises(reportesFiltroDestino, paisesDestino);
 
     aplicarFiltroHistorial();
 
@@ -1417,6 +1419,29 @@ const repGananciaBody = document.getElementById('repGananciaBody');
 const repGananciaWrap = document.getElementById('repGananciaWrap');
 const repGananciaEmpty = document.getElementById('repGananciaEmpty');
 
+// Filtros avanzados de Reportes (mismo patrón colapsable de Historial/Caja/Billetera)
+const reportesFiltroEstado = document.getElementById('reportesFiltroEstado');
+const reportesFiltroPago = document.getElementById('reportesFiltroPago');
+const reportesFiltroOrigen = document.getElementById('reportesFiltroOrigen');
+const reportesFiltroDestino = document.getElementById('reportesFiltroDestino');
+const reportesFiltroBuscar = document.getElementById('reportesFiltroBuscar');
+const reportesFiltroLimpiar = document.getElementById('reportesFiltroLimpiar');
+
+initFiltrosToggle('reportes');
+
+[reportesFiltroEstado, reportesFiltroPago, reportesFiltroOrigen, reportesFiltroDestino].forEach(el => {
+    el.addEventListener('change', renderizarReportes);
+});
+reportesFiltroBuscar.addEventListener('input', renderizarReportes);
+reportesFiltroLimpiar.addEventListener('click', () => {
+    reportesFiltroEstado.value = 'todos';
+    reportesFiltroPago.value = 'todos';
+    reportesFiltroOrigen.value = 'todos';
+    reportesFiltroDestino.value = 'todos';
+    reportesFiltroBuscar.value = '';
+    renderizarReportes();
+});
+
 reportesPeriodo.addEventListener('change', () => {
     const esCustom = reportesPeriodo.value === 'custom';
     reportesRangoCustom.classList.toggle('hidden', !esCustom);
@@ -1515,7 +1540,9 @@ function renderizarReportes() {
     const periodo = reportesPeriodo.value;
     const { desde, hasta } = calcularRangoPeriodo(periodo);
 
-    const enPeriodo = Object.entries(remesasPorId)
+    // Primero se acota solo por periodo (esto es lo que se usa como "total"
+    // de referencia en el contador "X de Y" del panel de filtros).
+    const enPeriodoSinFiltrosExtra = Object.entries(remesasPorId)
         .map(([id, r]) => ({ id, ...r }))
         .filter(r => {
             if (r.estado === 'cancelado') return false;
@@ -1525,6 +1552,51 @@ function renderizarReportes() {
             if (hasta && fecha >= hasta) return false;
             return true;
         });
+
+    // Luego se aplican los filtros avanzados (estado, forma de pago,
+    // país de origen/destino y búsqueda por cliente).
+    const estadoFiltro = reportesFiltroEstado.value;
+    const pagoFiltro = reportesFiltroPago.value;
+    const origenFiltro = reportesFiltroOrigen.value;
+    const destinoFiltro = reportesFiltroDestino.value;
+    const textoBusqueda = reportesFiltroBuscar.value.trim().toLowerCase();
+
+    const enPeriodo = enPeriodoSinFiltrosExtra.filter(r => {
+        if (estadoFiltro !== 'todos' && (r.estado || 'pendiente') !== estadoFiltro) return false;
+        if (pagoFiltro !== 'todos' && (r.formaPago || 'efectivo') !== pagoFiltro) return false;
+        if (origenFiltro !== 'todos' && r.paisOrigen !== origenFiltro) return false;
+        if (destinoFiltro !== 'todos' && r.paisDestino !== destinoFiltro) return false;
+        if (textoBusqueda && !(r.clienteNombre || '').toLowerCase().includes(textoBusqueda)) return false;
+        return true;
+    });
+
+    actualizarPanelFiltros('reportes', [
+        {
+            label: 'Estado', activo: estadoFiltro !== 'todos',
+            texto: reportesFiltroEstado.options[reportesFiltroEstado.selectedIndex].text,
+            onQuitar: () => { reportesFiltroEstado.value = 'todos'; renderizarReportes(); }
+        },
+        {
+            label: 'Forma de pago', activo: pagoFiltro !== 'todos',
+            texto: reportesFiltroPago.options[reportesFiltroPago.selectedIndex].text,
+            onQuitar: () => { reportesFiltroPago.value = 'todos'; renderizarReportes(); }
+        },
+        {
+            label: 'País de origen', activo: origenFiltro !== 'todos',
+            texto: `Desde: ${origenFiltro}`,
+            onQuitar: () => { reportesFiltroOrigen.value = 'todos'; renderizarReportes(); }
+        },
+        {
+            label: 'País de destino', activo: destinoFiltro !== 'todos',
+            texto: `Hacia: ${destinoFiltro}`,
+            onQuitar: () => { reportesFiltroDestino.value = 'todos'; renderizarReportes(); }
+        },
+        {
+            label: 'Cliente', activo: textoBusqueda !== '',
+            texto: `Cliente: "${reportesFiltroBuscar.value.trim()}"`,
+            onQuitar: () => { reportesFiltroBuscar.value = ''; renderizarReportes(); }
+        }
+    ], { mostrados: enPeriodo.length, total: enPeriodoSinFiltrosExtra.length });
 
     // --- Stat: cantidad ---
     repStatCantidad.textContent = enPeriodo.length;
