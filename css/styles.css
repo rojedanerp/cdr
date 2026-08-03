@@ -546,6 +546,51 @@ button {
   }
 }
 
+/* ============================================
+   HISTORIAL — filtros de remesas
+   ============================================ */
+.historial-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.historial-filtro {
+  max-width: 200px;
+  margin: 0;
+}
+
+.historial-filtro select,
+.historial-filtro input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.historial-filtro-buscar {
+  max-width: 220px;
+  flex: 1 1 180px;
+}
+
+@media (max-width: 480px) {
+  .historial-filtros {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .historial-filtro,
+  .historial-filtro-buscar {
+    max-width: none;
+  }
+}
+
 .rep-chart-wrap {
   padding: 24px;
   overflow-x: auto;
