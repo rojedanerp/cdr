@@ -2687,7 +2687,69 @@ function dibujarFrameTasa(ctx, data, t, slogan) {
 
     ctx.font = '500 42px "Helvetica Neue", Arial, sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.65)';
-    ctx.fillText(`${data.monedaOrigen}  →  ${data.monedaDestino}`, cx, cardY + 80);
+    const rutaTexto = `${data.monedaOrigen}  →  ${data.monedaDestino}`;
+    ctx.fillText(rutaTexto, cx, cardY + 80);
+
+    // Banderitas circulares junto al texto de la ruta (como en la pieza
+    // gráfica original de Lagomarcambios), a los costados del texto
+    const rutaAncho = ctx.measureText(rutaTexto).width;
+    const dibujarBanderaChile = (bx, by, r) => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(bx, by, r, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(bx - r, by - r, r * 2, r);
+        ctx.fillStyle = '#d52b1e';
+        ctx.fillRect(bx - r, by, r * 2, r);
+        ctx.fillStyle = '#0039a6';
+        ctx.fillRect(bx - r, by - r, r, r);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        const starR = r * 0.22;
+        const sx = bx - r * 0.5, sy = by - r * 0.5;
+        for (let i = 0; i < 5; i++) {
+            const ang = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+            const angIn = ang + Math.PI / 5;
+            ctx.lineTo(sx + Math.cos(ang) * starR, sy + Math.sin(ang) * starR);
+            ctx.lineTo(sx + Math.cos(angIn) * starR * 0.42, sy + Math.sin(angIn) * starR * 0.42);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(bx, by, r, 0, Math.PI * 2);
+        ctx.stroke();
+    };
+    const dibujarBanderaVenezuela = (bx, by, r) => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(bx, by, r, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.fillStyle = '#ffcc00';
+        ctx.fillRect(bx - r, by - r, r * 2, r * 2 / 3);
+        ctx.fillStyle = '#00247d';
+        ctx.fillRect(bx - r, by - r / 3, r * 2, r * 2 / 3);
+        ctx.fillStyle = '#cf142b';
+        ctx.fillRect(bx - r, by + r / 3, r * 2, r * 2 / 3);
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 7; i++) {
+            const ang = -Math.PI * 0.55 + i * (Math.PI * 1.1 / 6);
+            ctx.beginPath();
+            ctx.arc(bx + Math.cos(ang) * r * 0.55, by + Math.sin(ang) * r * 0.15, r * 0.09, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(bx, by, r, 0, Math.PI * 2);
+        ctx.stroke();
+    };
+    dibujarBanderaChile(cx - rutaAncho / 2 - 34, cardY + 68, 15);
+    dibujarBanderaVenezuela(cx + rutaAncho / 2 + 34, cardY + 68, 15);
 
     ctx.strokeStyle = 'rgba(255,255,255,0.14)';
     ctx.lineWidth = 1;
@@ -2705,6 +2767,17 @@ function dibujarFrameTasa(ctx, data, t, slogan) {
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.font = '400 30px "Helvetica Neue", Arial, sans-serif';
     ctx.fillText(`${data.monedaDestino} por cada 1 ${data.monedaOrigen}`, cx, cardY + 295);
+
+    // Eslogan, en el espacio entre la tarjeta y el puente
+    if (slogan) {
+        ctx.save();
+        ctx.fillStyle = '#e8b84b';
+        ctx.fillRect(cx - 3, cardY + cardH + 26, 6, 6);
+        ctx.restore();
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.font = 'italic 400 30px "Helvetica Neue", Arial, sans-serif';
+        ctx.fillText(slogan, cx, cardY + cardH + 74);
+    }
 
     // --- Puente estilizado (ilustración propia, no una foto real) ---
     const deckY = 840, towerTopY = 630;
@@ -2769,6 +2842,21 @@ function dibujarFrameTasa(ctx, data, t, slogan) {
         ctx.fill();
     }
 
+    // Reflejo suave de la luna en el agua, como una franja de brillo vertical
+    ctx.save();
+    const moonReflect = ctx.createLinearGradient(0, deckY + 10, 0, H - 130);
+    moonReflect.addColorStop(0, 'rgba(255,247,222,0.16)');
+    moonReflect.addColorStop(1, 'rgba(255,247,222,0)');
+    ctx.fillStyle = moonReflect;
+    ctx.beginPath();
+    ctx.moveTo(moonX - 60, deckY + 10);
+    ctx.lineTo(moonX + 60, deckY + 10);
+    ctx.lineTo(moonX + 18, H - 130);
+    ctx.lineTo(moonX - 18, H - 130);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
     // Reflejo tenue de las torres y luces en el agua
     ctx.save();
     ctx.translate(0, deckY * 2);
@@ -2796,18 +2884,43 @@ function dibujarFrameTasa(ctx, data, t, slogan) {
     ctx.restore();
 
     // Degradado oscuro abajo para que la fecha se lea bien
-    const bottomGrad = ctx.createLinearGradient(0, H - 140, 0, H);
+    const bottomGrad = ctx.createLinearGradient(0, H - 205, 0, H);
     bottomGrad.addColorStop(0, 'rgba(8,15,25,0)');
-    bottomGrad.addColorStop(1, 'rgba(8,15,25,0.6)');
+    bottomGrad.addColorStop(1, 'rgba(8,15,25,0.68)');
     ctx.fillStyle = bottomGrad;
-    ctx.fillRect(0, H - 140, W, 140);
+    ctx.fillRect(0, H - 205, W, 205);
 
     const fecha = data.actualizadoEn && data.actualizadoEn.toDate
         ? data.actualizadoEn.toDate().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })
         : new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    // Aviso "tasa sujeta a cambios", como una pequeña píldora
+    ctx.font = '500 22px "Helvetica Neue", Arial, sans-serif';
+    const avisoTexto = 'Tasa sujeta a cambios';
+    const avisoAncho = ctx.measureText(avisoTexto).width;
+    const avisoY = H - 148;
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.beginPath();
+    ctx.roundRect(cx - avisoAncho / 2 - 18, avisoY - 22, avisoAncho + 36, 36, 18);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(cx - avisoAncho / 2 - 18, avisoY - 22, avisoAncho + 36, 36, 18);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText(avisoTexto, cx, avisoY + 3);
+
+    // Línea de confianza: bancos y métodos receptores (en dos líneas, ya
+    // que la lista es más larga)
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '400 21px "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText('Recibe en Banesco · Mercantil · BNC · Banco de Venezuela', cx, H - 100);
+    ctx.fillText('Provincial · Pago Móvil', cx, H - 74);
+
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.font = '400 26px "Helvetica Neue", Arial, sans-serif';
-    ctx.fillText(`Actualizado el ${fecha}`, cx, H - 55);
+    ctx.fillText(`Actualizado el ${fecha}`, cx, H - 36);
 
     // Marco sutil general para un acabado más cuidado
     ctx.strokeStyle = 'rgba(255,255,255,0.12)';
