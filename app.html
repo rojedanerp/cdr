@@ -1135,7 +1135,22 @@
         </section>
     </main>
 
-    <script src="js/calculadora.js?v=15"></script>
-    <script type="module" src="js/app.js?v=15"></script>
+    <!-- Vista previa de la imagen de tasa antes de compartir -->
+    <div class="modal-overlay hidden" id="tasaPreviewOverlay">
+        <div class="modal-box">
+            <button type="button" class="modal-close" id="tasaPreviewCerrarBtn">✕</button>
+            <img id="tasaPreviewImg" alt="Vista previa de la imagen de la tasa">
+            <div class="modal-actions">
+                <button type="button" class="btn-primary btn-form" id="tasaPreviewCompartirBtn">
+                    <span class="btn-text">📤 Compartir</span>
+                    <span class="spinner hidden"></span>
+                </button>
+                <button type="button" class="btn-secondary" id="tasaPreviewDescargarBtn">⬇️ Descargar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/calculadora.js?v=17"></script>
+    <script type="module" src="js/app.js?v=17"></script>
 </body>
 </html>
