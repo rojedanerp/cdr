@@ -502,93 +502,184 @@ button {
 }
 
 /* ============================================
-   CAJA / BILLETERA — filtros de listas de movimientos
-   (mismas clases .billetera-movs-* se reutilizan en Caja)
+   FILTROS — panel colapsable reutilizado en
+   Historial, Caja y Billetera (movimientos)
    ============================================ */
-.billetera-movs-filtros {
+.filtros-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--canvas);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.filtros-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: left;
+}
+
+.filtros-toggle:hover {
+  background: var(--route-blue-light);
+}
+
+.filtros-toggle-left,
+.filtros-toggle-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filtros-icon {
+  color: var(--slate);
+  flex-shrink: 0;
+}
+
+.filtros-count {
+  background: var(--route-blue);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 7px;
+  min-width: 10px;
+  text-align: center;
+}
+
+.filtros-count.hidden {
+  display: none;
+}
+
+.filtros-resultado {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--slate);
+}
+
+.filtros-chevron {
+  color: var(--slate);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.filtros-panel.abierto .filtros-chevron {
+  transform: rotate(180deg);
+}
+
+.filtros-chips {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 7px;
+  padding: 0 16px 12px;
 }
 
-.billetera-movs-filtro {
-  max-width: 220px;
+.filtros-chips:empty {
+  display: none;
+  padding: 0;
+}
+
+.filtro-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--route-blue-light);
+  color: var(--route-blue-dark);
+  border-radius: 999px;
+  padding: 4px 6px 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.filtro-chip button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--route-blue-dark);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.filtro-chip button:hover {
+  background: rgba(29, 78, 137, 0.18);
+}
+
+.filtros-body {
+  display: none;
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.filtros-panel.abierto .filtros-body {
+  display: block;
+}
+
+.filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px 16px;
+  padding-top: 14px;
+}
+
+.filtros-grid .input-group {
   margin: 0;
+  max-width: none;
 }
 
-.billetera-movs-filtro select,
-.billetera-movs-filtro input {
+.filtros-grid .input-group select,
+.filtros-grid .input-group input {
   width: 100%;
-  padding: 10px 14px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--ink);
   background: var(--surface);
 }
 
-.billetera-movs-filtro-buscar {
-  max-width: 260px;
-  flex: 1 1 200px;
+.filtros-span-2 {
+  grid-column: span 2;
 }
 
-@media (max-width: 480px) {
-  .billetera-movs-filtros {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .billetera-movs-filtro,
-  .billetera-movs-filtro-buscar {
-    max-width: none;
-  }
-}
-
-/* ============================================
-   HISTORIAL — filtros de remesas
-   ============================================ */
-.historial-filtros {
+.filtros-actions {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 16px;
-  margin-bottom: 16px;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
-.historial-filtro {
-  max-width: 200px;
-  margin: 0;
-}
-
-.historial-filtro select,
-.historial-filtro input {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-body);
-  font-size: 14px;
-  color: var(--ink);
-  background: var(--surface);
-}
-
-.historial-filtro-buscar {
-  max-width: 220px;
-  flex: 1 1 180px;
+@media (max-width: 640px) {
+  .filtros-toggle-right .filtros-resultado {
+    display: none;
+  }
 }
 
 @media (max-width: 480px) {
-  .historial-filtros {
-    flex-direction: column;
-    align-items: stretch;
+  .filtros-grid {
+    grid-template-columns: 1fr;
   }
 
-  .historial-filtro,
-  .historial-filtro-buscar {
-    max-width: none;
+  .filtros-span-2 {
+    grid-column: auto;
   }
 }
 
