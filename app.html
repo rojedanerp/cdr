@@ -870,6 +870,42 @@
                 <p class="section-subtitle">Todas las remesas procesadas</p>
             </div>
             <div class="panel">
+                <div class="historial-filtros">
+                    <div class="input-group historial-filtro">
+                        <label for="historialFiltroEstado">Estado</label>
+                        <select id="historialFiltroEstado">
+                            <option value="todos" selected>Todos</option>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="completado">Completado</option>
+                        </select>
+                    </div>
+                    <div class="input-group historial-filtro">
+                        <label for="historialFiltroPago">Forma de pago</label>
+                        <select id="historialFiltroPago">
+                            <option value="todos" selected>Todas</option>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="transferencia">Transferencia</option>
+                            <option value="caja_vecina">Caja Vecina</option>
+                        </select>
+                    </div>
+                    <div class="input-group historial-filtro">
+                        <label for="historialFiltroOrigen">País de origen</label>
+                        <select id="historialFiltroOrigen">
+                            <option value="todos" selected>Todos</option>
+                        </select>
+                    </div>
+                    <div class="input-group historial-filtro">
+                        <label for="historialFiltroDestino">País de destino</label>
+                        <select id="historialFiltroDestino">
+                            <option value="todos" selected>Todos</option>
+                        </select>
+                    </div>
+                    <div class="input-group historial-filtro historial-filtro-buscar">
+                        <label for="historialFiltroBuscar">Buscar cliente</label>
+                        <input type="text" id="historialFiltroBuscar" placeholder="Ej. Juan Pérez">
+                    </div>
+                    <button type="button" class="btn-secondary" id="historialFiltroLimpiar">Limpiar filtros</button>
+                </div>
                 <div class="table-wrap">
                     <table class="data-table">
                         <thead>
@@ -889,7 +925,7 @@
                 </div>
                 <div class="empty-state" id="historialEmpty">
                     <span class="empty-state-icon">📭</span>
-                    <p>Todavía no hay remesas registradas.</p>
+                    <p id="historialEmptyText">Todavía no hay remesas registradas.</p>
                     <span class="empty-state-hint">Usa "Nueva Remesa" para registrar la primera.</span>
                 </div>
             </div>
