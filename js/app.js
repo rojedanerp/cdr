@@ -2600,61 +2600,203 @@ async function quitarMarcaBoleta(remesaId) {
 // ============================================
 // COMPARTIR TASA COMO IMAGEN (para WhatsApp Estado, etc.)
 // ============================================
+const ESLOGAN_TASA = 'Tu dinero, más cerca de casa';
+
+// Dibuja UN cuadro de la escena (se usa tanto para el video animado como
+// para la imagen estática de respaldo). "t" va de 0 a 1 y controla el
+// parpadeo de las luces del puente — el puente es una ilustración propia
+// estilizada (torres, cables y luces), no una foto real.
+function dibujarFrameTasa(ctx, data, t, slogan) {
+    const W = 1080, H = 1080, cx = W / 2;
+    ctx.clearRect(0, 0, W, H);
+
+    // Cielo nocturno degradado
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#0a1c33');
+    grad.addColorStop(0.55, '#123258');
+    grad.addColorStop(1, '#1d4e89');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Estrellas sutiles, titilando
+    for (let i = 0; i < 36; i++) {
+        const sx = (i * 137) % W;
+        const sy = (i * 89) % 360;
+        const tw = 0.4 + 0.6 * Math.abs(Math.sin(t * 2 * Math.PI + i));
+        ctx.globalAlpha = tw * 0.6;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center';
+
+    // Marca
+    ctx.fillStyle = '#e8b84b';
+    ctx.fillRect(cx - 36, 78, 72, 4);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 54px "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText('Lagomarcambios', cx, 158);
+
+    // Tarjeta con la tasa
+    const cardX = 90, cardY = 200, cardW = W - 180, cardH = 330;
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.beginPath();
+    ctx.roundRect(cardX, cardY, cardW, cardH, 26);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.font = '500 42px "Helvetica Neue", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.fillText(`${data.monedaOrigen}  →  ${data.monedaDestino}`, cx, cardY + 80);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cardX + 70, cardY + 120);
+    ctx.lineTo(cardX + cardW - 70, cardY + 120);
+    ctx.stroke();
+
+    ctx.fillStyle = '#f2c866';
+    ctx.font = '700 104px "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText(`${data.tasa}`, cx, cardY + 245);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = '400 30px "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText(`${data.monedaDestino} por cada 1 ${data.monedaOrigen}`, cx, cardY + 295);
+
+    // Eslogan
+    ctx.fillStyle = '#e8b84b';
+    ctx.font = 'italic 400 34px "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText(slogan, cx, 590);
+
+    // --- Puente estilizado (ilustración propia, no una foto real) ---
+    const deckY = 840, towerTopY = 640;
+    const towerXs = [330, 750];
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(60, deckY);
+    ctx.lineTo(W - 60, deckY);
+    ctx.stroke();
+
+    towerXs.forEach((tx, ti) => {
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.fillRect(tx - 10, towerTopY, 20, deckY - towerTopY);
+
+        for (let i = 0; i < 7; i++) {
+            const dx = -140 + i * 46.6;
+            ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(tx, towerTopY + 20);
+            ctx.lineTo(tx + dx, deckY);
+            ctx.stroke();
+        }
+
+        const glow = 0.5 + 0.5 * Math.sin(t * 2 * Math.PI * 1.3 + ti * 2);
+        ctx.fillStyle = `rgba(242,200,102,${0.5 + 0.5 * glow})`;
+        ctx.beginPath();
+        ctx.arc(tx, towerTopY, 10, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Luces de la cubierta, parpadeando en cadena
+    for (let i = 0; i < 14; i++) {
+        const lx = 90 + i * ((W - 180) / 13);
+        const glow = 0.4 + 0.6 * Math.abs(Math.sin(t * 2 * Math.PI * 0.9 + i * 0.5));
+        ctx.fillStyle = `rgba(242,200,102,${glow})`;
+        ctx.beginPath();
+        ctx.arc(lx, deckY, 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Reflejo tenue en el agua
+    ctx.save();
+    ctx.translate(0, deckY * 2);
+    ctx.scale(1, -1);
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#ffffff';
+    towerXs.forEach(tx => ctx.fillRect(tx - 10, towerTopY, 20, deckY - towerTopY));
+    ctx.restore();
+
+    // Degradado oscuro abajo para que la fecha se lea bien
+    const bottomGrad = ctx.createLinearGradient(0, H - 140, 0, H);
+    bottomGrad.addColorStop(0, 'rgba(10,20,35,0)');
+    bottomGrad.addColorStop(1, 'rgba(10,20,35,0.55)');
+    ctx.fillStyle = bottomGrad;
+    ctx.fillRect(0, H - 140, W, 140);
+
+    const fecha = data.actualizadoEn && data.actualizadoEn.toDate
+        ? data.actualizadoEn.toDate().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })
+        : new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '400 26px "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText(`Actualizado el ${fecha}`, cx, H - 55);
+}
+
+// Imagen estática (respaldo si el navegador no puede grabar video)
 function dibujarImagenTasa(data) {
     const canvas = document.createElement('canvas');
     canvas.width = 1080;
     canvas.height = 1080;
-    const ctx = canvas.getContext('2d');
-
-    // Fondo degradado con los colores de marca
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, '#133560');
-    grad.addColorStop(1, '#1d4e89');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.textAlign = 'center';
-
-    // Marca
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 56px Arial, sans-serif';
-    ctx.fillText('Lagomarcambios', canvas.width / 2, 160);
-    ctx.font = '400 32px Arial, sans-serif';
-    ctx.fillStyle = '#c9d8ea';
-    ctx.fillText('Casa de cambio', canvas.width / 2, 210);
-
-    // Tarjeta central
-    const cardX = 80, cardY = 380, cardW = canvas.width - 160, cardH = 380;
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.beginPath();
-    ctx.roundRect(cardX, cardY, cardW, cardH, 32);
-    ctx.fill();
-
-    // Par de monedas
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 64px Arial, sans-serif';
-    ctx.fillText(`${data.monedaOrigen} → ${data.monedaDestino}`, canvas.width / 2, cardY + 100);
-
-    // Tasa (destacada en dorado)
-    ctx.fillStyle = '#e8b84b';
-    ctx.font = '700 88px Arial, sans-serif';
-    const tasaTexto = `1 ${data.monedaOrigen} = ${data.tasa} ${data.monedaDestino}`;
-    ctx.font = '700 60px Arial, sans-serif';
-    ctx.fillText(tasaTexto, canvas.width / 2, cardY + 230);
-
-    ctx.fillStyle = '#c9d8ea';
-    ctx.font = '400 34px Arial, sans-serif';
-    ctx.fillText('Tasa vigente', canvas.width / 2, cardY + 300);
-
-    // Fecha
-    const fecha = data.actualizadoEn && data.actualizadoEn.toDate
-        ? data.actualizadoEn.toDate().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })
-        : new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '400 30px Arial, sans-serif';
-    ctx.fillText(`Actualizado: ${fecha}`, canvas.width / 2, canvas.height - 100);
-
+    dibujarFrameTasa(canvas.getContext('2d'), data, 0.25, ESLOGAN_TASA);
     return canvas;
+}
+
+// Video corto animado (WebM) con el puente iluminándose
+function generarVideoTasa(data, slogan, duracionMs = 4000) {
+    return new Promise((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1080;
+        canvas.height = 1080;
+        canvas.style.position = 'fixed';
+        canvas.style.left = '-9999px';
+        document.body.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+
+        let stream, recorder;
+        try {
+            stream = canvas.captureStream(30);
+            const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+                ? 'video/webm;codecs=vp9' : 'video/webm';
+            recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4000000 });
+        } catch (error) {
+            document.body.removeChild(canvas);
+            reject(error);
+            return;
+        }
+
+        const chunks = [];
+        let raf;
+        const startTime = performance.now();
+
+        function loop(now) {
+            const t = ((now - startTime) / duracionMs) % 1;
+            dibujarFrameTasa(ctx, data, t, slogan);
+            raf = requestAnimationFrame(loop);
+        }
+
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = () => {
+            cancelAnimationFrame(raf);
+            document.body.removeChild(canvas);
+            resolve(new Blob(chunks, { type: 'video/webm' }));
+        };
+        recorder.onerror = (e) => {
+            cancelAnimationFrame(raf);
+            document.body.removeChild(canvas);
+            reject(e.error || new Error('Error al grabar el video'));
+        };
+
+        recorder.start();
+        raf = requestAnimationFrame(loop);
+        setTimeout(() => recorder.stop(), duracionMs);
+    });
 }
 
 window.compartirTasaImagen = async (docId) => {
@@ -2664,40 +2806,60 @@ window.compartirTasaImagen = async (docId) => {
         return;
     }
 
-    const canvas = dibujarImagenTasa(data);
-    canvas.toBlob(async (blob) => {
-        if (!blob) {
-            alert('No se pudo generar la imagen. Intenta de nuevo.');
+    const soportaVideo = typeof MediaRecorder !== 'undefined'
+        && typeof HTMLCanvasElement.prototype.captureStream === 'function';
+
+    let blob, nombreArchivo, mimeType, esVideo = false;
+
+    if (soportaVideo) {
+        try {
+            blob = await generarVideoTasa(data, ESLOGAN_TASA);
+            nombreArchivo = `tasa-${data.monedaOrigen}-${data.monedaDestino}.webm`;
+            mimeType = 'video/webm';
+            esVideo = true;
+        } catch (error) {
+            console.error('No se pudo grabar el video, se usa imagen estática:', error);
+        }
+    }
+
+    if (!blob) {
+        const canvas = dibujarImagenTasa(data);
+        blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        nombreArchivo = `tasa-${data.monedaOrigen}-${data.monedaDestino}.png`;
+        mimeType = 'image/png';
+    }
+
+    if (!blob) {
+        alert('No se pudo generar el archivo. Intenta de nuevo.');
+        return;
+    }
+
+    const file = new File([blob], nombreArchivo, { type: mimeType });
+
+    // En celular, esto abre el selector nativo (WhatsApp, Instagram, etc.)
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({
+                files: [file],
+                title: `Tasa ${data.monedaOrigen} → ${data.monedaDestino}`,
+                text: `Tasa vigente: ${data.tasa} ${data.monedaDestino} por 1 ${data.monedaOrigen}`
+            });
             return;
+        } catch (error) {
+            if (error && error.name === 'AbortError') return; // el usuario canceló el share
+            console.error('Error al compartir el archivo:', error);
+            // sigue al fallback de descarga
         }
-        const nombreArchivo = `tasa-${data.monedaOrigen}-${data.monedaDestino}.png`;
-        const file = new File([blob], nombreArchivo, { type: 'image/png' });
+    }
 
-        // En celular, esto abre el selector nativo (WhatsApp, Instagram, etc.)
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({
-                    files: [file],
-                    title: `Tasa ${data.monedaOrigen} → ${data.monedaDestino}`,
-                    text: `Tasa vigente: 1 ${data.monedaOrigen} = ${data.tasa} ${data.monedaDestino}`
-                });
-                return;
-            } catch (error) {
-                if (error && error.name === 'AbortError') return; // el usuario canceló el share
-                console.error('Error al compartir la imagen:', error);
-                // sigue al fallback de descarga
-            }
-        }
-
-        // Fallback: descargar la imagen para compartirla manualmente
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = nombreArchivo;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-        alert('Se descargó la imagen. Ábrela desde tus descargas para compartirla en WhatsApp.');
-    }, 'image/png');
+    // Fallback: descargar el archivo para compartirlo manualmente
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    alert(`Se descargó ${esVideo ? 'el video' : 'la imagen'} (${nombreArchivo}). Ábrelo desde tus descargas para compartirlo en WhatsApp.`);
 };
