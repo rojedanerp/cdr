@@ -450,6 +450,13 @@ button {
   margin-bottom: 16px;
 }
 
+.reportes-filtro-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
 .reportes-filtro {
   max-width: 260px;
   margin: 0;
@@ -464,6 +471,34 @@ button {
   font-size: 14px;
   color: var(--ink);
   background: var(--surface);
+}
+
+.reportes-filtro-fecha {
+  max-width: 170px;
+  margin: 0;
+}
+
+.reportes-filtro-fecha input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+@media (max-width: 480px) {
+  .reportes-filtro-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reportes-filtro,
+  .reportes-filtro-fecha {
+    max-width: none;
+  }
 }
 
 .rep-chart-wrap {
