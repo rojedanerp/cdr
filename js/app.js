@@ -1259,6 +1259,16 @@ function nombreMesCapitalizado(claveMes) {
     return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
+// Ganancia neta de una remesa: la diferencia entre lo que cobraste (montoEnviado)
+// y lo que realmente te costó en tu moneda, valorado a la tasa de mercado
+// (tasaReferencia, sin margen). Esto incluye TANTO el monto enviado al destinatario
+// COMO la comisión bancaria extra (si aplica) — ambos salen de tu bolsillo.
+function calcularGananciaNeta(r) {
+    const comisionMonto = (r.montoRecibido || 0) * ((r.comisionDestino || 0) / 100);
+    const costoTotalDestino = (r.montoRecibido || 0) + comisionMonto;
+    return r.montoEnviado - (costoTotalDestino / r.tasaReferencia);
+}
+
 function renderizarReportes() {
     if (!reportesPeriodo) return;
 
@@ -1303,17 +1313,7 @@ function renderizarReportes() {
         repStatTicket.textContent = '—';
     }
 
-    // Ganancia neta de una remesa: la diferencia entre lo que cobraste (montoEnviado)
-// y lo que realmente te costó en tu moneda, valorado a la tasa de mercado
-// (tasaReferencia, sin margen). Esto incluye TANTO el monto enviado al destinatario
-// COMO la comisión bancaria extra (si aplica) — ambos salen de tu bolsillo.
-function calcularGananciaNeta(r) {
-    const comisionMonto = (r.montoRecibido || 0) * ((r.comisionDestino || 0) / 100);
-    const costoTotalDestino = (r.montoRecibido || 0) + comisionMonto;
-    return r.montoEnviado - (costoTotalDestino / r.tasaReferencia);
-}
-
-// --- Stat: ganancia estimada (solo remesas con tasa de referencia guardada) ---
+    // --- Stat: ganancia estimada (solo remesas con tasa de referencia guardada) ---
     const conReferencia = enPeriodo.filter(r => r.tasaReferencia != null && r.tasaReferencia > 0 && r.tasaCambio != null && r.montoRecibido != null);
     repStatSinRef.textContent = enPeriodo.length - conReferencia.length;
 
