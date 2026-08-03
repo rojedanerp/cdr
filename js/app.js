@@ -64,6 +64,17 @@ const formatDate = (timestamp) => {
     return timestamp.toDate().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
+// Comprueba si un Firestore Timestamp cae dentro del rango [desde, hasta]
+// (strings 'YYYY-MM-DD' que vienen de un <input type="date">, ambos inclusive).
+// Un extremo vacío significa "sin límite" por ese lado.
+const fechaEnRango = (timestamp, desde, hasta) => {
+    if (!timestamp || !timestamp.toDate) return !desde && !hasta;
+    const fecha = timestamp.toDate();
+    if (desde && fecha < new Date(desde + 'T00:00:00')) return false;
+    if (hasta && fecha > new Date(hasta + 'T23:59:59.999')) return false;
+    return true;
+};
+
 const badgeClass = (estado) => {
     if (estado === 'completado') return 'badge badge-success';
     if (estado === 'cancelado') return 'badge badge-danger';
@@ -645,6 +656,8 @@ const historialFiltroPago = document.getElementById('historialFiltroPago');
 const historialFiltroOrigen = document.getElementById('historialFiltroOrigen');
 const historialFiltroDestino = document.getElementById('historialFiltroDestino');
 const historialFiltroBuscar = document.getElementById('historialFiltroBuscar');
+const historialFiltroDesde = document.getElementById('historialFiltroDesde');
+const historialFiltroHasta = document.getElementById('historialFiltroHasta');
 const historialFiltroLimpiar = document.getElementById('historialFiltroLimpiar');
 
 let historialCache = []; // [{ id, r }] — todas las remesas, sin filtrar
@@ -699,8 +712,11 @@ function aplicarFiltroHistorial() {
     const origenFiltro = historialFiltroOrigen.value;
     const destinoFiltro = historialFiltroDestino.value;
     const textoBusqueda = historialFiltroBuscar.value.trim().toLowerCase();
+    const desdeFiltro = historialFiltroDesde.value;
+    const hastaFiltro = historialFiltroHasta.value;
     const hayFiltrosActivos = estadoFiltro !== 'todos' || pagoFiltro !== 'todos' ||
-        origenFiltro !== 'todos' || destinoFiltro !== 'todos' || textoBusqueda !== '';
+        origenFiltro !== 'todos' || destinoFiltro !== 'todos' || textoBusqueda !== '' ||
+        desdeFiltro !== '' || hastaFiltro !== '';
 
     const filtrados = historialCache.filter(({ r }) => {
         if (estadoFiltro !== 'todos' && (r.estado || 'pendiente') !== estadoFiltro) return false;
@@ -708,6 +724,7 @@ function aplicarFiltroHistorial() {
         if (origenFiltro !== 'todos' && r.paisOrigen !== origenFiltro) return false;
         if (destinoFiltro !== 'todos' && r.paisDestino !== destinoFiltro) return false;
         if (textoBusqueda && !(r.clienteNombre || '').toLowerCase().includes(textoBusqueda)) return false;
+        if ((desdeFiltro || hastaFiltro) && !fechaEnRango(r.createdAt, desdeFiltro, hastaFiltro)) return false;
         return true;
     });
 
@@ -727,7 +744,7 @@ function aplicarFiltroHistorial() {
     });
 }
 
-[historialFiltroEstado, historialFiltroPago, historialFiltroOrigen, historialFiltroDestino].forEach(el => {
+[historialFiltroEstado, historialFiltroPago, historialFiltroOrigen, historialFiltroDestino, historialFiltroDesde, historialFiltroHasta].forEach(el => {
     el.addEventListener('change', aplicarFiltroHistorial);
 });
 historialFiltroBuscar.addEventListener('input', aplicarFiltroHistorial);
@@ -737,6 +754,8 @@ historialFiltroLimpiar.addEventListener('click', () => {
     historialFiltroOrigen.value = 'todos';
     historialFiltroDestino.value = 'todos';
     historialFiltroBuscar.value = '';
+    historialFiltroDesde.value = '';
+    historialFiltroHasta.value = '';
     aplicarFiltroHistorial();
 });
 
@@ -2088,6 +2107,8 @@ const billeteraMovsEmptyText = document.getElementById('billeteraMovsEmptyText')
 const billeteraMovsFiltroTipo = document.getElementById('billeteraMovsFiltroTipo');
 const billeteraMovsFiltroOrigen = document.getElementById('billeteraMovsFiltroOrigen');
 const billeteraMovsFiltroBuscar = document.getElementById('billeteraMovsFiltroBuscar');
+const billeteraMovsFiltroDesde = document.getElementById('billeteraMovsFiltroDesde');
+const billeteraMovsFiltroHasta = document.getElementById('billeteraMovsFiltroHasta');
 const billeteraMovsFiltroLimpiar = document.getElementById('billeteraMovsFiltroLimpiar');
 // Guarda el listado completo (con saldo acumulado ya calculado) para poder
 // re-filtrar en el cliente sin tener que recalcular saldos ni volver a
@@ -2197,12 +2218,16 @@ function aplicarFiltroBilleteraMovs() {
     const tipoFiltro = billeteraMovsFiltroTipo.value;
     const origenFiltro = billeteraMovsFiltroOrigen.value;
     const textoBusqueda = billeteraMovsFiltroBuscar.value.trim().toLowerCase();
-    const hayFiltrosActivos = tipoFiltro !== 'todos' || origenFiltro !== 'todos' || textoBusqueda !== '';
+    const desdeFiltro = billeteraMovsFiltroDesde.value;
+    const hastaFiltro = billeteraMovsFiltroHasta.value;
+    const hayFiltrosActivos = tipoFiltro !== 'todos' || origenFiltro !== 'todos' || textoBusqueda !== '' ||
+        desdeFiltro !== '' || hastaFiltro !== '';
 
     const filtrados = billeteraMovsConSaldoCache.filter(({ mov }) => {
         if (tipoFiltro !== 'todos' && mov.tipo !== tipoFiltro) return false;
         if (origenFiltro !== 'todos' && (mov.origen || 'manual') !== origenFiltro) return false;
         if (textoBusqueda && !(mov.concepto || '').toLowerCase().includes(textoBusqueda)) return false;
+        if ((desdeFiltro || hastaFiltro) && !fechaEnRango(mov.createdAt, desdeFiltro, hastaFiltro)) return false;
         return true;
     });
 
@@ -2233,7 +2258,7 @@ function aplicarFiltroBilleteraMovs() {
     });
 }
 
-[billeteraMovsFiltroTipo, billeteraMovsFiltroOrigen].forEach(el => {
+[billeteraMovsFiltroTipo, billeteraMovsFiltroOrigen, billeteraMovsFiltroDesde, billeteraMovsFiltroHasta].forEach(el => {
     el.addEventListener('change', aplicarFiltroBilleteraMovs);
 });
 billeteraMovsFiltroBuscar.addEventListener('input', aplicarFiltroBilleteraMovs);
@@ -2241,6 +2266,8 @@ billeteraMovsFiltroLimpiar.addEventListener('click', () => {
     billeteraMovsFiltroTipo.value = 'todos';
     billeteraMovsFiltroOrigen.value = 'todos';
     billeteraMovsFiltroBuscar.value = '';
+    billeteraMovsFiltroDesde.value = '';
+    billeteraMovsFiltroHasta.value = '';
     aplicarFiltroBilleteraMovs();
 });
 
