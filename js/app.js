@@ -1933,6 +1933,15 @@ const billeteraTasaPromedioVentaEl = document.getElementById('billeteraTasaProme
 const billeteraMovsBody = document.getElementById('billeteraMovsBody');
 const billeteraMovsTableWrap = document.getElementById('billeteraMovsTableWrap');
 const billeteraMovsEmpty = document.getElementById('billeteraMovsEmpty');
+const billeteraMovsEmptyText = document.getElementById('billeteraMovsEmptyText');
+const billeteraMovsFiltroTipo = document.getElementById('billeteraMovsFiltroTipo');
+const billeteraMovsFiltroOrigen = document.getElementById('billeteraMovsFiltroOrigen');
+const billeteraMovsFiltroBuscar = document.getElementById('billeteraMovsFiltroBuscar');
+const billeteraMovsFiltroLimpiar = document.getElementById('billeteraMovsFiltroLimpiar');
+// Guarda el listado completo (con saldo acumulado ya calculado) para poder
+// re-filtrar en el cliente sin tener que recalcular saldos ni volver a
+// consultar Firestore cada vez que cambia un filtro.
+let billeteraMovsConSaldoCache = [];
 const billeteraVentaForm = document.getElementById('billeteraVentaForm');
 const billeteraUsdtVendidoInput = document.getElementById('billeteraUsdtVendido');
 const billeteraVesRecibidoInput = document.getElementById('billeteraVesRecibido');
@@ -2015,15 +2024,6 @@ function renderBilletera(movimientos) {
 }
 
 function renderBilleteraMovimientos(movimientosUsdt) {
-    billeteraMovsBody.innerHTML = '';
-    if (movimientosUsdt.length === 0) {
-        billeteraMovsEmpty.style.display = 'block';
-        billeteraMovsTableWrap.style.display = 'none';
-        return;
-    }
-    billeteraMovsEmpty.style.display = 'none';
-    billeteraMovsTableWrap.style.display = 'block';
-
     // movimientosUsdt viene ordenado de más nuevo a más antiguo (así llega la
     // consulta de Caja). Para calcular el saldo acumulado hay que recorrerlo
     // de más antiguo a más nuevo, y luego mostrarlo en el orden original.
@@ -2034,7 +2034,40 @@ function renderBilleteraMovimientos(movimientosUsdt) {
         return { mov, saldo: saldoCorrido };
     }).reverse();
 
-    conSaldo.forEach(({ mov, saldo }) => {
+    billeteraMovsConSaldoCache = conSaldo;
+    aplicarFiltroBilleteraMovs();
+}
+
+// Aplica los filtros de tipo, origen y búsqueda por concepto sobre el listado
+// ya calculado en billeteraMovsConSaldoCache. El saldo mostrado en cada fila
+// siempre corresponde al histórico completo (no cambia según el filtro), solo
+// se decide qué filas mostrar.
+function aplicarFiltroBilleteraMovs() {
+    const tipoFiltro = billeteraMovsFiltroTipo.value;
+    const origenFiltro = billeteraMovsFiltroOrigen.value;
+    const textoBusqueda = billeteraMovsFiltroBuscar.value.trim().toLowerCase();
+    const hayFiltrosActivos = tipoFiltro !== 'todos' || origenFiltro !== 'todos' || textoBusqueda !== '';
+
+    const filtrados = billeteraMovsConSaldoCache.filter(({ mov }) => {
+        if (tipoFiltro !== 'todos' && mov.tipo !== tipoFiltro) return false;
+        if (origenFiltro !== 'todos' && (mov.origen || 'manual') !== origenFiltro) return false;
+        if (textoBusqueda && !(mov.concepto || '').toLowerCase().includes(textoBusqueda)) return false;
+        return true;
+    });
+
+    billeteraMovsBody.innerHTML = '';
+    if (filtrados.length === 0) {
+        billeteraMovsEmpty.style.display = 'block';
+        billeteraMovsTableWrap.style.display = 'none';
+        billeteraMovsEmptyText.textContent = hayFiltrosActivos
+            ? 'No hay movimientos que coincidan con el filtro.'
+            : 'Todavía no hay movimientos de USDT.';
+        return;
+    }
+    billeteraMovsEmpty.style.display = 'none';
+    billeteraMovsTableWrap.style.display = 'block';
+
+    filtrados.forEach(({ mov, saldo }) => {
         const signo = mov.tipo === 'entrada' ? '+' : '−';
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -2048,6 +2081,17 @@ function renderBilleteraMovimientos(movimientosUsdt) {
         billeteraMovsBody.appendChild(tr);
     });
 }
+
+[billeteraMovsFiltroTipo, billeteraMovsFiltroOrigen].forEach(el => {
+    el.addEventListener('change', aplicarFiltroBilleteraMovs);
+});
+billeteraMovsFiltroBuscar.addEventListener('input', aplicarFiltroBilleteraMovs);
+billeteraMovsFiltroLimpiar.addEventListener('click', () => {
+    billeteraMovsFiltroTipo.value = 'todos';
+    billeteraMovsFiltroOrigen.value = 'todos';
+    billeteraMovsFiltroBuscar.value = '';
+    aplicarFiltroBilleteraMovs();
+});
 
 function renderBilleteraCompras(compras) {
 
