@@ -535,7 +535,10 @@ remesaForm.addEventListener('submit', async (e) => {
             montoEnviado,
             monedaEnviado: document.getElementById('monedaEnviado').value.trim().toUpperCase(),
             tasaCambio,
-            tasaReferencia: tasaReferenciaActual, // tasa configurada/en vivo sugerida al momento del registro, para calcular margen
+            // Si no hay tasa de referencia (ej. la tasa se ingresó a mano y nunca se
+            // autocompletó), se usa la misma tasa ofrecida como respaldo para que la
+            // remesa igual aparezca en reportes (con ganancia $0 en vez de quedar oculta).
+            tasaReferencia: tasaReferenciaActual != null ? tasaReferenciaActual : tasaCambio,
             montoRecibido,
             monedaRecibido,
             estado: document.getElementById('estado').value,
