@@ -2657,7 +2657,7 @@ function dibujarImagenTasa(data) {
     return canvas;
 }
 
-async function compartirTasaImagen(docId) {
+window.compartirTasaImagen = async (docId) => {
     const data = tasasCache[`__doc_${docId}`];
     if (!data) {
         alert('No se encontró esa tasa. Recarga la página e intenta de nuevo.');
@@ -2700,4 +2700,4 @@ async function compartirTasaImagen(docId) {
         URL.revokeObjectURL(url);
         alert('Se descargó la imagen. Ábrela desde tus descargas para compartirla en WhatsApp.');
     }, 'image/png');
-}
+};
