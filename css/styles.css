@@ -502,7 +502,8 @@ button {
 }
 
 /* ============================================
-   BILLETERA — filtros de movimientos de USDT
+   CAJA / BILLETERA — filtros de listas de movimientos
+   (mismas clases .billetera-movs-* se reutilizan en Caja)
    ============================================ */
 .billetera-movs-filtros {
   display: flex;
