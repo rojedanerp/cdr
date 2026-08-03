@@ -2748,57 +2748,6 @@ function dibujarImagenTasa(data) {
     return canvas;
 }
 
-// Video corto animado (WebM) con el puente iluminándose
-function generarVideoTasa(data, slogan, duracionMs = 4000) {
-    return new Promise((resolve, reject) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1080;
-        canvas.height = 1080;
-        canvas.style.position = 'fixed';
-        canvas.style.left = '-9999px';
-        document.body.appendChild(canvas);
-        const ctx = canvas.getContext('2d');
-
-        let stream, recorder;
-        try {
-            stream = canvas.captureStream(30);
-            const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-                ? 'video/webm;codecs=vp9' : 'video/webm';
-            recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4000000 });
-        } catch (error) {
-            document.body.removeChild(canvas);
-            reject(error);
-            return;
-        }
-
-        const chunks = [];
-        let raf;
-        const startTime = performance.now();
-
-        function loop(now) {
-            const t = ((now - startTime) / duracionMs) % 1;
-            dibujarFrameTasa(ctx, data, t, slogan);
-            raf = requestAnimationFrame(loop);
-        }
-
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-        recorder.onstop = () => {
-            cancelAnimationFrame(raf);
-            document.body.removeChild(canvas);
-            resolve(new Blob(chunks, { type: 'video/webm' }));
-        };
-        recorder.onerror = (e) => {
-            cancelAnimationFrame(raf);
-            document.body.removeChild(canvas);
-            reject(e.error || new Error('Error al grabar el video'));
-        };
-
-        recorder.start();
-        raf = requestAnimationFrame(loop);
-        setTimeout(() => recorder.stop(), duracionMs);
-    });
-}
-
 window.compartirTasaImagen = async (docId) => {
     const data = tasasCache[`__doc_${docId}`];
     if (!data) {
@@ -2806,35 +2755,15 @@ window.compartirTasaImagen = async (docId) => {
         return;
     }
 
-    const soportaVideo = typeof MediaRecorder !== 'undefined'
-        && typeof HTMLCanvasElement.prototype.captureStream === 'function';
-
-    let blob, nombreArchivo, mimeType, esVideo = false;
-
-    if (soportaVideo) {
-        try {
-            blob = await generarVideoTasa(data, ESLOGAN_TASA);
-            nombreArchivo = `tasa-${data.monedaOrigen}-${data.monedaDestino}.webm`;
-            mimeType = 'video/webm';
-            esVideo = true;
-        } catch (error) {
-            console.error('No se pudo grabar el video, se usa imagen estática:', error);
-        }
-    }
-
+    const canvas = dibujarImagenTasa(data);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     if (!blob) {
-        const canvas = dibujarImagenTasa(data);
-        blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-        nombreArchivo = `tasa-${data.monedaOrigen}-${data.monedaDestino}.png`;
-        mimeType = 'image/png';
-    }
-
-    if (!blob) {
-        alert('No se pudo generar el archivo. Intenta de nuevo.');
+        alert('No se pudo generar la imagen. Intenta de nuevo.');
         return;
     }
 
-    const file = new File([blob], nombreArchivo, { type: mimeType });
+    const nombreArchivo = `tasa-${data.monedaOrigen}-${data.monedaDestino}.png`;
+    const file = new File([blob], nombreArchivo, { type: 'image/png' });
 
     // En celular, esto abre el selector nativo (WhatsApp, Instagram, etc.)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -2847,12 +2776,12 @@ window.compartirTasaImagen = async (docId) => {
             return;
         } catch (error) {
             if (error && error.name === 'AbortError') return; // el usuario canceló el share
-            console.error('Error al compartir el archivo:', error);
+            console.error('Error al compartir la imagen:', error);
             // sigue al fallback de descarga
         }
     }
 
-    // Fallback: descargar el archivo para compartirlo manualmente
+    // Fallback: descargar la imagen para compartirla manualmente
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -2861,5 +2790,5 @@ window.compartirTasaImagen = async (docId) => {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    alert(`Se descargó ${esVideo ? 'el video' : 'la imagen'} (${nombreArchivo}). Ábrelo desde tus descargas para compartirlo en WhatsApp.`);
+    alert(`Se descargó la imagen (${nombreArchivo}). Ábrela desde tus descargas para compartirla en WhatsApp.`);
 };
