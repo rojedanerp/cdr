@@ -444,6 +444,45 @@
                     esa remesa, el movimiento se actualiza solo. Los movimientos manuales (aportes, retiros,
                     pagos de gastos, etc.) se pueden eliminar directamente.
                 </p>
+                <div class="billetera-movs-filtros">
+                    <div class="input-group billetera-movs-filtro">
+                        <label for="cajaFiltroDesde">Desde</label>
+                        <input type="date" id="cajaFiltroDesde">
+                    </div>
+                    <div class="input-group billetera-movs-filtro">
+                        <label for="cajaFiltroHasta">Hasta</label>
+                        <input type="date" id="cajaFiltroHasta">
+                    </div>
+                    <div class="input-group billetera-movs-filtro">
+                        <label for="cajaFiltroTipo">Tipo</label>
+                        <select id="cajaFiltroTipo">
+                            <option value="todos" selected>Todos</option>
+                            <option value="entrada">Entradas</option>
+                            <option value="salida">Salidas</option>
+                        </select>
+                    </div>
+                    <div class="input-group billetera-movs-filtro">
+                        <label for="cajaFiltroMoneda">Moneda</label>
+                        <select id="cajaFiltroMoneda">
+                            <option value="todos" selected>Todas</option>
+                        </select>
+                    </div>
+                    <div class="input-group billetera-movs-filtro">
+                        <label for="cajaFiltroOrigen">Origen</label>
+                        <select id="cajaFiltroOrigen">
+                            <option value="todos" selected>Todos</option>
+                            <option value="remesa">Remesa automática</option>
+                            <option value="compra_usdt">Compra USDT</option>
+                            <option value="venta_usdt">Venta USDT</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                    </div>
+                    <div class="input-group billetera-movs-filtro billetera-movs-filtro-buscar">
+                        <label for="cajaFiltroBuscar">Buscar en concepto</label>
+                        <input type="text" id="cajaFiltroBuscar" placeholder="Ej. Retiro">
+                    </div>
+                    <button type="button" class="btn-secondary" id="cajaFiltroLimpiar">Limpiar filtros</button>
+                </div>
                 <div class="table-wrap" id="cajaTableWrap">
                     <table class="data-table">
                         <thead>
@@ -462,7 +501,7 @@
                 </div>
                 <div class="empty-state" id="cajaEmpty">
                     <span class="empty-state-icon">📭</span>
-                    <p>Todavía no hay movimientos registrados.</p>
+                    <p id="cajaEmptyText">Todavía no hay movimientos registrados.</p>
                 </div>
             </div>
         </section>
