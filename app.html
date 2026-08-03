@@ -444,44 +444,62 @@
                     esa remesa, el movimiento se actualiza solo. Los movimientos manuales (aportes, retiros,
                     pagos de gastos, etc.) se pueden eliminar directamente.
                 </p>
-                <div class="billetera-movs-filtros">
-                    <div class="input-group billetera-movs-filtro">
-                        <label for="cajaFiltroDesde">Desde</label>
-                        <input type="date" id="cajaFiltroDesde">
+                <div class="filtros-panel" id="cajaFiltrosPanel">
+                    <button type="button" class="filtros-toggle" id="cajaFiltrosToggle" aria-expanded="false" aria-controls="cajaFiltrosBody">
+                        <span class="filtros-toggle-left">
+                            <svg class="filtros-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
+                            Filtros
+                            <span class="filtros-count hidden" id="cajaFiltrosCount">0</span>
+                        </span>
+                        <span class="filtros-toggle-right">
+                            <span class="filtros-resultado" id="cajaResultCount"></span>
+                            <svg class="filtros-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </span>
+                    </button>
+                    <div class="filtros-chips" id="cajaFiltrosChips"></div>
+                    <div class="filtros-body" id="cajaFiltrosBody">
+                        <div class="filtros-grid">
+                            <div class="input-group">
+                                <label for="cajaFiltroDesde">Desde</label>
+                                <input type="date" id="cajaFiltroDesde">
+                            </div>
+                            <div class="input-group">
+                                <label for="cajaFiltroHasta">Hasta</label>
+                                <input type="date" id="cajaFiltroHasta">
+                            </div>
+                            <div class="input-group">
+                                <label for="cajaFiltroTipo">Tipo</label>
+                                <select id="cajaFiltroTipo">
+                                    <option value="todos" selected>Todos</option>
+                                    <option value="entrada">Entradas</option>
+                                    <option value="salida">Salidas</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="cajaFiltroMoneda">Moneda</label>
+                                <select id="cajaFiltroMoneda">
+                                    <option value="todos" selected>Todas</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="cajaFiltroOrigen">Origen</label>
+                                <select id="cajaFiltroOrigen">
+                                    <option value="todos" selected>Todos</option>
+                                    <option value="remesa">Remesa automática</option>
+                                    <option value="compra_usdt">Compra USDT</option>
+                                    <option value="venta_usdt">Venta USDT</option>
+                                    <option value="manual">Manual</option>
+                                </select>
+                            </div>
+                            <div class="input-group filtros-span-2">
+                                <label for="cajaFiltroBuscar">Buscar en concepto</label>
+                                <input type="text" id="cajaFiltroBuscar" placeholder="Ej. Retiro">
+                            </div>
+                        </div>
+                        <div class="filtros-actions">
+                            <button type="button" class="btn-secondary" id="cajaFiltroLimpiar">Limpiar filtros</button>
+                        </div>
                     </div>
-                    <div class="input-group billetera-movs-filtro">
-                        <label for="cajaFiltroHasta">Hasta</label>
-                        <input type="date" id="cajaFiltroHasta">
-                    </div>
-                    <div class="input-group billetera-movs-filtro">
-                        <label for="cajaFiltroTipo">Tipo</label>
-                        <select id="cajaFiltroTipo">
-                            <option value="todos" selected>Todos</option>
-                            <option value="entrada">Entradas</option>
-                            <option value="salida">Salidas</option>
-                        </select>
-                    </div>
-                    <div class="input-group billetera-movs-filtro">
-                        <label for="cajaFiltroMoneda">Moneda</label>
-                        <select id="cajaFiltroMoneda">
-                            <option value="todos" selected>Todas</option>
-                        </select>
-                    </div>
-                    <div class="input-group billetera-movs-filtro">
-                        <label for="cajaFiltroOrigen">Origen</label>
-                        <select id="cajaFiltroOrigen">
-                            <option value="todos" selected>Todos</option>
-                            <option value="remesa">Remesa automática</option>
-                            <option value="compra_usdt">Compra USDT</option>
-                            <option value="venta_usdt">Venta USDT</option>
-                            <option value="manual">Manual</option>
-                        </select>
-                    </div>
-                    <div class="input-group billetera-movs-filtro billetera-movs-filtro-buscar">
-                        <label for="cajaFiltroBuscar">Buscar en concepto</label>
-                        <input type="text" id="cajaFiltroBuscar" placeholder="Ej. Retiro">
-                    </div>
-                    <button type="button" class="btn-secondary" id="cajaFiltroLimpiar">Limpiar filtros</button>
                 </div>
                 <div class="table-wrap" id="cajaTableWrap">
                     <table class="data-table">
@@ -676,38 +694,56 @@
                     Compras (entra USDT) y remesas enviadas en USDT (sale USDT), en orden — con el saldo
                     que va quedando después de cada movimiento, para que sepas para dónde se fue cada USDT.
                 </p>
-                <div class="billetera-movs-filtros">
-                    <div class="input-group billetera-movs-filtro">
-                        <label for="billeteraMovsFiltroTipo">Tipo</label>
-                        <select id="billeteraMovsFiltroTipo">
-                            <option value="todos" selected>Todos</option>
-                            <option value="entrada">Entradas</option>
-                            <option value="salida">Salidas</option>
-                        </select>
+                <div class="filtros-panel" id="billeteraMovsFiltrosPanel">
+                    <button type="button" class="filtros-toggle" id="billeteraMovsFiltrosToggle" aria-expanded="false" aria-controls="billeteraMovsFiltrosBody">
+                        <span class="filtros-toggle-left">
+                            <svg class="filtros-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
+                            Filtros
+                            <span class="filtros-count hidden" id="billeteraMovsFiltrosCount">0</span>
+                        </span>
+                        <span class="filtros-toggle-right">
+                            <span class="filtros-resultado" id="billeteraMovsResultCount"></span>
+                            <svg class="filtros-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </span>
+                    </button>
+                    <div class="filtros-chips" id="billeteraMovsFiltrosChips"></div>
+                    <div class="filtros-body" id="billeteraMovsFiltrosBody">
+                        <div class="filtros-grid">
+                            <div class="input-group">
+                                <label for="billeteraMovsFiltroTipo">Tipo</label>
+                                <select id="billeteraMovsFiltroTipo">
+                                    <option value="todos" selected>Todos</option>
+                                    <option value="entrada">Entradas</option>
+                                    <option value="salida">Salidas</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="billeteraMovsFiltroOrigen">Origen</label>
+                                <select id="billeteraMovsFiltroOrigen">
+                                    <option value="todos" selected>Todos</option>
+                                    <option value="compra_usdt">Compras</option>
+                                    <option value="venta_usdt">Ventas</option>
+                                    <option value="remesa">Remesas</option>
+                                    <option value="manual">Manual</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="billeteraMovsFiltroDesde">Desde</label>
+                                <input type="date" id="billeteraMovsFiltroDesde">
+                            </div>
+                            <div class="input-group">
+                                <label for="billeteraMovsFiltroHasta">Hasta</label>
+                                <input type="date" id="billeteraMovsFiltroHasta">
+                            </div>
+                            <div class="input-group filtros-span-2">
+                                <label for="billeteraMovsFiltroBuscar">Buscar en concepto</label>
+                                <input type="text" id="billeteraMovsFiltroBuscar" placeholder="Ej. Binance">
+                            </div>
+                        </div>
+                        <div class="filtros-actions">
+                            <button type="button" class="btn-secondary" id="billeteraMovsFiltroLimpiar">Limpiar filtros</button>
+                        </div>
                     </div>
-                    <div class="input-group billetera-movs-filtro">
-                        <label for="billeteraMovsFiltroOrigen">Origen</label>
-                        <select id="billeteraMovsFiltroOrigen">
-                            <option value="todos" selected>Todos</option>
-                            <option value="compra_usdt">Compras</option>
-                            <option value="venta_usdt">Ventas</option>
-                            <option value="remesa">Remesas</option>
-                            <option value="manual">Manual</option>
-                        </select>
-                    </div>
-                    <div class="input-group billetera-movs-filtro">
-                        <label for="billeteraMovsFiltroDesde">Desde</label>
-                        <input type="date" id="billeteraMovsFiltroDesde">
-                    </div>
-                    <div class="input-group billetera-movs-filtro">
-                        <label for="billeteraMovsFiltroHasta">Hasta</label>
-                        <input type="date" id="billeteraMovsFiltroHasta">
-                    </div>
-                    <div class="input-group billetera-movs-filtro billetera-movs-filtro-buscar">
-                        <label for="billeteraMovsFiltroBuscar">Buscar en concepto</label>
-                        <input type="text" id="billeteraMovsFiltroBuscar" placeholder="Ej. Binance">
-                    </div>
-                    <button type="button" class="btn-secondary" id="billeteraMovsFiltroLimpiar">Limpiar filtros</button>
                 </div>
                 <div class="table-wrap" id="billeteraMovsTableWrap">
                     <table class="data-table">
@@ -917,49 +953,67 @@
                 <p class="section-subtitle">Todas las remesas procesadas</p>
             </div>
             <div class="panel">
-                <div class="historial-filtros">
-                    <div class="input-group historial-filtro">
-                        <label for="historialFiltroEstado">Estado</label>
-                        <select id="historialFiltroEstado">
-                            <option value="todos" selected>Todos</option>
-                            <option value="pendiente">Pendiente</option>
-                            <option value="completado">Completado</option>
-                        </select>
+                <div class="filtros-panel" id="historialFiltrosPanel">
+                    <button type="button" class="filtros-toggle" id="historialFiltrosToggle" aria-expanded="false" aria-controls="historialFiltrosBody">
+                        <span class="filtros-toggle-left">
+                            <svg class="filtros-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
+                            Filtros
+                            <span class="filtros-count hidden" id="historialFiltrosCount">0</span>
+                        </span>
+                        <span class="filtros-toggle-right">
+                            <span class="filtros-resultado" id="historialResultCount"></span>
+                            <svg class="filtros-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </span>
+                    </button>
+                    <div class="filtros-chips" id="historialFiltrosChips"></div>
+                    <div class="filtros-body" id="historialFiltrosBody">
+                        <div class="filtros-grid">
+                            <div class="input-group">
+                                <label for="historialFiltroEstado">Estado</label>
+                                <select id="historialFiltroEstado">
+                                    <option value="todos" selected>Todos</option>
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="completado">Completado</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="historialFiltroPago">Forma de pago</label>
+                                <select id="historialFiltroPago">
+                                    <option value="todos" selected>Todas</option>
+                                    <option value="efectivo">Efectivo</option>
+                                    <option value="transferencia">Transferencia</option>
+                                    <option value="caja_vecina">Caja Vecina</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="historialFiltroOrigen">País de origen</label>
+                                <select id="historialFiltroOrigen">
+                                    <option value="todos" selected>Todos</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="historialFiltroDestino">País de destino</label>
+                                <select id="historialFiltroDestino">
+                                    <option value="todos" selected>Todos</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="historialFiltroDesde">Desde</label>
+                                <input type="date" id="historialFiltroDesde">
+                            </div>
+                            <div class="input-group">
+                                <label for="historialFiltroHasta">Hasta</label>
+                                <input type="date" id="historialFiltroHasta">
+                            </div>
+                            <div class="input-group filtros-span-2">
+                                <label for="historialFiltroBuscar">Buscar cliente</label>
+                                <input type="text" id="historialFiltroBuscar" placeholder="Ej. Juan Pérez">
+                            </div>
+                        </div>
+                        <div class="filtros-actions">
+                            <button type="button" class="btn-secondary" id="historialFiltroLimpiar">Limpiar filtros</button>
+                        </div>
                     </div>
-                    <div class="input-group historial-filtro">
-                        <label for="historialFiltroPago">Forma de pago</label>
-                        <select id="historialFiltroPago">
-                            <option value="todos" selected>Todas</option>
-                            <option value="efectivo">Efectivo</option>
-                            <option value="transferencia">Transferencia</option>
-                            <option value="caja_vecina">Caja Vecina</option>
-                        </select>
-                    </div>
-                    <div class="input-group historial-filtro">
-                        <label for="historialFiltroOrigen">País de origen</label>
-                        <select id="historialFiltroOrigen">
-                            <option value="todos" selected>Todos</option>
-                        </select>
-                    </div>
-                    <div class="input-group historial-filtro">
-                        <label for="historialFiltroDestino">País de destino</label>
-                        <select id="historialFiltroDestino">
-                            <option value="todos" selected>Todos</option>
-                        </select>
-                    </div>
-                    <div class="input-group historial-filtro">
-                        <label for="historialFiltroDesde">Desde</label>
-                        <input type="date" id="historialFiltroDesde">
-                    </div>
-                    <div class="input-group historial-filtro">
-                        <label for="historialFiltroHasta">Hasta</label>
-                        <input type="date" id="historialFiltroHasta">
-                    </div>
-                    <div class="input-group historial-filtro historial-filtro-buscar">
-                        <label for="historialFiltroBuscar">Buscar cliente</label>
-                        <input type="text" id="historialFiltroBuscar" placeholder="Ej. Juan Pérez">
-                    </div>
-                    <button type="button" class="btn-secondary" id="historialFiltroLimpiar">Limpiar filtros</button>
                 </div>
                 <div class="table-wrap">
                     <table class="data-table">
