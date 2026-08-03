@@ -637,6 +637,31 @@
                     Compras (entra USDT) y remesas enviadas en USDT (sale USDT), en orden — con el saldo
                     que va quedando después de cada movimiento, para que sepas para dónde se fue cada USDT.
                 </p>
+                <div class="billetera-movs-filtros">
+                    <div class="input-group billetera-movs-filtro">
+                        <label for="billeteraMovsFiltroTipo">Tipo</label>
+                        <select id="billeteraMovsFiltroTipo">
+                            <option value="todos" selected>Todos</option>
+                            <option value="entrada">Entradas</option>
+                            <option value="salida">Salidas</option>
+                        </select>
+                    </div>
+                    <div class="input-group billetera-movs-filtro">
+                        <label for="billeteraMovsFiltroOrigen">Origen</label>
+                        <select id="billeteraMovsFiltroOrigen">
+                            <option value="todos" selected>Todos</option>
+                            <option value="compra_usdt">Compras</option>
+                            <option value="venta_usdt">Ventas</option>
+                            <option value="remesa">Remesas</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                    </div>
+                    <div class="input-group billetera-movs-filtro billetera-movs-filtro-buscar">
+                        <label for="billeteraMovsFiltroBuscar">Buscar en concepto</label>
+                        <input type="text" id="billeteraMovsFiltroBuscar" placeholder="Ej. Binance">
+                    </div>
+                    <button type="button" class="btn-secondary" id="billeteraMovsFiltroLimpiar">Limpiar filtros</button>
+                </div>
                 <div class="table-wrap" id="billeteraMovsTableWrap">
                     <table class="data-table">
                         <thead>
@@ -654,7 +679,7 @@
                 </div>
                 <div class="empty-state" id="billeteraMovsEmpty">
                     <span class="empty-state-icon">📭</span>
-                    <p>Todavía no hay movimientos de USDT.</p>
+                    <p id="billeteraMovsEmptyText">Todavía no hay movimientos de USDT.</p>
                 </div>
             </div>
         </section>
