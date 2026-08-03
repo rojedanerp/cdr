@@ -636,8 +636,18 @@ window.eliminarRemesa = async (docId) => {
 // ============================================
 const historialBody = document.getElementById('historialBody');
 const historialEmpty = document.getElementById('historialEmpty');
+const historialEmptyText = document.getElementById('historialEmptyText');
 const historialTableWrap = document.querySelector('#historial .table-wrap');
 const dashboardPanel = document.querySelector('#dashboard .panel');
+
+const historialFiltroEstado = document.getElementById('historialFiltroEstado');
+const historialFiltroPago = document.getElementById('historialFiltroPago');
+const historialFiltroOrigen = document.getElementById('historialFiltroOrigen');
+const historialFiltroDestino = document.getElementById('historialFiltroDestino');
+const historialFiltroBuscar = document.getElementById('historialFiltroBuscar');
+const historialFiltroLimpiar = document.getElementById('historialFiltroLimpiar');
+
+let historialCache = []; // [{ id, r }] — todas las remesas, sin filtrar
 
 function routeTagHTML(origen, destino) {
     const o = escapeHtml(origen);
@@ -668,22 +678,83 @@ function renderHistorialRow(id, r) {
     return tr;
 }
 
-db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
-    // --- Historial completo ---
-    historialBody.innerHTML = '';
-    remesasPorId = {};
-    snapshot.forEach(doc => { remesasPorId[doc.id] = doc.data(); });
+// Rellena un <select> de país con las opciones disponibles en los datos,
+// conservando la selección actual si sigue siendo válida.
+function poblarSelectPaises(selectEl, paises) {
+    const valorActual = selectEl.value;
+    selectEl.innerHTML = '<option value="todos">Todos</option>' +
+        paises.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+    if (paises.includes(valorActual)) {
+        selectEl.value = valorActual;
+    } else {
+        selectEl.value = 'todos';
+    }
+}
 
-    if (snapshot.empty) {
+// Aplica los filtros de estado, forma de pago, país de origen/destino y
+// búsqueda por cliente sobre historialCache, y vuelve a pintar la tabla.
+function aplicarFiltroHistorial() {
+    const estadoFiltro = historialFiltroEstado.value;
+    const pagoFiltro = historialFiltroPago.value;
+    const origenFiltro = historialFiltroOrigen.value;
+    const destinoFiltro = historialFiltroDestino.value;
+    const textoBusqueda = historialFiltroBuscar.value.trim().toLowerCase();
+    const hayFiltrosActivos = estadoFiltro !== 'todos' || pagoFiltro !== 'todos' ||
+        origenFiltro !== 'todos' || destinoFiltro !== 'todos' || textoBusqueda !== '';
+
+    const filtrados = historialCache.filter(({ r }) => {
+        if (estadoFiltro !== 'todos' && (r.estado || 'pendiente') !== estadoFiltro) return false;
+        if (pagoFiltro !== 'todos' && (r.formaPago || 'efectivo') !== pagoFiltro) return false;
+        if (origenFiltro !== 'todos' && r.paisOrigen !== origenFiltro) return false;
+        if (destinoFiltro !== 'todos' && r.paisDestino !== destinoFiltro) return false;
+        if (textoBusqueda && !(r.clienteNombre || '').toLowerCase().includes(textoBusqueda)) return false;
+        return true;
+    });
+
+    historialBody.innerHTML = '';
+    if (filtrados.length === 0) {
         historialEmpty.style.display = 'block';
         historialTableWrap.style.display = 'none';
-    } else {
-        historialEmpty.style.display = 'none';
-        historialTableWrap.style.display = 'block';
-        snapshot.forEach(doc => {
-            historialBody.appendChild(renderHistorialRow(doc.id, doc.data()));
-        });
+        historialEmptyText.textContent = hayFiltrosActivos
+            ? 'No hay remesas que coincidan con el filtro.'
+            : 'Todavía no hay remesas registradas.';
+        return;
     }
+    historialEmpty.style.display = 'none';
+    historialTableWrap.style.display = 'block';
+    filtrados.forEach(({ id, r }) => {
+        historialBody.appendChild(renderHistorialRow(id, r));
+    });
+}
+
+[historialFiltroEstado, historialFiltroPago, historialFiltroOrigen, historialFiltroDestino].forEach(el => {
+    el.addEventListener('change', aplicarFiltroHistorial);
+});
+historialFiltroBuscar.addEventListener('input', aplicarFiltroHistorial);
+historialFiltroLimpiar.addEventListener('click', () => {
+    historialFiltroEstado.value = 'todos';
+    historialFiltroPago.value = 'todos';
+    historialFiltroOrigen.value = 'todos';
+    historialFiltroDestino.value = 'todos';
+    historialFiltroBuscar.value = '';
+    aplicarFiltroHistorial();
+});
+
+db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    // --- Historial completo ---
+    remesasPorId = {};
+    historialCache = [];
+    snapshot.forEach(doc => {
+        remesasPorId[doc.id] = doc.data();
+        historialCache.push({ id: doc.id, r: doc.data() });
+    });
+
+    const paisesOrigen = [...new Set(historialCache.map(({ r }) => r.paisOrigen).filter(Boolean))].sort();
+    const paisesDestino = [...new Set(historialCache.map(({ r }) => r.paisDestino).filter(Boolean))].sort();
+    poblarSelectPaises(historialFiltroOrigen, paisesOrigen);
+    poblarSelectPaises(historialFiltroDestino, paisesDestino);
+
+    aplicarFiltroHistorial();
 
     renderBoletas(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
