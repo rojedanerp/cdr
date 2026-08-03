@@ -2915,7 +2915,7 @@ function dibujarFrameTasa(ctx, data, t, slogan) {
     // que la lista es más larga)
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.font = '400 21px "Helvetica Neue", Arial, sans-serif';
-    ctx.fillText('Recibe en Banesco · Mercantil · BNC · Banco de Venezuela', cx, H - 100);
+    ctx.fillText('Banesco · Mercantil · BNC · Banco de Venezuela', cx, H - 100);
     ctx.fillText('Provincial · Pago Móvil', cx, H - 74);
 
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
