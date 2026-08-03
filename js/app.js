@@ -2612,11 +2612,23 @@ function dibujarFrameTasa(ctx, data, t, slogan) {
 
     // Cielo nocturno degradado
     const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, '#0a1c33');
+    grad.addColorStop(0, '#081625');
     grad.addColorStop(0.55, '#123258');
     grad.addColorStop(1, '#1d4e89');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
+
+    // Luna con resplandor suave
+    const moonX = W - 190, moonY = 150;
+    const moonGlow = ctx.createRadialGradient(moonX, moonY, 10, moonX, moonY, 110);
+    moonGlow.addColorStop(0, 'rgba(255,247,222,0.35)');
+    moonGlow.addColorStop(1, 'rgba(255,247,222,0)');
+    ctx.fillStyle = moonGlow;
+    ctx.fillRect(moonX - 110, moonY - 110, 220, 220);
+    ctx.fillStyle = 'rgba(255,251,235,0.92)';
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, 34, 0, Math.PI * 2);
+    ctx.fill();
 
     // Estrellas sutiles, titilando
     for (let i = 0; i < 36; i++) {
@@ -2632,21 +2644,45 @@ function dibujarFrameTasa(ctx, data, t, slogan) {
     ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
 
+    const conSombra = (dibujar) => {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.45)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 3;
+        dibujar();
+        ctx.restore();
+    };
+
     // Marca
     ctx.fillStyle = '#e8b84b';
     ctx.fillRect(cx - 36, 78, 72, 4);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 54px "Helvetica Neue", Arial, sans-serif';
-    ctx.fillText('Lagomarcambios', cx, 158);
+    conSombra(() => {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '600 54px "Helvetica Neue", Arial, sans-serif';
+        ctx.fillText('Lagomarcambios', cx, 158);
+    });
 
     // Tarjeta con la tasa
     const cardX = 90, cardY = 200, cardW = W - 180, cardH = 330;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 12;
     ctx.fillStyle = 'rgba(255,255,255,0.07)';
     ctx.beginPath();
     ctx.roundRect(cardX, cardY, cardW, cardH, 26);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
     ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(cardX, cardY, cardW, cardH, 26);
+    ctx.stroke();
+    // brillo sutil en el borde superior de la tarjeta
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(cardX + 26, cardY + 1);
+    ctx.lineTo(cardX + cardW - 26, cardY + 1);
     ctx.stroke();
 
     ctx.font = '500 42px "Helvetica Neue", Arial, sans-serif';
@@ -2660,74 +2696,109 @@ function dibujarFrameTasa(ctx, data, t, slogan) {
     ctx.lineTo(cardX + cardW - 70, cardY + 120);
     ctx.stroke();
 
-    ctx.fillStyle = '#f2c866';
-    ctx.font = '700 104px "Helvetica Neue", Arial, sans-serif';
-    ctx.fillText(`${data.tasa}`, cx, cardY + 245);
+    conSombra(() => {
+        ctx.fillStyle = '#f2c866';
+        ctx.font = '700 104px "Helvetica Neue", Arial, sans-serif';
+        ctx.fillText(`${data.tasa}`, cx, cardY + 245);
+    });
 
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.font = '400 30px "Helvetica Neue", Arial, sans-serif';
     ctx.fillText(`${data.monedaDestino} por cada 1 ${data.monedaOrigen}`, cx, cardY + 295);
 
-    // Eslogan
-    ctx.fillStyle = '#e8b84b';
-    ctx.font = 'italic 400 34px "Helvetica Neue", Arial, sans-serif';
-    ctx.fillText(slogan, cx, 590);
-
     // --- Puente estilizado (ilustración propia, no una foto real) ---
-    const deckY = 840, towerTopY = 640;
+    const deckY = 840, towerTopY = 630;
     const towerXs = [330, 750];
+    const towerW = 26;
 
+    // cubierta con leve brillo superior
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.moveTo(60, deckY);
-    ctx.lineTo(W - 60, deckY);
+    ctx.moveTo(50, deckY);
+    ctx.lineTo(W - 50, deckY);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(50, deckY - 5);
+    ctx.lineTo(W - 50, deckY - 5);
     ctx.stroke();
 
-    towerXs.forEach((tx, ti) => {
-        ctx.fillStyle = 'rgba(255,255,255,0.55)';
-        ctx.fillRect(tx - 10, towerTopY, 20, deckY - towerTopY);
-
+    const dibujarTorre = (tx, ti) => {
+        // Cables con leve curvatura (más realista que una línea recta)
         for (let i = 0; i < 7; i++) {
-            const dx = -140 + i * 46.6;
+            const anchorX = tx + (-150 + i * 50);
+            const midX = tx + (anchorX - tx) * 0.55;
+            const midY = towerTopY + (deckY - towerTopY) * 0.5 + 14;
             ctx.strokeStyle = 'rgba(255,255,255,0.22)';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(tx, towerTopY + 20);
-            ctx.lineTo(tx + dx, deckY);
+            ctx.moveTo(tx, towerTopY + 24);
+            ctx.quadraticCurveTo(midX, midY, anchorX, deckY);
             ctx.stroke();
         }
 
-        const glow = 0.5 + 0.5 * Math.sin(t * 2 * Math.PI * 1.3 + ti * 2);
-        ctx.fillStyle = `rgba(242,200,102,${0.5 + 0.5 * glow})`;
+        // Torre ligeramente ahusada, con remate
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
         ctx.beginPath();
-        ctx.arc(tx, towerTopY, 10, 0, Math.PI * 2);
+        ctx.moveTo(tx - towerW / 2, deckY);
+        ctx.lineTo(tx - towerW / 2 + 4, towerTopY + 16);
+        ctx.lineTo(tx, towerTopY);
+        ctx.lineTo(tx + towerW / 2 - 4, towerTopY + 16);
+        ctx.lineTo(tx + towerW / 2, deckY);
+        ctx.closePath();
         ctx.fill();
-    });
+
+        // Luz de remate, parpadeando
+        const glow = 0.5 + 0.5 * Math.sin(t * 2 * Math.PI * 1.3 + ti * 2);
+        ctx.fillStyle = `rgba(242,200,102,${0.55 + 0.45 * glow})`;
+        ctx.beginPath();
+        ctx.arc(tx, towerTopY - 6, 9, 0, Math.PI * 2);
+        ctx.fill();
+    };
+    towerXs.forEach(dibujarTorre);
 
     // Luces de la cubierta, parpadeando en cadena
-    for (let i = 0; i < 14; i++) {
-        const lx = 90 + i * ((W - 180) / 13);
+    for (let i = 0; i < 16; i++) {
+        const lx = 70 + i * ((W - 140) / 15);
         const glow = 0.4 + 0.6 * Math.abs(Math.sin(t * 2 * Math.PI * 0.9 + i * 0.5));
         ctx.fillStyle = `rgba(242,200,102,${glow})`;
         ctx.beginPath();
-        ctx.arc(lx, deckY, 4, 0, Math.PI * 2);
+        ctx.arc(lx, deckY + 3, 3.5, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Reflejo tenue en el agua
+    // Reflejo tenue de las torres y luces en el agua
     ctx.save();
     ctx.translate(0, deckY * 2);
     ctx.scale(1, -1);
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = '#ffffff';
-    towerXs.forEach(tx => ctx.fillRect(tx - 10, towerTopY, 20, deckY - towerTopY));
+    ctx.globalAlpha = 0.15;
+    towerXs.forEach(tx => {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(tx - towerW / 2, deckY);
+        ctx.lineTo(tx - towerW / 2 + 4, towerTopY + 16);
+        ctx.lineTo(tx, towerTopY);
+        ctx.lineTo(tx + towerW / 2 - 4, towerTopY + 16);
+        ctx.lineTo(tx + towerW / 2, deckY);
+        ctx.closePath();
+        ctx.fill();
+    });
+    ctx.globalAlpha = 0.25;
+    for (let i = 0; i < 16; i++) {
+        const lx = 70 + i * ((W - 140) / 15);
+        ctx.fillStyle = '#f2c866';
+        ctx.beginPath();
+        ctx.arc(lx, deckY + 3, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
     ctx.restore();
 
     // Degradado oscuro abajo para que la fecha se lea bien
     const bottomGrad = ctx.createLinearGradient(0, H - 140, 0, H);
-    bottomGrad.addColorStop(0, 'rgba(10,20,35,0)');
-    bottomGrad.addColorStop(1, 'rgba(10,20,35,0.55)');
+    bottomGrad.addColorStop(0, 'rgba(8,15,25,0)');
+    bottomGrad.addColorStop(1, 'rgba(8,15,25,0.6)');
     ctx.fillStyle = bottomGrad;
     ctx.fillRect(0, H - 140, W, 140);
 
@@ -2737,6 +2808,11 @@ function dibujarFrameTasa(ctx, data, t, slogan) {
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.font = '400 26px "Helvetica Neue", Arial, sans-serif';
     ctx.fillText(`Actualizado el ${fecha}`, cx, H - 55);
+
+    // Marco sutil general para un acabado más cuidado
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, W - 20, H - 20);
 }
 
 // Imagen estática (respaldo si el navegador no puede grabar video)
@@ -2747,6 +2823,56 @@ function dibujarImagenTasa(data) {
     dibujarFrameTasa(canvas.getContext('2d'), data, 0.25, ESLOGAN_TASA);
     return canvas;
 }
+
+const tasaPreviewOverlay = document.getElementById('tasaPreviewOverlay');
+const tasaPreviewImg = document.getElementById('tasaPreviewImg');
+const tasaPreviewCerrarBtn = document.getElementById('tasaPreviewCerrarBtn');
+const tasaPreviewCompartirBtn = document.getElementById('tasaPreviewCompartirBtn');
+const tasaPreviewDescargarBtn = document.getElementById('tasaPreviewDescargarBtn');
+let tasaPreviewBlob = null;
+let tasaPreviewNombreArchivo = '';
+
+function cerrarPreviewTasa() {
+    tasaPreviewOverlay.classList.add('hidden');
+    if (tasaPreviewImg.src) URL.revokeObjectURL(tasaPreviewImg.src);
+    tasaPreviewImg.src = '';
+    tasaPreviewBlob = null;
+}
+tasaPreviewCerrarBtn.addEventListener('click', cerrarPreviewTasa);
+tasaPreviewOverlay.addEventListener('click', (e) => {
+    if (e.target === tasaPreviewOverlay) cerrarPreviewTasa();
+});
+
+tasaPreviewDescargarBtn.addEventListener('click', () => {
+    if (!tasaPreviewBlob) return;
+    const url = URL.createObjectURL(tasaPreviewBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = tasaPreviewNombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+});
+
+tasaPreviewCompartirBtn.addEventListener('click', async () => {
+    if (!tasaPreviewBlob) return;
+    const file = new File([tasaPreviewBlob], tasaPreviewNombreArchivo, { type: 'image/png' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({ files: [file], title: 'Tasa de cambio' });
+            cerrarPreviewTasa();
+            return;
+        } catch (error) {
+            if (error && error.name === 'AbortError') return; // el usuario canceló el share
+            console.error('Error al compartir la imagen:', error);
+        }
+    }
+    // Si no hay soporte para compartir archivos, se descarga en su lugar
+    alert('Tu navegador no puede abrir el selector de compartir. Se descargará la imagen para que la envíes manualmente.');
+    tasaPreviewDescargarBtn.click();
+});
 
 window.compartirTasaImagen = async (docId) => {
     const data = tasasCache[`__doc_${docId}`];
@@ -2762,33 +2888,8 @@ window.compartirTasaImagen = async (docId) => {
         return;
     }
 
-    const nombreArchivo = `tasa-${data.monedaOrigen}-${data.monedaDestino}.png`;
-    const file = new File([blob], nombreArchivo, { type: 'image/png' });
-
-    // En celular, esto abre el selector nativo (WhatsApp, Instagram, etc.)
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-            await navigator.share({
-                files: [file],
-                title: `Tasa ${data.monedaOrigen} → ${data.monedaDestino}`,
-                text: `Tasa vigente: ${data.tasa} ${data.monedaDestino} por 1 ${data.monedaOrigen}`
-            });
-            return;
-        } catch (error) {
-            if (error && error.name === 'AbortError') return; // el usuario canceló el share
-            console.error('Error al compartir la imagen:', error);
-            // sigue al fallback de descarga
-        }
-    }
-
-    // Fallback: descargar la imagen para compartirla manualmente
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nombreArchivo;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    alert(`Se descargó la imagen (${nombreArchivo}). Ábrela desde tus descargas para compartirla en WhatsApp.`);
+    tasaPreviewBlob = blob;
+    tasaPreviewNombreArchivo = `tasa-${data.monedaOrigen}-${data.monedaDestino}.png`;
+    tasaPreviewImg.src = URL.createObjectURL(blob);
+    tasaPreviewOverlay.classList.remove('hidden');
 };
