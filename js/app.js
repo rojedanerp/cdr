@@ -643,6 +643,58 @@ window.eliminarRemesa = async (docId) => {
 };
 
 // ============================================
+// FILTROS — panel colapsable + chips de filtros activos
+// (helpers genéricos reutilizados por Historial, Caja y Billetera)
+// ============================================
+
+// Activa el botón que abre/cierra el cuerpo de un panel de filtros.
+// prefix: ej. 'historial', 'caja', 'billeteraMovs' → usa los ids
+// {prefix}FiltrosPanel y {prefix}FiltrosToggle.
+function initFiltrosToggle(prefix) {
+    const panel = document.getElementById(`${prefix}FiltrosPanel`);
+    const toggle = document.getElementById(`${prefix}FiltrosToggle`);
+    if (!panel || !toggle) return;
+    toggle.addEventListener('click', () => {
+        const abierto = panel.classList.toggle('abierto');
+        toggle.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+    });
+}
+
+// Repinta la fila de "chips" con los filtros activos de un panel, el
+// contador junto al botón "Filtros" y el texto "X de Y" del resultado.
+// prefix: mismo prefijo usado en initFiltrosToggle.
+// defs: [{ label, activo, texto, onQuitar }] — uno por cada campo de filtro.
+// resultado: { mostrados, total } para el texto "X de Y" (opcional).
+function actualizarPanelFiltros(prefix, defs, resultado) {
+    const chipsEl = document.getElementById(`${prefix}FiltrosChips`);
+    const countEl = document.getElementById(`${prefix}FiltrosCount`);
+    const resultadoEl = document.getElementById(`${prefix}ResultCount`);
+    const activos = defs.filter(d => d.activo);
+
+    if (chipsEl) {
+        chipsEl.innerHTML = '';
+        activos.forEach((d, i) => {
+            const chip = document.createElement('span');
+            chip.className = 'filtro-chip';
+            chip.innerHTML = `${escapeHtml(d.texto)} <button type="button" aria-label="Quitar filtro ${escapeHtml(d.label)}">✕</button>`;
+            chip.querySelector('button').addEventListener('click', d.onQuitar);
+            chipsEl.appendChild(chip);
+        });
+    }
+
+    if (countEl) {
+        countEl.textContent = String(activos.length);
+        countEl.classList.toggle('hidden', activos.length === 0);
+    }
+
+    if (resultadoEl) {
+        resultadoEl.textContent = resultado
+            ? `${resultado.mostrados} de ${resultado.total}`
+            : '';
+    }
+}
+
+// ============================================
 // HISTORIAL + DASHBOARD — escucha en tiempo real
 // ============================================
 const historialBody = document.getElementById('historialBody');
@@ -728,6 +780,39 @@ function aplicarFiltroHistorial() {
         return true;
     });
 
+    actualizarPanelFiltros('historial', [
+        {
+            label: 'Estado', activo: estadoFiltro !== 'todos',
+            texto: historialFiltroEstado.options[historialFiltroEstado.selectedIndex].text,
+            onQuitar: () => { historialFiltroEstado.value = 'todos'; aplicarFiltroHistorial(); }
+        },
+        {
+            label: 'Forma de pago', activo: pagoFiltro !== 'todos',
+            texto: historialFiltroPago.options[historialFiltroPago.selectedIndex].text,
+            onQuitar: () => { historialFiltroPago.value = 'todos'; aplicarFiltroHistorial(); }
+        },
+        {
+            label: 'País de origen', activo: origenFiltro !== 'todos',
+            texto: `Desde: ${origenFiltro}`,
+            onQuitar: () => { historialFiltroOrigen.value = 'todos'; aplicarFiltroHistorial(); }
+        },
+        {
+            label: 'País de destino', activo: destinoFiltro !== 'todos',
+            texto: `Hacia: ${destinoFiltro}`,
+            onQuitar: () => { historialFiltroDestino.value = 'todos'; aplicarFiltroHistorial(); }
+        },
+        {
+            label: 'Rango de fechas', activo: !!desdeFiltro || !!hastaFiltro,
+            texto: `Fecha: ${desdeFiltro || '…'} – ${hastaFiltro || '…'}`,
+            onQuitar: () => { historialFiltroDesde.value = ''; historialFiltroHasta.value = ''; aplicarFiltroHistorial(); }
+        },
+        {
+            label: 'Búsqueda', activo: textoBusqueda !== '',
+            texto: `Cliente: "${historialFiltroBuscar.value.trim()}"`,
+            onQuitar: () => { historialFiltroBuscar.value = ''; aplicarFiltroHistorial(); }
+        }
+    ], { mostrados: filtrados.length, total: historialCache.length });
+
     historialBody.innerHTML = '';
     if (filtrados.length === 0) {
         historialEmpty.style.display = 'block';
@@ -758,6 +843,7 @@ historialFiltroLimpiar.addEventListener('click', () => {
     historialFiltroHasta.value = '';
     aplicarFiltroHistorial();
 });
+initFiltrosToggle('historial');
 
 db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     // --- Historial completo ---
@@ -2050,6 +2136,34 @@ function aplicarFiltroCaja() {
         return true;
     });
 
+    actualizarPanelFiltros('caja', [
+        {
+            label: 'Rango de fechas', activo: !!cajaFiltroDesde.value || !!cajaFiltroHasta.value,
+            texto: `Fecha: ${cajaFiltroDesde.value || '…'} – ${cajaFiltroHasta.value || '…'}`,
+            onQuitar: () => { cajaFiltroDesde.value = ''; cajaFiltroHasta.value = ''; aplicarFiltroCaja(); }
+        },
+        {
+            label: 'Tipo', activo: tipoFiltro !== 'todos',
+            texto: cajaFiltroTipo.options[cajaFiltroTipo.selectedIndex].text,
+            onQuitar: () => { cajaFiltroTipo.value = 'todos'; aplicarFiltroCaja(); }
+        },
+        {
+            label: 'Moneda', activo: monedaFiltro !== 'todos',
+            texto: `Moneda: ${monedaFiltro}`,
+            onQuitar: () => { cajaFiltroMoneda.value = 'todos'; aplicarFiltroCaja(); }
+        },
+        {
+            label: 'Origen', activo: origenFiltro !== 'todos',
+            texto: cajaFiltroOrigen.options[cajaFiltroOrigen.selectedIndex].text,
+            onQuitar: () => { cajaFiltroOrigen.value = 'todos'; aplicarFiltroCaja(); }
+        },
+        {
+            label: 'Búsqueda', activo: textoBusqueda !== '',
+            texto: `Concepto: "${cajaFiltroBuscar.value.trim()}"`,
+            onQuitar: () => { cajaFiltroBuscar.value = ''; aplicarFiltroCaja(); }
+        }
+    ], { mostrados: filtrados.length, total: cajaMovsCache.length });
+
     cajaBody.innerHTML = '';
     if (filtrados.length === 0) {
         cajaEmpty.style.display = 'block';
@@ -2082,6 +2196,7 @@ cajaFiltroLimpiar.addEventListener('click', () => {
     cajaFiltroBuscar.value = '';
     aplicarFiltroCaja();
 });
+initFiltrosToggle('caja');
 
 // ============================================
 // BILLETERA — control de compras de USDT con CLP
@@ -2231,6 +2346,29 @@ function aplicarFiltroBilleteraMovs() {
         return true;
     });
 
+    actualizarPanelFiltros('billeteraMovs', [
+        {
+            label: 'Tipo', activo: tipoFiltro !== 'todos',
+            texto: billeteraMovsFiltroTipo.options[billeteraMovsFiltroTipo.selectedIndex].text,
+            onQuitar: () => { billeteraMovsFiltroTipo.value = 'todos'; aplicarFiltroBilleteraMovs(); }
+        },
+        {
+            label: 'Origen', activo: origenFiltro !== 'todos',
+            texto: billeteraMovsFiltroOrigen.options[billeteraMovsFiltroOrigen.selectedIndex].text,
+            onQuitar: () => { billeteraMovsFiltroOrigen.value = 'todos'; aplicarFiltroBilleteraMovs(); }
+        },
+        {
+            label: 'Rango de fechas', activo: !!desdeFiltro || !!hastaFiltro,
+            texto: `Fecha: ${desdeFiltro || '…'} – ${hastaFiltro || '…'}`,
+            onQuitar: () => { billeteraMovsFiltroDesde.value = ''; billeteraMovsFiltroHasta.value = ''; aplicarFiltroBilleteraMovs(); }
+        },
+        {
+            label: 'Búsqueda', activo: textoBusqueda !== '',
+            texto: `Concepto: "${billeteraMovsFiltroBuscar.value.trim()}"`,
+            onQuitar: () => { billeteraMovsFiltroBuscar.value = ''; aplicarFiltroBilleteraMovs(); }
+        }
+    ], { mostrados: filtrados.length, total: billeteraMovsConSaldoCache.length });
+
     billeteraMovsBody.innerHTML = '';
     if (filtrados.length === 0) {
         billeteraMovsEmpty.style.display = 'block';
@@ -2270,6 +2408,7 @@ billeteraMovsFiltroLimpiar.addEventListener('click', () => {
     billeteraMovsFiltroHasta.value = '';
     aplicarFiltroBilleteraMovs();
 });
+initFiltrosToggle('billeteraMovs');
 
 function renderBilleteraCompras(compras) {
 
