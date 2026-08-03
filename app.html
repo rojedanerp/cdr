@@ -1167,6 +1167,61 @@
                 </div>
             </div>
 
+            <div class="filtros-panel" id="reportesFiltrosPanel">
+                <button type="button" class="filtros-toggle" id="reportesFiltrosToggle" aria-expanded="false" aria-controls="reportesFiltrosBody">
+                    <span class="filtros-toggle-left">
+                        <svg class="filtros-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
+                        Filtros avanzados
+                        <span class="filtros-count hidden" id="reportesFiltrosCount">0</span>
+                    </span>
+                    <span class="filtros-toggle-right">
+                        <span class="filtros-resultado" id="reportesResultCount"></span>
+                        <svg class="filtros-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </span>
+                </button>
+                <div class="filtros-chips" id="reportesFiltrosChips"></div>
+                <div class="filtros-body" id="reportesFiltrosBody">
+                    <div class="filtros-grid">
+                        <div class="input-group">
+                            <label for="reportesFiltroEstado">Estado</label>
+                            <select id="reportesFiltroEstado">
+                                <option value="todos" selected>Todos</option>
+                                <option value="pendiente">Pendiente</option>
+                                <option value="completado">Completado</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="reportesFiltroPago">Forma de pago</label>
+                            <select id="reportesFiltroPago">
+                                <option value="todos" selected>Todas</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="caja_vecina">Caja Vecina</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="reportesFiltroOrigen">País de origen</label>
+                            <select id="reportesFiltroOrigen">
+                                <option value="todos" selected>Todos</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="reportesFiltroDestino">País de destino</label>
+                            <select id="reportesFiltroDestino">
+                                <option value="todos" selected>Todos</option>
+                            </select>
+                        </div>
+                        <div class="input-group filtros-span-2">
+                            <label for="reportesFiltroBuscar">Buscar cliente</label>
+                            <input type="text" id="reportesFiltroBuscar" placeholder="Ej. Juan Pérez">
+                        </div>
+                    </div>
+                    <div class="filtros-actions">
+                        <button type="button" class="btn-secondary" id="reportesFiltroLimpiar">Limpiar filtros</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="stats-grid" id="reportesStatsGrid">
                 <div class="stat-card">
                     <span class="stat-label">Remesas en el periodo</span>
