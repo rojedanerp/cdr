@@ -1222,6 +1222,10 @@ conciliacionArchivo.addEventListener('change', () => {
 // por moneda destino, y gráfico de remesas por día.
 // ============================================
 const reportesPeriodo = document.getElementById('reportesPeriodo');
+const reportesDesdeInput = document.getElementById('reportesDesde');
+const reportesHastaInput = document.getElementById('reportesHasta');
+const reportesRangoCustom = document.getElementById('reportesRangoCustom');
+const reportesRangoCustomHasta = document.getElementById('reportesRangoCustomHasta');
 const repStatCantidad = document.getElementById('repStatCantidad');
 const repStatTicket = document.getElementById('repStatTicket');
 const repStatGanancia = document.getElementById('repStatGanancia');
@@ -1237,7 +1241,21 @@ const repGananciaBody = document.getElementById('repGananciaBody');
 const repGananciaWrap = document.getElementById('repGananciaWrap');
 const repGananciaEmpty = document.getElementById('repGananciaEmpty');
 
-reportesPeriodo.addEventListener('change', renderizarReportes);
+reportesPeriodo.addEventListener('change', () => {
+    const esCustom = reportesPeriodo.value === 'custom';
+    reportesRangoCustom.classList.toggle('hidden', !esCustom);
+    reportesRangoCustomHasta.classList.toggle('hidden', !esCustom);
+    if (esCustom && !reportesDesdeInput.value) {
+        // Rango por defecto al abrir "personalizado": este mes hasta hoy.
+        const ahora = new Date();
+        const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+        reportesDesdeInput.value = claveDiaLocal(inicioMes);
+        reportesHastaInput.value = claveDiaLocal(ahora);
+    }
+    renderizarReportes();
+});
+reportesDesdeInput.addEventListener('change', renderizarReportes);
+reportesHastaInput.addEventListener('change', renderizarReportes);
 
 function claveDiaLocal(fecha) {
     const y = fecha.getFullYear();
@@ -1269,20 +1287,57 @@ function calcularGananciaNeta(r) {
     return r.montoEnviado - (costoTotalDestino / r.tasaReferencia);
 }
 
-function renderizarReportes() {
-    if (!reportesPeriodo) return;
-
-    const periodo = reportesPeriodo.value;
+// Calcula el rango [desde, hasta) para cada opción de Periodo.
+// "hasta" es un límite superior EXCLUSIVO (o null si no hay límite, es decir, incluye hasta ahora).
+function calcularRangoPeriodo(periodo) {
     const ahora = new Date();
     let desde = null;
+    let hasta = null;
 
-    if (periodo === '30d') {
+    if (periodo === 'hoy') {
+        desde = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    } else if (periodo === 'ayer') {
+        const ayer = new Date(ahora);
+        ayer.setDate(ayer.getDate() - 1);
+        desde = new Date(ayer.getFullYear(), ayer.getMonth(), ayer.getDate());
+        hasta = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    } else if (periodo === '7d') {
+        desde = new Date(ahora);
+        desde.setDate(desde.getDate() - 6);
+        desde.setHours(0, 0, 0, 0);
+    } else if (periodo === '30d') {
         desde = new Date(ahora);
         desde.setDate(desde.getDate() - 29);
         desde.setHours(0, 0, 0, 0);
     } else if (periodo === 'mes') {
         desde = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-    } // 'todo' -> sin límite inferior
+    } else if (periodo === 'mesAnterior') {
+        desde = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+        hasta = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+    } else if (periodo === 'anio') {
+        desde = new Date(ahora.getFullYear(), 0, 1);
+    } else if (periodo === 'custom') {
+        const desdeStr = reportesDesdeInput ? reportesDesdeInput.value : '';
+        const hastaStr = reportesHastaInput ? reportesHastaInput.value : '';
+        if (desdeStr) {
+            const [y, m, d] = desdeStr.split('-').map(Number);
+            desde = new Date(y, m - 1, d);
+        }
+        if (hastaStr) {
+            const [y, m, d] = hastaStr.split('-').map(Number);
+            hasta = new Date(y, m - 1, d);
+            hasta.setDate(hasta.getDate() + 1); // incluye todo el día "hasta"
+        }
+    } // 'todo' -> sin límites
+
+    return { desde, hasta };
+}
+
+function renderizarReportes() {
+    if (!reportesPeriodo) return;
+
+    const periodo = reportesPeriodo.value;
+    const { desde, hasta } = calcularRangoPeriodo(periodo);
 
     const enPeriodo = Object.entries(remesasPorId)
         .map(([id, r]) => ({ id, ...r }))
@@ -1290,7 +1345,9 @@ function renderizarReportes() {
             if (r.estado === 'cancelado') return false;
             if (!r.createdAt || !r.createdAt.toDate) return false;
             const fecha = r.createdAt.toDate();
-            return !desde || fecha >= desde;
+            if (desde && fecha < desde) return false;
+            if (hasta && fecha >= hasta) return false;
+            return true;
         });
 
     // --- Stat: cantidad ---
@@ -1328,20 +1385,81 @@ function renderizarReportes() {
         ? '—'
         : entradasGanancia.map(([moneda, total]) => formatMoney(total, moneda)).join(' · ');
 
-    renderizarGraficoDiario(enPeriodo, periodo);
+    renderizarGraficoDiario(enPeriodo, periodo, desde, hasta);
     renderizarVolumenMensual(enPeriodo);
     renderizarGananciaPorRemesa(conReferencia);
 }
 
-function renderizarGraficoDiario(remesas, periodo) {
-    const ahora = new Date();
-    const dias = [];
+// Dibuja las barras del gráfico a partir de una lista de "buckets"
+// ({ valor, label, mostrarEtiqueta, tooltip }). Usado tanto para vista diaria como mensual.
+function pintarBarrasReportes(items) {
+    const totalEnRango = items.reduce((sum, item) => sum + item.valor, 0);
 
-    if (periodo === 'mes') {
+    if (totalEnRango === 0) {
+        repChartWrap.style.display = 'none';
+        repChartEmpty.style.display = 'block';
+        return;
+    }
+    repChartWrap.style.display = 'block';
+    repChartEmpty.style.display = 'none';
+
+    const max = Math.max(...items.map(item => item.valor), 1);
+    repChart.innerHTML = '';
+    items.forEach(item => {
+        const alturaPct = item.valor > 0 ? Math.max((item.valor / max) * 100, 4) : 0;
+        const bar = document.createElement('div');
+        bar.className = 'rep-chart-bar';
+        bar.title = item.tooltip;
+        bar.innerHTML = `
+            <div class="rep-chart-bar-fill" style="height:${alturaPct}%"></div>
+            ${item.mostrarEtiqueta ? `<span class="rep-chart-bar-label">${item.label}</span>` : ''}
+        `;
+        repChart.appendChild(bar);
+    });
+}
+
+function renderizarGraficoDiario(remesas, periodo, desde, hasta) {
+    const ahora = new Date();
+    let dias = [];
+    let modoMensual = false;
+
+    if (periodo === 'hoy') {
+        dias = [new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate())];
+        repChartSubtitulo.textContent = 'Hoy';
+    } else if (periodo === 'ayer') {
+        const ayer = new Date(ahora);
+        ayer.setDate(ayer.getDate() - 1);
+        dias = [new Date(ayer.getFullYear(), ayer.getMonth(), ayer.getDate())];
+        repChartSubtitulo.textContent = 'Ayer';
+    } else if (periodo === '7d') {
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(ahora);
+            d.setDate(d.getDate() - i);
+            dias.push(d);
+        }
+        repChartSubtitulo.textContent = 'Últimos 7 días';
+    } else if (periodo === 'mes') {
         const inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
         const fin = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
         for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) dias.push(new Date(d));
         repChartSubtitulo.textContent = 'Este mes';
+    } else if (periodo === 'mesAnterior') {
+        const inicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+        const fin = new Date(ahora.getFullYear(), ahora.getMonth(), 0);
+        for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) dias.push(new Date(d));
+        repChartSubtitulo.textContent = 'Mes anterior';
+    } else if (periodo === 'anio') {
+        modoMensual = true;
+    } else if (periodo === 'custom' && desde) {
+        const finInclusive = new Date((hasta || ahora));
+        if (hasta) finInclusive.setDate(finInclusive.getDate() - 1); // "hasta" es exclusivo
+        const rangoDias = Math.round((finInclusive - desde) / 86400000) + 1;
+        if (rangoDias > 62) {
+            modoMensual = true;
+        } else {
+            for (let d = new Date(desde); d <= finInclusive; d.setDate(d.getDate() + 1)) dias.push(new Date(d));
+            repChartSubtitulo.textContent = 'Rango personalizado';
+        }
     } else {
         // '30d' y 'todo' (el gráfico siempre se acota a los últimos 30 días para que sea legible)
         for (let i = 29; i >= 0; i--) {
@@ -1352,6 +1470,11 @@ function renderizarGraficoDiario(remesas, periodo) {
         repChartSubtitulo.textContent = periodo === 'todo' ? 'Últimos 30 días (de todo el historial)' : 'Últimos 30 días';
     }
 
+    if (modoMensual) {
+        renderizarGraficoMensual(remesas, periodo, desde, hasta);
+        return;
+    }
+
     const conteoPorDia = {};
     remesas.forEach(r => {
         if (!r.createdAt || !r.createdAt.toDate) return;
@@ -1359,32 +1482,56 @@ function renderizarGraficoDiario(remesas, periodo) {
         conteoPorDia[clave] = (conteoPorDia[clave] || 0) + 1;
     });
 
-    const valores = dias.map(d => conteoPorDia[claveDiaLocal(d)] || 0);
-    const totalEnRango = valores.reduce((a, b) => a + b, 0);
+    const items = dias.map((d, i) => ({
+        valor: conteoPorDia[claveDiaLocal(d)] || 0,
+        label: `${d.getDate()}/${d.getMonth() + 1}`,
+        mostrarEtiqueta: d.getDate() === 1 || i === 0 || i === dias.length - 1,
+        tooltip: `${d.toLocaleDateString('es-CL')}: ${conteoPorDia[claveDiaLocal(d)] || 0} remesa(s)`
+    }));
 
-    if (totalEnRango === 0) {
-        repChartWrap.style.display = 'none';
-        repChartEmpty.style.display = 'block';
-        return;
+    pintarBarrasReportes(items);
+}
+
+// Vista mensual del gráfico (usada para "Este año" y rangos personalizados largos,
+// donde mostrar un punto por día dejaría de ser legible).
+function renderizarGraficoMensual(remesas, periodo, desde, hasta) {
+    const ahora = new Date();
+    let inicioMes;
+    let finMes; // primer día del último mes a incluir
+
+    if (periodo === 'anio') {
+        inicioMes = new Date(ahora.getFullYear(), 0, 1);
+        finMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+        repChartSubtitulo.textContent = 'Este año, por mes';
+    } else {
+        inicioMes = new Date(desde.getFullYear(), desde.getMonth(), 1);
+        const finReferencia = hasta ? new Date(hasta.getTime() - 1) : ahora;
+        finMes = new Date(finReferencia.getFullYear(), finReferencia.getMonth(), 1);
+        repChartSubtitulo.textContent = 'Rango personalizado, por mes';
     }
-    repChartWrap.style.display = 'block';
-    repChartEmpty.style.display = 'none';
 
-    const max = Math.max(...valores, 1);
-    repChart.innerHTML = '';
-    dias.forEach((d, i) => {
-        const valor = valores[i];
-        const alturaPct = valor > 0 ? Math.max((valor / max) * 100, 4) : 0;
-        const mostrarEtiqueta = d.getDate() === 1 || i === 0 || i === dias.length - 1;
-        const bar = document.createElement('div');
-        bar.className = 'rep-chart-bar';
-        bar.title = `${d.toLocaleDateString('es-CL')}: ${valor} remesa(s)`;
-        bar.innerHTML = `
-            <div class="rep-chart-bar-fill" style="height:${alturaPct}%"></div>
-            ${mostrarEtiqueta ? `<span class="rep-chart-bar-label">${d.getDate()}/${d.getMonth() + 1}</span>` : ''}
-        `;
-        repChart.appendChild(bar);
+    const meses = [];
+    for (let m = new Date(inicioMes); m <= finMes; m.setMonth(m.getMonth() + 1)) meses.push(new Date(m));
+
+    const conteoPorMes = {};
+    remesas.forEach(r => {
+        if (!r.createdAt || !r.createdAt.toDate) return;
+        const clave = claveMesLocal(r.createdAt.toDate());
+        conteoPorMes[clave] = (conteoPorMes[clave] || 0) + 1;
     });
+
+    const items = meses.map(m => {
+        const clave = claveMesLocal(m);
+        const valor = conteoPorMes[clave] || 0;
+        return {
+            valor,
+            label: m.toLocaleDateString('es-CL', { month: 'short' }).replace('.', ''),
+            mostrarEtiqueta: true,
+            tooltip: `${nombreMesCapitalizado(clave)}: ${valor} remesa(s)`
+        };
+    });
+
+    pintarBarrasReportes(items);
 }
 
 function renderizarVolumenMensual(remesas) {
