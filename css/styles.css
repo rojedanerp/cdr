@@ -501,6 +501,51 @@ button {
   }
 }
 
+/* ============================================
+   BILLETERA — filtros de movimientos de USDT
+   ============================================ */
+.billetera-movs-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.billetera-movs-filtro {
+  max-width: 220px;
+  margin: 0;
+}
+
+.billetera-movs-filtro select,
+.billetera-movs-filtro input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.billetera-movs-filtro-buscar {
+  max-width: 260px;
+  flex: 1 1 200px;
+}
+
+@media (max-width: 480px) {
+  .billetera-movs-filtros {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .billetera-movs-filtro,
+  .billetera-movs-filtro-buscar {
+    max-width: none;
+  }
+}
+
 .rep-chart-wrap {
   padding: 24px;
   overflow-x: auto;
