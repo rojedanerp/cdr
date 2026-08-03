@@ -881,6 +881,7 @@ function renderTasaRow(docId, data) {
         <td class="mono-cell">${data.tasaMercado != null ? data.tasaMercado : '—'}</td>
         <td>${formatTasaFecha(data.actualizadoEn)}</td>
         <td>
+            <button type="button" class="btn-icon-action" onclick="compartirTasaImagen('${docId}')">📤 Compartir</button>
             <button type="button" class="btn-icon-action" onclick="editarTasa('${docId}')">✏️ Editar</button>
             <button type="button" class="btn-icon-action danger" onclick="eliminarTasa('${docId}')">🗑️ Eliminar</button>
         </td>
@@ -1674,19 +1675,26 @@ function calcularSaldosActuales(movimientos) {
         return { saldosPorMoneda, cajaAbierta: true };
     }
 
-    // Sin caja abierta: acumulado histórico total (no incluye saldos
-    // iniciales de aperturas pasadas, así que es solo referencial).
+    // Sin caja abierta: se usa lo último que contaste al cerrar la caja
+    // anterior (dato real), en vez de sumar todo el historial (que no
+    // significa nada útil sin una apertura de referencia).
+    if (ultimoCierreCerrado && ultimoCierreCerrado.data.saldosContados) {
+        return { saldosPorMoneda: { ...ultimoCierreCerrado.data.saldosContados }, cajaAbierta: false, esUltimoContado: true };
+    }
+
+    // Si tampoco hay ningún cierre cerrado todavía, se cae al acumulado
+    // histórico total como último recurso (con aviso).
     const saldosPorMoneda = {};
     movimientos.forEach(mov => {
         const moneda = mov.moneda || '?';
         const signo = mov.tipo === 'entrada' ? 1 : -1;
         saldosPorMoneda[moneda] = (saldosPorMoneda[moneda] || 0) + signo * (mov.monto || 0);
     });
-    return { saldosPorMoneda, cajaAbierta: false };
+    return { saldosPorMoneda, cajaAbierta: false, esUltimoContado: false };
 }
 
 function renderCajaSaldos(movimientos) {
-    const { saldosPorMoneda, cajaAbierta } = calcularSaldosActuales(movimientos);
+    const { saldosPorMoneda, cajaAbierta, esUltimoContado } = calcularSaldosActuales(movimientos);
     const monedas = Object.keys(saldosPorMoneda).sort();
     cajaSaldosGrid.innerHTML = '';
 
@@ -1698,6 +1706,13 @@ function renderCajaSaldos(movimientos) {
     cajaSaldosGrid.style.display = 'grid';
     cajaSaldosEmpty.style.display = 'none';
 
+    let avisoHTML = '';
+    if (!cajaAbierta) {
+        avisoHTML = esUltimoContado
+            ? '<span class="cell-subtext">📋 Sin caja abierta — esto es lo último que contaste al cerrar. Abre caja para ver el saldo en vivo.</span>'
+            : '<span class="cell-subtext">⚠️ Sin caja abierta ni cierres previos — esto es el acumulado histórico total, no el saldo real</span>';
+    }
+
     monedas.forEach(moneda => {
         const saldo = saldosPorMoneda[moneda];
         const card = document.createElement('div');
@@ -1706,7 +1721,7 @@ function renderCajaSaldos(movimientos) {
             <span class="stat-label">Saldo en caja · ${escapeHtml(moneda)}</span>
             <span class="stat-value ${saldo < 0 ? 'stat-value-negative' : ''}">${formatMoney(saldo, moneda)}</span>
             ${equivalenteClpHTML(moneda, saldo)}
-            ${!cajaAbierta ? '<span class="cell-subtext">⚠️ Sin caja abierta hoy — esto es el acumulado histórico total, no el saldo real</span>' : ''}
+            ${avisoHTML}
         `;
         cajaSaldosGrid.appendChild(card);
     });
@@ -2094,6 +2109,7 @@ async function eliminarVentaUsdt(ventaId) {
 const cierresColeccion = db.collection('cierresCaja');
 let movimientosCajaActuales = [];
 let cierreAbiertoActual = null; // { id, data } | null
+let ultimoCierreCerrado = null; // { id, data } | null — el cierre cerrado más reciente
 let resumenPorMoneda = {}; // saldo esperado por moneda de la caja abierta, recalculado en cada render
 
 const cierreCerradoView = document.getElementById('cierreCerradoView');
@@ -2394,6 +2410,7 @@ cierresColeccion.orderBy('abiertoEn', 'desc').onSnapshot(snapshot => {
         }
     });
     cierreAbiertoActual = abierto;
+    ultimoCierreCerrado = cerrados.length > 0 ? cerrados[0] : null;
     actualizarVistaCierre();
     renderHistorialCierres(cerrados);
     renderCajaSaldos(movimientosCajaActuales); // re-sincroniza las tarjetas de arriba con la apertura vigente
@@ -2578,4 +2595,109 @@ async function quitarMarcaBoleta(remesaId) {
         console.error('Error al quitar marca de boleta:', error);
         alert('No se pudo actualizar. Intenta de nuevo.');
     }
+}
+
+// ============================================
+// COMPARTIR TASA COMO IMAGEN (para WhatsApp Estado, etc.)
+// ============================================
+function dibujarImagenTasa(data) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+
+    // Fondo degradado con los colores de marca
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#133560');
+    grad.addColorStop(1, '#1d4e89');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.textAlign = 'center';
+
+    // Marca
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 56px Arial, sans-serif';
+    ctx.fillText('Lagomarcambios', canvas.width / 2, 160);
+    ctx.font = '400 32px Arial, sans-serif';
+    ctx.fillStyle = '#c9d8ea';
+    ctx.fillText('Casa de cambio', canvas.width / 2, 210);
+
+    // Tarjeta central
+    const cardX = 80, cardY = 380, cardW = canvas.width - 160, cardH = 380;
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.beginPath();
+    ctx.roundRect(cardX, cardY, cardW, cardH, 32);
+    ctx.fill();
+
+    // Par de monedas
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 64px Arial, sans-serif';
+    ctx.fillText(`${data.monedaOrigen} → ${data.monedaDestino}`, canvas.width / 2, cardY + 100);
+
+    // Tasa (destacada en dorado)
+    ctx.fillStyle = '#e8b84b';
+    ctx.font = '700 88px Arial, sans-serif';
+    const tasaTexto = `1 ${data.monedaOrigen} = ${data.tasa} ${data.monedaDestino}`;
+    ctx.font = '700 60px Arial, sans-serif';
+    ctx.fillText(tasaTexto, canvas.width / 2, cardY + 230);
+
+    ctx.fillStyle = '#c9d8ea';
+    ctx.font = '400 34px Arial, sans-serif';
+    ctx.fillText('Tasa vigente', canvas.width / 2, cardY + 300);
+
+    // Fecha
+    const fecha = data.actualizadoEn && data.actualizadoEn.toDate
+        ? data.actualizadoEn.toDate().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })
+        : new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '400 30px Arial, sans-serif';
+    ctx.fillText(`Actualizado: ${fecha}`, canvas.width / 2, canvas.height - 100);
+
+    return canvas;
+}
+
+async function compartirTasaImagen(docId) {
+    const data = tasasCache[`__doc_${docId}`];
+    if (!data) {
+        alert('No se encontró esa tasa. Recarga la página e intenta de nuevo.');
+        return;
+    }
+
+    const canvas = dibujarImagenTasa(data);
+    canvas.toBlob(async (blob) => {
+        if (!blob) {
+            alert('No se pudo generar la imagen. Intenta de nuevo.');
+            return;
+        }
+        const nombreArchivo = `tasa-${data.monedaOrigen}-${data.monedaDestino}.png`;
+        const file = new File([blob], nombreArchivo, { type: 'image/png' });
+
+        // En celular, esto abre el selector nativo (WhatsApp, Instagram, etc.)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: `Tasa ${data.monedaOrigen} → ${data.monedaDestino}`,
+                    text: `Tasa vigente: 1 ${data.monedaOrigen} = ${data.tasa} ${data.monedaDestino}`
+                });
+                return;
+            } catch (error) {
+                if (error && error.name === 'AbortError') return; // el usuario canceló el share
+                console.error('Error al compartir la imagen:', error);
+                // sigue al fallback de descarga
+            }
+        }
+
+        // Fallback: descargar la imagen para compartirla manualmente
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nombreArchivo;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        alert('Se descargó la imagen. Ábrela desde tus descargas para compartirla en WhatsApp.');
+    }, 'image/png');
 }
