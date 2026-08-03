@@ -1828,9 +1828,20 @@ window.eliminarMovimientoCaja = async (docId) => {
 // --- Listado + saldos por moneda, en tiempo real ---
 const cajaBody = document.getElementById('cajaBody');
 const cajaEmpty = document.getElementById('cajaEmpty');
+const cajaEmptyText = document.getElementById('cajaEmptyText');
 const cajaTableWrap = document.getElementById('cajaTableWrap');
 const cajaSaldosGrid = document.getElementById('cajaSaldosGrid');
 const cajaSaldosEmpty = document.getElementById('cajaSaldosEmpty');
+const cajaFiltroDesde = document.getElementById('cajaFiltroDesde');
+const cajaFiltroHasta = document.getElementById('cajaFiltroHasta');
+const cajaFiltroTipo = document.getElementById('cajaFiltroTipo');
+const cajaFiltroMoneda = document.getElementById('cajaFiltroMoneda');
+const cajaFiltroOrigen = document.getElementById('cajaFiltroOrigen');
+const cajaFiltroBuscar = document.getElementById('cajaFiltroBuscar');
+const cajaFiltroLimpiar = document.getElementById('cajaFiltroLimpiar');
+// Guarda el listado completo de movimientos de caja (tal como llega de
+// Firestore) para poder re-filtrar en el cliente sin volver a consultar.
+let cajaMovsCache = [];
 
 function origenBadgeHTML(mov) {
     if (mov.origen === 'remesa') return '<span class="badge badge-neutral">Remesa automática</span>';
@@ -1961,7 +1972,6 @@ function equivalenteClpHTML(moneda, saldo) {
 }
 
 cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
-    cajaBody.innerHTML = '';
     const movimientos = [];
     snapshot.forEach(doc => movimientos.push({ id: doc.id, ...doc.data() }));
     renderCajaSaldos(movimientos);
@@ -1970,18 +1980,88 @@ cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     movimientosCajaActuales = movimientos;
     actualizarVistaCierre();
 
-    if (snapshot.empty) {
+    cajaMovsCache = movimientos.map(mov => ({ id: mov.id, mov }));
+    const monedasCaja = [...new Set(movimientos.map(m => m.moneda).filter(Boolean))].sort();
+    poblarSelectMonedasCaja(monedasCaja);
+    aplicarFiltroCaja();
+}, error => {
+    console.error('Error al escuchar movimientos de caja:', error);
+});
+
+// Repuebla el <select> de moneda con las monedas que realmente aparecen en
+// los movimientos de caja, conservando la selección actual si sigue existiendo.
+function poblarSelectMonedasCaja(monedas) {
+    const valorActual = cajaFiltroMoneda.value;
+    cajaFiltroMoneda.innerHTML = '<option value="todos">Todas</option>' +
+        monedas.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+    cajaFiltroMoneda.value = monedas.includes(valorActual) ? valorActual : 'todos';
+}
+
+// Lee un input type="date" (yyyy-mm-dd) como fecha local, evitando el
+// desfase de timezone que da `new Date('yyyy-mm-dd')` (que lo interpreta en UTC).
+function leerFechaLocal(valor) {
+    if (!valor) return null;
+    const [y, m, d] = valor.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+// Aplica los filtros de fecha, tipo, moneda, origen y búsqueda por concepto
+// sobre cajaMovsCache, y vuelve a pintar la tabla de Movimientos de caja.
+function aplicarFiltroCaja() {
+    const desde = leerFechaLocal(cajaFiltroDesde.value);
+    let hasta = leerFechaLocal(cajaFiltroHasta.value);
+    if (hasta) hasta.setDate(hasta.getDate() + 1); // incluye todo el día "hasta"
+    const tipoFiltro = cajaFiltroTipo.value;
+    const monedaFiltro = cajaFiltroMoneda.value;
+    const origenFiltro = cajaFiltroOrigen.value;
+    const textoBusqueda = cajaFiltroBuscar.value.trim().toLowerCase();
+    const hayFiltrosActivos = !!desde || !!hasta || tipoFiltro !== 'todos' || monedaFiltro !== 'todos' || origenFiltro !== 'todos' || textoBusqueda !== '';
+
+    const filtrados = cajaMovsCache.filter(({ mov }) => {
+        if (desde || hasta) {
+            const fecha = mov.createdAt && mov.createdAt.toDate ? mov.createdAt.toDate() : null;
+            if (!fecha) return false;
+            if (desde && fecha < desde) return false;
+            if (hasta && fecha >= hasta) return false;
+        }
+        if (tipoFiltro !== 'todos' && mov.tipo !== tipoFiltro) return false;
+        if (monedaFiltro !== 'todos' && mov.moneda !== monedaFiltro) return false;
+        if (origenFiltro !== 'todos' && (mov.origen || 'manual') !== origenFiltro) return false;
+        if (textoBusqueda && !(mov.concepto || '').toLowerCase().includes(textoBusqueda)) return false;
+        return true;
+    });
+
+    cajaBody.innerHTML = '';
+    if (filtrados.length === 0) {
         cajaEmpty.style.display = 'block';
         cajaTableWrap.style.display = 'none';
+        cajaEmptyText.textContent = hayFiltrosActivos
+            ? 'No hay movimientos que coincidan con el filtro.'
+            : 'Todavía no hay movimientos registrados.';
         return;
     }
     cajaEmpty.style.display = 'none';
     cajaTableWrap.style.display = 'block';
-    snapshot.forEach(doc => {
-        cajaBody.appendChild(renderCajaRow(doc.id, doc.data()));
+    filtrados.forEach(({ id, mov }) => {
+        cajaBody.appendChild(renderCajaRow(id, mov));
     });
-}, error => {
-    console.error('Error al escuchar movimientos de caja:', error);
+}
+
+[cajaFiltroTipo, cajaFiltroMoneda, cajaFiltroOrigen].forEach(el => {
+    el.addEventListener('change', aplicarFiltroCaja);
+});
+[cajaFiltroDesde, cajaFiltroHasta].forEach(el => {
+    el.addEventListener('change', aplicarFiltroCaja);
+});
+cajaFiltroBuscar.addEventListener('input', aplicarFiltroCaja);
+cajaFiltroLimpiar.addEventListener('click', () => {
+    cajaFiltroDesde.value = '';
+    cajaFiltroHasta.value = '';
+    cajaFiltroTipo.value = 'todos';
+    cajaFiltroMoneda.value = 'todos';
+    cajaFiltroOrigen.value = 'todos';
+    cajaFiltroBuscar.value = '';
+    aplicarFiltroCaja();
 });
 
 // ============================================
