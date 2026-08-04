@@ -157,6 +157,75 @@ function recalcularCompraVentaUSDT() {
     el.addEventListener('input', recalcularCompraVentaUSDT);
 });
 
+// ============================================
+// CONVERSIÓN RÁPIDA — USD a Bolívares y Pesos
+// Solo se editan "Cantidad" (USD) y "DolarVzla" (Bs. por 1 USD).
+// Bolivares = Cantidad × DolarVzla
+// Cambio    = tipo de cambio CLP → VES en vivo (cuántos VES vale 1 CLP)
+// Pesos     = Bolivares ÷ Cambio
+// ============================================
+const convCantidadInput = document.getElementById('convCantidad');
+const convDolarVzlaInput = document.getElementById('convDolarVzla');
+const convCambioLabel = document.getElementById('convCambioLabel');
+const convCambioValue = document.getElementById('convCambioValue');
+const convBolivaresValue = document.getElementById('convBolivaresValue');
+const convPesosValue = document.getElementById('convPesosValue');
+
+let convCambioClpVes = null; // 1 CLP = X VES (en vivo)
+
+function formatEs(numero, decimales = 2) {
+    return numero.toLocaleString('es-CL', {
+        minimumFractionDigits: decimales,
+        maximumFractionDigits: decimales
+    });
+}
+
+function recalcularConversionRapida() {
+    const cantidad = parseFloat(convCantidadInput.value);
+    const dolarVzla = parseFloat(convDolarVzlaInput.value);
+
+    if (!cantidad || cantidad <= 0 || !dolarVzla || dolarVzla <= 0) {
+        convBolivaresValue.textContent = '—';
+        convPesosValue.textContent = '—';
+        return;
+    }
+
+    const bolivares = cantidad * dolarVzla;
+    convBolivaresValue.textContent = `Bs.${formatEs(bolivares)}`;
+
+    if (convCambioClpVes) {
+        const pesos = bolivares / convCambioClpVes;
+        convPesosValue.textContent = `$${formatEs(pesos, 0)}`;
+    } else {
+        convPesosValue.textContent = 'Obteniendo tipo de cambio...';
+    }
+}
+
+async function actualizarCambioClpVesEnVivo() {
+    try {
+        const res = await fetch('https://open.er-api.com/v6/latest/CLP');
+        const json = await res.json();
+        if (json.result === 'success' && json.rates && json.rates.VES) {
+            convCambioClpVes = json.rates.VES;
+            convCambioValue.textContent = formatEs(convCambioClpVes, 4);
+            convCambioLabel.textContent = 'Cambio (1 CLP = X VES, en vivo)';
+        } else {
+            throw new Error('Respuesta inválida de la API de tasas');
+        }
+    } catch (error) {
+        console.error('Error obteniendo tipo de cambio CLP → VES:', error);
+        convCambioValue.textContent = 'Error';
+        convCambioLabel.textContent = 'Cambio (no se pudo obtener el tipo de cambio en vivo)';
+    }
+    recalcularConversionRapida();
+}
+
+[convCantidadInput, convDolarVzlaInput].forEach(el => {
+    el.addEventListener('input', recalcularConversionRapida);
+});
+
+actualizarCambioClpVesEnVivo();
+
 // Calcular de inmediato con los valores ya presentes al cargar la página
 // (por si el navegador restauró valores de un formulario sin disparar 'input').
 recalcularTasaCruzada();
