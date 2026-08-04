@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/dist/tabler-icons.min.css">
     <link rel="stylesheet" href="css/styles.css">
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -17,7 +18,7 @@
     <div class="login-container">
         <div class="login-box">
             <div class="logo">
-                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#1d4e89" stroke-width="2">
                     <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
                 </svg>
                 <h1>Lagomarcambios</h1>
@@ -33,7 +34,9 @@
                 <div class="input-group">
                     <label for="password">Contraseña</label>
                     <input type="password" id="password" required placeholder="••••••••">
-                    <button type="button" class="toggle-password" onclick="togglePassword()">👁</button>
+                    <button type="button" class="toggle-password" onclick="togglePassword()" aria-label="Mostrar contraseña">
+                        <i class="ti ti-eye" id="togglePasswordIcon" aria-hidden="true"></i>
+                    </button>
                 </div>
                 
                 <div id="loginError" class="error-message"></div>
@@ -88,7 +91,10 @@
         
         window.togglePassword = () => {
             const input = document.getElementById('password');
-            input.type = input.type === 'password' ? 'text' : 'password';
+            const icon = document.getElementById('togglePasswordIcon');
+            const oculto = input.type === 'password';
+            input.type = oculto ? 'text' : 'password';
+            icon.className = oculto ? 'ti ti-eye-off' : 'ti ti-eye';
         };
     </script>
 </body>
