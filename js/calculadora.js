@@ -212,7 +212,10 @@ function recalcularCompraVentaUSDT() {
 // CONVERSIÓN RÁPIDA — USD a Bolívares y Pesos
 // Solo se editan "Cantidad" (USD) y "DolarVzla" (Bs. por 1 USD).
 // Bolivares = Cantidad × DolarVzla
-// Cambio    = tipo de cambio CLP → VES en vivo (cuántos VES vale 1 CLP)
+// Cambio    = Tasa ofrecida configurada para remesas del par CLP → VES
+//             (colección "tasasCambio", doc "CLP_VES", campo "tasa").
+//             Se escucha en tiempo real: si se actualiza la tasa desde
+//             Configuración, esta celda se refresca sola.
 // Pesos     = Bolivares ÷ Cambio
 // ============================================
 const convCantidadInput = document.getElementById('convCantidad');
@@ -222,7 +225,7 @@ const convCambioValue = document.getElementById('convCambioValue');
 const convBolivaresValue = document.getElementById('convBolivaresValue');
 const convPesosValue = document.getElementById('convPesosValue');
 
-let convCambioClpVes = null; // 1 CLP = X VES (en vivo)
+let convCambioClpVes = null; // 1 CLP = X VES (tasa ofrecida remesas)
 
 function formatEs(numero, decimales = 2) {
     return numero.toLocaleString('es-CL', {
@@ -252,30 +255,69 @@ function recalcularConversionRapida() {
     }
 }
 
-async function actualizarCambioClpVesEnVivo() {
+// La calculadora en general no depende de Firebase, pero esta celda
+// puntual sí necesita leer la tasa ofrecida para remesas CLP → VES,
+// así que esperamos a que Firebase esté inicializado (lo inicializa
+// firebase-config.js al cargarse app.js) antes de suscribirnos.
+function esperarFirebaseListo(maxIntentos = 100, intervaloMs = 100) {
+    return new Promise((resolve, reject) => {
+        let intentos = 0;
+        const chequear = () => {
+            if (window.firebase && firebase.apps && firebase.apps.length > 0) {
+                resolve();
+                return;
+            }
+            intentos++;
+            if (intentos >= maxIntentos) {
+                reject(new Error('Firebase no se inicializó a tiempo'));
+                return;
+            }
+            setTimeout(chequear, intervaloMs);
+        };
+        chequear();
+    });
+}
+
+async function suscribirseTasaOfrecidaClpVes() {
     try {
-        const res = await fetch('https://open.er-api.com/v6/latest/CLP');
-        const json = await res.json();
-        if (json.result === 'success' && json.rates && json.rates.VES) {
-            convCambioClpVes = json.rates.VES;
-            convCambioValue.textContent = formatEs(convCambioClpVes, 4);
-            convCambioLabel.textContent = 'Cambio (1 CLP = X VES, en vivo)';
-        } else {
-            throw new Error('Respuesta inválida de la API de tasas');
-        }
+        await esperarFirebaseListo();
+        const db = firebase.firestore();
+
+        db.collection('tasasCambio').doc('CLP_VES').onSnapshot(
+            (doc) => {
+                const data = doc.data();
+                if (doc.exists && data && typeof data.tasa === 'number') {
+                    convCambioClpVes = data.tasa;
+                    convCambioValue.textContent = formatEs(convCambioClpVes, 4);
+                    convCambioLabel.textContent = 'Cambio (1 CLP = X VES, tasa ofrecida remesas)';
+                } else {
+                    convCambioClpVes = null;
+                    convCambioValue.textContent = 'Sin configurar';
+                    convCambioLabel.textContent = 'Cambio (no hay tasa ofrecida configurada para CLP → VES)';
+                }
+                recalcularConversionRapida();
+            },
+            (error) => {
+                console.error('Error escuchando la tasa ofrecida CLP → VES:', error);
+                convCambioClpVes = null;
+                convCambioValue.textContent = 'Error';
+                convCambioLabel.textContent = 'Cambio (no se pudo obtener la tasa ofrecida)';
+                recalcularConversionRapida();
+            }
+        );
     } catch (error) {
-        console.error('Error obteniendo tipo de cambio CLP → VES:', error);
+        console.error('Error obteniendo la tasa ofrecida CLP → VES:', error);
         convCambioValue.textContent = 'Error';
-        convCambioLabel.textContent = 'Cambio (no se pudo obtener el tipo de cambio en vivo)';
+        convCambioLabel.textContent = 'Cambio (no se pudo obtener la tasa ofrecida)';
+        recalcularConversionRapida();
     }
-    recalcularConversionRapida();
 }
 
 [convCantidadInput, convDolarVzlaInput].forEach(el => {
     el.addEventListener('input', recalcularConversionRapida);
 });
 
-actualizarCambioClpVesEnVivo();
+suscribirseTasaOfrecidaClpVes();
 
 // Calcular de inmediato con los valores ya presentes al cargar la página
 // (por si el navegador restauró valores de un formulario sin disparar 'input').
