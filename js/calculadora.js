@@ -234,6 +234,10 @@ function formatEs(numero, decimales = 2) {
     });
 }
 
+// Guarda el último cálculo válido, para poder generar la imagen a compartir
+// sin tener que recalcular todo de nuevo al momento de tocar "Compartir".
+let convUltimoCalculo = null;
+
 function recalcularConversionRapida() {
     const cantidad = parseFloat(convCantidadInput.value);
     const dolarVzla = parseFloat(convDolarVzlaInput.value);
@@ -241,6 +245,7 @@ function recalcularConversionRapida() {
     if (!cantidad || cantidad <= 0 || !dolarVzla || dolarVzla <= 0) {
         convBolivaresValue.textContent = '—';
         convPesosValue.textContent = '—';
+        convUltimoCalculo = null;
         return;
     }
 
@@ -250,8 +255,10 @@ function recalcularConversionRapida() {
     if (convCambioClpVes) {
         const pesos = bolivares / convCambioClpVes;
         convPesosValue.textContent = `$${formatEs(pesos, 0)}`;
+        convUltimoCalculo = { cantidad, dolarVzla, cambio: convCambioClpVes, bolivares, pesos };
     } else {
-        convPesosValue.textContent = 'Obteniendo tipo de cambio...';
+        convPesosValue.textContent = 'Obteniendo tasa ofrecida...';
+        convUltimoCalculo = null;
     }
 }
 
@@ -323,3 +330,199 @@ suscribirseTasaOfrecidaClpVes();
 // (por si el navegador restauró valores de un formulario sin disparar 'input').
 recalcularTasaCruzada();
 recalcularCompraVentaUSDT();
+
+// ============================================
+// COMPARTIR / DESCARGAR "CONVERSIÓN RÁPIDA" COMO IMAGEN
+// Genera una tarjeta similar a la que se usa para compartir la tasa,
+// pero con el detalle completo de la conversión (monto en USD, tasa
+// del dólar en Venezuela, tasa ofrecida CLP → VES, Bolívares y Pesos).
+// ============================================
+function dibujarImagenConversionRapida(datos) {
+    const canvas = document.createElement('canvas');
+    const W = 1080, H = 1080, cx = W / 2;
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // Fondo degradado, en línea con la identidad de Lagomarcambios
+    const fondo = ctx.createLinearGradient(0, 0, 0, H);
+    fondo.addColorStop(0, '#081625');
+    fondo.addColorStop(0.55, '#123258');
+    fondo.addColorStop(1, '#1d4e89');
+    ctx.fillStyle = fondo;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.textAlign = 'center';
+    const conSombra = (dibujar) => {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.45)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 3;
+        dibujar();
+        ctx.restore();
+    };
+
+    // Marca
+    ctx.fillStyle = '#e8b84b';
+    ctx.fillRect(cx - 36, 100, 72, 4);
+    conSombra(() => {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '600 54px "Helvetica Neue", Arial, sans-serif';
+        ctx.fillText('Lagomarcambios', cx, 180);
+    });
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.font = '400 30px "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText('Conversión rápida — USD a Bolívares y Pesos', cx, 224);
+
+    // Tarjeta principal
+    const cardX = 90, cardY = 280, cardW = W - 180, cardH = 560;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 12;
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.beginPath();
+    ctx.roundRect(cardX, cardY, cardW, cardH, 26);
+    ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(cardX, cardY, cardW, cardH, 26);
+    ctx.stroke();
+
+    // Filas con cada dato: [etiqueta, valor, destacado]
+    const filas = [
+        ['Cantidad (USD)', `US$${formatEs(datos.cantidad)}`, false],
+        ['Dólar Venezuela (Bs. por 1 USD)', `Bs.${formatEs(datos.dolarVzla)}`, false],
+        ['Tasa ofrecida CLP → VES', formatEs(datos.cambio, 4), false],
+        ['Bolívares', `Bs.${formatEs(datos.bolivares)}`, false],
+        ['Pesos (CLP)', `$${formatEs(datos.pesos, 0)}`, true],
+    ];
+
+    let filaY = cardY + 90;
+    const filaAltura = (cardH - 100) / filas.length;
+    filas.forEach(([label, valor, destacado], i) => {
+        ctx.textAlign = 'left';
+        ctx.font = '400 28px "Helvetica Neue", Arial, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.fillText(label, cardX + 50, filaY);
+
+        ctx.textAlign = 'right';
+        conSombra(() => {
+            ctx.fillStyle = destacado ? '#f2c866' : '#ffffff';
+            ctx.font = `700 ${destacado ? 52 : 40}px "Helvetica Neue", Arial, sans-serif`;
+            ctx.fillText(valor, cardX + cardW - 50, filaY + (destacado ? 6 : 0));
+        });
+
+        if (i < filas.length - 1) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(cardX + 50, filaY + filaAltura - 34);
+            ctx.lineTo(cardX + cardW - 50, filaY + filaAltura - 34);
+            ctx.stroke();
+        }
+        filaY += filaAltura;
+    });
+
+    // Aviso "tasa sujeta a cambios"
+    ctx.textAlign = 'center';
+    ctx.font = '500 22px "Helvetica Neue", Arial, sans-serif';
+    const avisoTexto = 'Tasa sujeta a cambios';
+    const avisoAncho = ctx.measureText(avisoTexto).width;
+    const avisoY = cardY + cardH + 70;
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.beginPath();
+    ctx.roundRect(cx - avisoAncho / 2 - 18, avisoY - 22, avisoAncho + 36, 36, 18);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(cx - avisoAncho / 2 - 18, avisoY - 22, avisoAncho + 36, 36, 18);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText(avisoTexto, cx, avisoY + 3);
+
+    // Fecha
+    const fecha = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '400 26px "Helvetica Neue", Arial, sans-serif';
+    ctx.fillText(`Actualizado el ${fecha}`, cx, avisoY + 60);
+
+    // Marco sutil
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, W - 20, H - 20);
+
+    return canvas;
+}
+
+const convCompartirBtn = document.getElementById('convCompartirBtn');
+const convPreviewOverlay = document.getElementById('convPreviewOverlay');
+const convPreviewImg = document.getElementById('convPreviewImg');
+const convPreviewCerrarBtn = document.getElementById('convPreviewCerrarBtn');
+const convPreviewCompartirBtn = document.getElementById('convPreviewCompartirBtn');
+const convPreviewDescargarBtn = document.getElementById('convPreviewDescargarBtn');
+let convPreviewBlob = null;
+const convPreviewNombreArchivo = 'conversion-rapida-lagomarcambios.png';
+
+function cerrarPreviewConversion() {
+    convPreviewOverlay.classList.add('hidden');
+    if (convPreviewImg.src) URL.revokeObjectURL(convPreviewImg.src);
+    convPreviewImg.src = '';
+    convPreviewBlob = null;
+}
+convPreviewCerrarBtn.addEventListener('click', cerrarPreviewConversion);
+convPreviewOverlay.addEventListener('click', (e) => {
+    if (e.target === convPreviewOverlay) cerrarPreviewConversion();
+});
+
+convPreviewDescargarBtn.addEventListener('click', () => {
+    if (!convPreviewBlob) return;
+    const url = URL.createObjectURL(convPreviewBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = convPreviewNombreArchivo;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+});
+
+convPreviewCompartirBtn.addEventListener('click', async () => {
+    if (!convPreviewBlob) return;
+    const file = new File([convPreviewBlob], convPreviewNombreArchivo, { type: 'image/png' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({ files: [file], title: 'Conversión rápida' });
+            cerrarPreviewConversion();
+            return;
+        } catch (error) {
+            if (error && error.name === 'AbortError') return; // el usuario canceló el share
+            console.error('Error al compartir la imagen de conversión:', error);
+        }
+    }
+    // Si no hay soporte para compartir archivos, se descarga en su lugar
+    alert('Tu navegador no puede abrir el selector de compartir. Se descargará la imagen para que la envíes manualmente.');
+    convPreviewDescargarBtn.click();
+});
+
+convCompartirBtn.addEventListener('click', async () => {
+    if (!convUltimoCalculo) {
+        alert('Completa Cantidad y DolarVzla, y espera a que cargue la tasa ofrecida, antes de generar la imagen.');
+        return;
+    }
+
+    const canvas = dibujarImagenConversionRapida(convUltimoCalculo);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) {
+        alert('No se pudo generar la imagen. Intenta de nuevo.');
+        return;
+    }
+
+    convPreviewBlob = blob;
+    convPreviewImg.src = URL.createObjectURL(blob);
+    convPreviewOverlay.classList.remove('hidden');
+});
