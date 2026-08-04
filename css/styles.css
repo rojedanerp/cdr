@@ -1105,6 +1105,12 @@ button {
   color: var(--transfer-teal);
 }
 
+.calc-panel-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .form-message-success {
   color: var(--success);
 }
