@@ -72,6 +72,52 @@ button {
 }
 
 /* ============================================
+   ICONOS (Tabler outline) — reemplazan los emojis
+   que antes se usaban como iconos. Tamaño y
+   alineación consistentes en cada contexto.
+   ============================================ */
+.nav-links li i {
+  font-size: 17px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.btn-logout i,
+.menu-toggle i,
+.btn-primary i,
+.btn-secondary i,
+.btn-icon-action i,
+.calc-panel-icon,
+.panel-header h3 i,
+.tasa-form-actions i {
+  font-size: 15px;
+  vertical-align: -2px;
+}
+
+.empty-state-icon.ti {
+  font-size: 30px;
+  display: block;
+  margin-bottom: 10px;
+  color: var(--slate-light);
+}
+
+.modal-close i {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.toggle-password i {
+  font-size: 16px;
+  vertical-align: middle;
+}
+
+.cell-subtext i {
+  font-size: 13px;
+  vertical-align: -2px;
+}
+
+/* ============================================
    Componente firma: indicador de ruta
    (origen ●┈┈▶ destino) — representa cada envío
    ============================================ */
