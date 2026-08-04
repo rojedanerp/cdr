@@ -1501,6 +1501,15 @@ const repGananciaBody = document.getElementById('repGananciaBody');
 const repGananciaWrap = document.getElementById('repGananciaWrap');
 const repGananciaEmpty = document.getElementById('repGananciaEmpty');
 
+// Snapshot del último render, usado por los botones de exportar (PDF/Excel)
+// para que siempre exporten exactamente lo que se ve en pantalla.
+let reportesExportState = {
+    periodoLabel: '',
+    stats: { cantidad: 0, ticket: '—', ganancia: '—', sinRef: 0 },
+    volumen: [],   // [{ mes, moneda, count, total }]
+    ganancia: []   // [{ fecha, cliente, enviado, tasaAplicada, tasaReferencia, gananciaNeta, monedaGanancia }]
+};
+
 // Filtros avanzados de Reportes (mismo patrón colapsable de Historial/Caja/Billetera)
 const reportesFiltroEstado = document.getElementById('reportesFiltroEstado');
 const reportesFiltroPago = document.getElementById('reportesFiltroPago');
@@ -1715,6 +1724,14 @@ function renderizarReportes() {
         ? '—'
         : entradasGanancia.map(([moneda, total]) => formatMoney(total, moneda)).join(' · ');
 
+    reportesExportState.periodoLabel = reportesPeriodo.options[reportesPeriodo.selectedIndex].text;
+    reportesExportState.stats = {
+        cantidad: repStatCantidad.textContent,
+        ticket: repStatTicket.textContent,
+        ganancia: repStatGanancia.textContent,
+        sinRef: repStatSinRef.textContent
+    };
+
     renderizarGraficoDiario(enPeriodo, periodo, desde, hasta);
     renderizarVolumenMensual(enPeriodo);
     renderizarGananciaPorRemesa(conReferencia);
@@ -1885,10 +1902,19 @@ function renderizarVolumenMensual(remesas) {
     if (filas.length === 0) {
         repVolumenWrap.style.display = 'none';
         repVolumenEmpty.style.display = 'block';
+        reportesExportState.volumen = [];
         return;
     }
     repVolumenWrap.style.display = 'block';
     repVolumenEmpty.style.display = 'none';
+
+    reportesExportState.volumen = filas.map(f => ({
+        mes: nombreMesCapitalizado(f.mes),
+        moneda: f.moneda,
+        count: f.count,
+        total: f.total,
+        totalTexto: moneyTexto(f.total, f.moneda)
+    }));
 
     filas.forEach(f => {
         const tr = document.createElement('tr');
@@ -1913,10 +1939,24 @@ function renderizarGananciaPorRemesa(conReferencia) {
     if (filas.length === 0) {
         repGananciaWrap.style.display = 'none';
         repGananciaEmpty.style.display = 'block';
+        reportesExportState.ganancia = [];
         return;
     }
     repGananciaWrap.style.display = 'block';
     repGananciaEmpty.style.display = 'none';
+
+    reportesExportState.ganancia = filas.map(r => {
+        const ganancia = calcularGananciaNeta(r);
+        const moneda = (r.monedaEnviado || '').toUpperCase();
+        return {
+            fecha: formatDate(r.createdAt),
+            cliente: r.clienteNombre || '—',
+            enviado: moneyTexto(r.montoEnviado, r.monedaEnviado),
+            tasaAplicada: r.tasaCambio,
+            tasaReferencia: r.tasaReferencia,
+            gananciaNeta: moneyTexto(ganancia, moneda)
+        };
+    });
 
     filas.forEach(r => {
         const ganancia = calcularGananciaNeta(r);
@@ -1934,6 +1974,115 @@ function renderizarGananciaPorRemesa(conReferencia) {
         repGananciaBody.appendChild(tr);
     });
 }
+
+// --- Exportar Reportes — PDF (jsPDF) y Excel (SheetJS) ---
+// Exporta siempre lo que está visible en pantalla (respeta el periodo y los
+// filtros avanzados activos), usando el snapshot guardado en reportesExportState.
+const reportesExportarPdfBtn = document.getElementById('reportesExportarPdfBtn');
+const reportesExportarExcelBtn = document.getElementById('reportesExportarExcelBtn');
+
+reportesExportarPdfBtn.addEventListener('click', () => {
+    const { stats, volumen, ganancia, periodoLabel } = reportesExportState;
+    if (Number(stats.cantidad) === 0 && volumen.length === 0 && ganancia.length === 0) {
+        alert('No hay datos para exportar con los filtros actuales.');
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(14);
+    doc.text('Reportes', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} · Periodo: ${periodoLabel}`, 14, 21);
+
+    doc.autoTable({
+        startY: 26,
+        head: [['Remesas', 'Ticket promedio', 'Ganancia neta estimada', 'Sin tasa de referencia']],
+        body: [[stats.cantidad, stats.ticket, stats.ganancia, stats.sinRef]],
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        headStyles: { fillColor: [30, 41, 59] }
+    });
+
+    let cursorY = doc.lastAutoTable.finalY + 10;
+
+    if (volumen.length > 0) {
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        doc.text('Volumen mensual por moneda destino', 14, cursorY);
+        doc.autoTable({
+            startY: cursorY + 4,
+            head: [['Mes', 'Moneda', '# Remesas', 'Monto total recibido']],
+            body: volumen.map(f => [f.mes, f.moneda, f.count, f.totalTexto]),
+            styles: { fontSize: 8.5, cellPadding: 3 },
+            headStyles: { fillColor: [30, 41, 59] },
+            alternateRowStyles: { fillColor: [245, 246, 248] }
+        });
+        cursorY = doc.lastAutoTable.finalY + 10;
+    }
+
+    if (ganancia.length > 0) {
+        if (cursorY > 180) { doc.addPage(); cursorY = 15; }
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        doc.text('Ganancia por remesa', 14, cursorY);
+        doc.autoTable({
+            startY: cursorY + 4,
+            head: [['Fecha', 'Cliente', 'Enviado', 'Tasa aplicada', 'Tasa referencia', 'Ganancia neta']],
+            body: ganancia.map(g => [g.fecha, g.cliente, g.enviado, g.tasaAplicada, g.tasaReferencia, g.gananciaNeta]),
+            styles: { fontSize: 8.5, cellPadding: 3 },
+            headStyles: { fillColor: [30, 41, 59] },
+            alternateRowStyles: { fillColor: [245, 246, 248] }
+        });
+    }
+
+    doc.save(`reportes-${fechaArchivo()}.pdf`);
+});
+
+reportesExportarExcelBtn.addEventListener('click', () => {
+    const { stats, volumen, ganancia, periodoLabel } = reportesExportState;
+    if (Number(stats.cantidad) === 0 && volumen.length === 0 && ganancia.length === 0) {
+        alert('No hay datos para exportar con los filtros actuales.');
+        return;
+    }
+    const libro = XLSX.utils.book_new();
+
+    const hojaResumen = XLSX.utils.json_to_sheet([{
+        Periodo: periodoLabel,
+        'Remesas en el periodo': stats.cantidad,
+        'Ticket promedio': stats.ticket,
+        'Ganancia neta estimada': stats.ganancia,
+        'Sin tasa de referencia': stats.sinRef
+    }]);
+    hojaResumen['!cols'] = [{ wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(libro, hojaResumen, 'Resumen');
+
+    if (volumen.length > 0) {
+        const hojaVolumen = XLSX.utils.json_to_sheet(volumen.map(f => ({
+            Mes: f.mes,
+            Moneda: f.moneda,
+            '# Remesas': f.count,
+            'Monto total recibido': f.totalTexto
+        })));
+        hojaVolumen['!cols'] = [{ wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(libro, hojaVolumen, 'Volumen mensual');
+    }
+
+    if (ganancia.length > 0) {
+        const hojaGanancia = XLSX.utils.json_to_sheet(ganancia.map(g => ({
+            Fecha: g.fecha,
+            Cliente: g.cliente,
+            Enviado: g.enviado,
+            'Tasa aplicada': g.tasaAplicada,
+            'Tasa referencia': g.tasaReferencia,
+            'Ganancia neta': g.gananciaNeta
+        })));
+        hojaGanancia['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
+        XLSX.utils.book_append_sheet(libro, hojaGanancia, 'Ganancia por remesa');
+    }
+
+    XLSX.writeFile(libro, `reportes-${fechaArchivo()}.xlsx`);
+});
 
 // ============================================
 // CAJA — control de efectivo por moneda
