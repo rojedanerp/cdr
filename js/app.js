@@ -405,8 +405,8 @@ function renderClienteRow(docId, data) {
         <td>${escapeHtml(data.paisDestino) || '—'}</td>
         <td>${formatClienteFecha(data.ultimaRemesaEn)}</td>
         <td>
-            <button type="button" class="btn-icon-action" onclick="editarCliente('${docId}')">✏️ Editar</button>
-            <button type="button" class="btn-icon-action danger" onclick="eliminarCliente('${docId}')">🗑️ Eliminar</button>
+            <button type="button" class="btn-icon-action" onclick="editarCliente('${docId}')"><i class="ti ti-pencil" aria-hidden="true"></i> Editar</button>
+            <button type="button" class="btn-icon-action danger" onclick="eliminarCliente('${docId}')"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>
         </td>
     `;
     return tr;
@@ -676,7 +676,7 @@ function actualizarPanelFiltros(prefix, defs, resultado) {
         activos.forEach((d, i) => {
             const chip = document.createElement('span');
             chip.className = 'filtro-chip';
-            chip.innerHTML = `${escapeHtml(d.texto)} <button type="button" aria-label="Quitar filtro ${escapeHtml(d.label)}">✕</button>`;
+            chip.innerHTML = `${escapeHtml(d.texto)} <button type="button" aria-label="Quitar filtro ${escapeHtml(d.label)}"><i class="ti ti-x" aria-hidden="true"></i></button>`;
             chip.querySelector('button').addEventListener('click', d.onQuitar);
             chipsEl.appendChild(chip);
         });
@@ -737,8 +737,8 @@ function renderHistorialRow(id, r) {
         <td>${badgePagoLabel(r.formaPago, r.bancoOrigen)}</td>
         <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
         <td>
-            <button type="button" class="btn-icon-action" onclick="editarRemesa('${id}')">✏️ Editar</button>
-            <button type="button" class="btn-icon-action danger" onclick="eliminarRemesa('${id}')">🗑️ Eliminar</button>
+            <button type="button" class="btn-icon-action" onclick="editarRemesa('${id}')"><i class="ti ti-pencil" aria-hidden="true"></i> Editar</button>
+            <button type="button" class="btn-icon-action danger" onclick="eliminarRemesa('${id}')"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>
         </td>
     `;
     return tr;
@@ -1144,9 +1144,9 @@ function renderTasaRow(docId, data) {
         <td class="mono-cell">${data.tasaMercado != null ? data.tasaMercado : '—'}</td>
         <td>${formatTasaFecha(data.actualizadoEn)}</td>
         <td>
-            <button type="button" class="btn-icon-action" onclick="compartirTasaImagen('${docId}')">📤 Compartir</button>
-            <button type="button" class="btn-icon-action" onclick="editarTasa('${docId}')">✏️ Editar</button>
-            <button type="button" class="btn-icon-action danger" onclick="eliminarTasa('${docId}')">🗑️ Eliminar</button>
+            <button type="button" class="btn-icon-action" onclick="compartirTasaImagen('${docId}')"><i class="ti ti-share-2" aria-hidden="true"></i> Compartir</button>
+            <button type="button" class="btn-icon-action" onclick="editarTasa('${docId}')"><i class="ti ti-pencil" aria-hidden="true"></i> Editar</button>
+            <button type="button" class="btn-icon-action danger" onclick="eliminarTasa('${docId}')"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>
         </td>
     `;
     return tr;
@@ -2277,7 +2277,7 @@ function renderCajaRow(id, mov) {
         <td>
             ${mov.origen === 'remesa'
                 ? '<span class="input-hint">Se edita desde la remesa</span>'
-                : `<button type="button" class="btn-icon-action danger" onclick="eliminarMovimientoCaja('${id}')">🗑️ Eliminar</button>`}
+                : `<button type="button" class="btn-icon-action danger" onclick="eliminarMovimientoCaja('${id}')"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>`}
         </td>
     `;
     return tr;
@@ -2349,8 +2349,8 @@ function renderCajaSaldos(movimientos) {
     let avisoHTML = '';
     if (!cajaAbierta) {
         avisoHTML = esUltimoContado
-            ? '<span class="cell-subtext">📋 Sin caja abierta — esto es lo último que contaste al cerrar. Abre caja para ver el saldo en vivo.</span>'
-            : '<span class="cell-subtext">⚠️ Sin caja abierta ni cierres previos — esto es el acumulado histórico total, no el saldo real</span>';
+            ? '<span class="cell-subtext"><i class="ti ti-clipboard" aria-hidden="true"></i> Sin caja abierta — esto es lo último que contaste al cerrar. Abre caja para ver el saldo en vivo.</span>'
+            : '<span class="cell-subtext"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Sin caja abierta ni cierres previos — esto es el acumulado histórico total, no el saldo real</span>';
     }
 
     monedas.forEach(moneda => {
@@ -2735,7 +2735,7 @@ function renderBilleteraCompras(compras) {
                 <td class="mono-cell">${formatMoney(mov.monto, 'USDT')}</td>
                 <td class="mono-cell">${formatMoney(tasa, 'CLP')}</td>
                 <td>${escapeHtml(mov.concepto) || '—'}</td>
-                <td><button type="button" class="btn-icon-action danger" data-compra-id="${mov.compraId}">🗑️</button></td>
+                <td><button type="button" class="btn-icon-action danger" data-compra-id="${mov.compraId}"><i class="ti ti-trash" aria-hidden="true"></i></button></td>
             `;
             tr.querySelector('button').addEventListener('click', () => eliminarCompraUsdt(mov.compraId));
             billeteraBody.appendChild(tr);
@@ -2836,7 +2836,7 @@ function renderBilleteraVentas(ventas) {
             <td class="mono-cell">${formatMoney(tasa, 'VES')}</td>
             <td class="mono-cell">${mov.comisionUsdt ? formatMoney(mov.comisionUsdt, 'USDT') : '—'}</td>
             <td>${escapeHtml(mov.concepto) || '—'}</td>
-            <td><button type="button" class="btn-icon-action danger" data-venta-id="${mov.ventaId}">🗑️</button></td>
+            <td><button type="button" class="btn-icon-action danger" data-venta-id="${mov.ventaId}"><i class="ti ti-trash" aria-hidden="true"></i></button></td>
         `;
         tr.querySelector('button').addEventListener('click', () => eliminarVentaUsdt(mov.ventaId));
         billeteraVentasBody.appendChild(tr);
@@ -2955,7 +2955,7 @@ function agregarFilaApertura() {
         <input type="text" class="apertura-moneda" placeholder="Moneda (ej. CLP)" maxlength="6">
         <input type="number" class="apertura-monto" placeholder="Saldo inicial" min="0" step="0.01">
         <input type="text" class="apertura-concepto" placeholder="Concepto (ej. BancoEstado, Banco de Chile)">
-        <button type="button" class="btn-icon-action danger">✕</button>
+        <button type="button" class="btn-icon-action danger"><i class="ti ti-x" aria-hidden="true"></i></button>
     `;
     fila.querySelector('button').addEventListener('click', () => {
         if (aperturaFilas.children.length > 1) fila.remove();
@@ -3296,7 +3296,7 @@ function renderBoletas(remesas) {
                 <td>${escapeHtml(r.clienteNombre) || '—'}</td>
                 <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
                 <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
-                <td><button type="button" class="btn-icon-action" data-id="${r.id}">🧾 Marcar boleta emitida</button></td>
+                <td><button type="button" class="btn-icon-action" data-id="${r.id}"><i class="ti ti-receipt" aria-hidden="true"></i> Marcar boleta emitida</button></td>
             `;
             tr.querySelector('.boleta-checkbox').addEventListener('change', (e) => {
                 if (e.target.checked) boletasSeleccionadas.add(r.id);
