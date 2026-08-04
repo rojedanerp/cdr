@@ -11,6 +11,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <!-- Exportar Historial: PDF (jsPDF + autotable) y Excel (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <!-- Sidebar -->
@@ -948,9 +952,15 @@
 
         <!-- HISTORIAL -->
         <section id="historial" class="section">
-            <div class="section-header">
-                <h2>Historial</h2>
-                <p class="section-subtitle">Todas las remesas procesadas</p>
+            <div class="section-header section-header-row">
+                <div>
+                    <h2>Historial</h2>
+                    <p class="section-subtitle">Todas las remesas procesadas</p>
+                </div>
+                <div class="section-header-actions">
+                    <button type="button" class="btn-secondary" id="historialExportarPdfBtn">📄 Exportar PDF</button>
+                    <button type="button" class="btn-secondary" id="historialExportarExcelBtn">📊 Exportar Excel</button>
+                </div>
             </div>
             <div class="panel">
                 <div class="filtros-panel" id="historialFiltrosPanel">
@@ -1391,7 +1401,7 @@
         </div>
     </div>
 
-    <script src="js/calculadora.js?v=17"></script>
-    <script type="module" src="js/app.js?v=17"></script>
+    <script src="js/calculadora.js?v=18"></script>
+    <script type="module" src="js/app.js?v=18"></script>
 </body>
 </html>
