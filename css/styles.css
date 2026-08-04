@@ -1003,6 +1003,74 @@ button {
   margin: 8px 0 4px;
 }
 
+/* ============================================
+   CALCULADORA DE TASAS — 3 paneles independientes
+   y colapsables (minimizables) para no ocupar
+   tanto espacio de golpe.
+   ============================================ */
+.calc-panel {
+  margin-bottom: 16px;
+}
+
+.calc-panel-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-body);
+  text-align: left;
+}
+
+.calc-panel-toggle:hover {
+  background: var(--route-blue-light);
+}
+
+.calc-panel-toggle-text h3 {
+  font-size: 15px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calc-panel-toggle-text .section-subtitle {
+  margin-top: 4px;
+}
+
+.calc-panel-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.calc-panel-chevron {
+  color: var(--slate);
+  flex-shrink: 0;
+  font-size: 14px;
+  transition: transform 0.15s ease;
+}
+
+.calc-panel.abierto .calc-panel-toggle {
+  border-bottom: 1px solid var(--border);
+}
+
+.calc-panel.abierto .calc-panel-chevron {
+  transform: rotate(180deg);
+}
+
+.calc-panel-body {
+  display: none;
+  padding: 20px;
+}
+
+.calc-panel.abierto .calc-panel-body {
+  display: block;
+}
+
 .calc-result-secondary {
   background: var(--canvas);
   border-color: var(--border);
