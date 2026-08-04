@@ -867,7 +867,7 @@
                 <button type="button" class="calc-panel-toggle" id="calcConvToggle" aria-expanded="false" aria-controls="calcConvBody">
                     <span class="calc-panel-toggle-text">
                         <h3><span class="calc-panel-icon">💵</span> Conversión rápida — Dólares a Bolívares y Pesos</h3>
-                        <p class="section-subtitle">Solo edita Cantidad y DolarVzla. Bolívares y Pesos se calculan solos con el tipo de cambio CLP → VES en vivo.</p>
+                        <p class="section-subtitle">Solo edita Cantidad y DolarVzla. Bolívares y Pesos se calculan solos con la tasa ofrecida para remesas CLP → VES.</p>
                     </span>
                     <span class="calc-panel-chevron">▾</span>
                 </button>
@@ -896,6 +896,10 @@
                     <div class="calc-result" id="convPesosBox">
                         <span class="calc-result-label">Pesos</span>
                         <span class="calc-result-value" id="convPesosValue">—</span>
+                    </div>
+
+                    <div class="calc-panel-actions">
+                        <button type="button" class="btn-secondary" id="convCompartirBtn">📤 Compartir como imagen</button>
                     </div>
                 </div>
             </div>
@@ -1461,7 +1465,22 @@
         </div>
     </div>
 
-    <script src="js/calculadora.js?v=20"></script>
+    <!-- Vista previa de la imagen de Conversión rápida antes de compartir -->
+    <div class="modal-overlay hidden" id="convPreviewOverlay">
+        <div class="modal-box">
+            <button type="button" class="modal-close" id="convPreviewCerrarBtn">✕</button>
+            <img id="convPreviewImg" alt="Vista previa de la imagen de la conversión">
+            <div class="modal-actions">
+                <button type="button" class="btn-primary btn-form" id="convPreviewCompartirBtn">
+                    <span class="btn-text">📤 Compartir</span>
+                    <span class="spinner hidden"></span>
+                </button>
+                <button type="button" class="btn-secondary" id="convPreviewDescargarBtn">⬇️ Descargar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/calculadora.js?v=21"></script>
     <script type="module" src="js/app.js?v=18"></script>
 </body>
 </html>
