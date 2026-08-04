@@ -713,6 +713,7 @@ const historialFiltroHasta = document.getElementById('historialFiltroHasta');
 const historialFiltroLimpiar = document.getElementById('historialFiltroLimpiar');
 
 let historialCache = []; // [{ id, r }] — todas las remesas, sin filtrar
+let historialFiltrado = []; // [{ id, r }] — subconjunto actualmente visible (según filtros), usado para exportar
 
 function routeTagHTML(origen, destino) {
     const o = escapeHtml(origen);
@@ -813,6 +814,8 @@ function aplicarFiltroHistorial() {
         }
     ], { mostrados: filtrados.length, total: historialCache.length });
 
+    historialFiltrado = filtrados;
+
     historialBody.innerHTML = '';
     if (filtrados.length === 0) {
         historialEmpty.style.display = 'block';
@@ -844,6 +847,85 @@ historialFiltroLimpiar.addEventListener('click', () => {
     aplicarFiltroHistorial();
 });
 initFiltrosToggle('historial');
+
+// ============================================
+// EXPORTAR HISTORIAL — PDF (jsPDF) y Excel (SheetJS)
+// Exporta siempre lo que está visible en pantalla, es decir,
+// historialFiltrado (respeta los filtros activos).
+// ============================================
+const historialExportarPdfBtn = document.getElementById('historialExportarPdfBtn');
+const historialExportarExcelBtn = document.getElementById('historialExportarExcelBtn');
+
+// Variantes de texto plano (sin escapado HTML) de los formateadores de la tabla,
+// para no arrastrar entidades como "&amp;" a un PDF o una celda de Excel.
+const moneyTexto = (num, currency) => {
+    if (num === null || num === undefined || isNaN(num)) return '—';
+    return `${Number(num).toLocaleString('es-CL', { maximumFractionDigits: 2 })} ${currency || ''}`.trim();
+};
+
+const pagoTexto = (formaPago, banco) => {
+    if (formaPago === 'transferencia') return `Transferencia${banco ? ' · ' + banco : ''}`;
+    if (formaPago === 'caja_vecina') return 'Caja Vecina';
+    return 'Efectivo';
+};
+
+const fechaArchivo = () => new Date().toISOString().slice(0, 10);
+
+function filasExportHistorial() {
+    return historialFiltrado.map(({ r }) => ({
+        Fecha: formatDate(r.createdAt),
+        Cliente: r.clienteNombre || '—',
+        Origen: r.paisOrigen || '—',
+        Destino: r.paisDestino || '—',
+        Enviado: moneyTexto(r.montoEnviado, r.monedaEnviado),
+        Recibido: moneyTexto(r.montoRecibido, r.monedaRecibido),
+        Pago: pagoTexto(r.formaPago, r.bancoOrigen),
+        Estado: badgeLabel(r.estado)
+    }));
+}
+
+historialExportarPdfBtn.addEventListener('click', () => {
+    if (historialFiltrado.length === 0) {
+        alert('No hay remesas para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportHistorial();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(14);
+    doc.text('Historial de remesas', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} · ${filas.length} remesa(s)`, 14, 21);
+
+    doc.autoTable({
+        startY: 26,
+        head: [['Fecha', 'Cliente', 'Origen', 'Destino', 'Enviado', 'Recibido', 'Pago', 'Estado']],
+        body: filas.map(f => [f.Fecha, f.Cliente, f.Origen, f.Destino, f.Enviado, f.Recibido, f.Pago, f.Estado]),
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        headStyles: { fillColor: [30, 41, 59] },
+        alternateRowStyles: { fillColor: [245, 246, 248] }
+    });
+
+    doc.save(`historial-remesas-${fechaArchivo()}.pdf`);
+});
+
+historialExportarExcelBtn.addEventListener('click', () => {
+    if (historialFiltrado.length === 0) {
+        alert('No hay remesas para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportHistorial();
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [
+        { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 14 },
+        { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }
+    ];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Historial');
+    XLSX.writeFile(libro, `historial-remesas-${fechaArchivo()}.xlsx`);
+});
 
 db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     // --- Historial completo ---
