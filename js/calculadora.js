@@ -5,6 +5,57 @@
 // ============================================
 
 // ============================================
+// PANELES COLAPSABLES — cada una de las 3 calculadoras se puede
+// minimizar para no ocupar tanto espacio. El estado (abierta/cerrada)
+// de cada una se recuerda en localStorage.
+// ============================================
+const CALC_PANEL_STORAGE_KEY = 'calcPanelesAbiertos';
+
+function leerEstadoPaneles() {
+    try {
+        return JSON.parse(localStorage.getItem(CALC_PANEL_STORAGE_KEY)) || {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function guardarEstadoPanel(prefix, abierto) {
+    const estado = leerEstadoPaneles();
+    estado[prefix] = abierto;
+    try {
+        localStorage.setItem(CALC_PANEL_STORAGE_KEY, JSON.stringify(estado));
+    } catch (error) {
+        // localStorage no disponible (modo privado, etc.) — no es crítico.
+    }
+}
+
+// prefix: 'calcConv', 'calcCruzada' o 'calcUsdt' → usa los ids
+// {prefix}Panel y {prefix}Toggle. abiertoPorDefecto solo se usa
+// la primera vez, antes de que exista una preferencia guardada.
+function initCalcPanelToggle(prefix, abiertoPorDefecto) {
+    const panel = document.getElementById(`${prefix}Panel`);
+    const toggle = document.getElementById(`${prefix}Toggle`);
+    if (!panel || !toggle) return;
+
+    const estadoGuardado = leerEstadoPaneles()[prefix];
+    const abierto = estadoGuardado !== undefined ? estadoGuardado : abiertoPorDefecto;
+    panel.classList.toggle('abierto', abierto);
+    toggle.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+
+    toggle.addEventListener('click', () => {
+        const ahoraAbierto = panel.classList.toggle('abierto');
+        toggle.setAttribute('aria-expanded', ahoraAbierto ? 'true' : 'false');
+        guardarEstadoPanel(prefix, ahoraAbierto);
+    });
+}
+
+// Por defecto solo la "Conversión rápida" queda abierta al entrar a la
+// sección; las otras dos empiezan minimizadas para ahorrar espacio.
+initCalcPanelToggle('calcConv', true);
+initCalcPanelToggle('calcCruzada', false);
+initCalcPanelToggle('calcUsdt', false);
+
+// ============================================
 // CALCULADORA DE TASAS — tasa cruzada a partir del valor de cada moneda vs USD
 // ============================================
 const calcOrigenCodigoInput = document.getElementById('calcOrigenCodigo');
