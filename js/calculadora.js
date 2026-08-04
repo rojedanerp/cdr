@@ -177,8 +177,12 @@ function recalcularCompraVentaUSDT() {
     }
 
     // Compras USDT más barato que el mercado, vendes USDT más caro que el mercado — ahí está tu margen.
-    const tasaCompra = valorMercado * (1 - margenCompra / 100);
-    const tasaVenta = valorMercado * (1 + margenVenta / 100);
+    // El margen se aplica sobre la CANTIDAD de USDT resultante (no directo sobre el precio):
+    // p.ej. con 3% de margen en venta, el cliente recibe 3% menos USDT de los que le darían
+    // al valor de mercado por el mismo monto en pesos. Dividir por (1 ± margen/100) logra
+    // exactamente ese efecto y de paso mantiene la tasa mostrada consistente con el monto.
+    const tasaCompra = valorMercado / (1 + margenCompra / 100);
+    const tasaVenta = valorMercado / (1 - margenVenta / 100);
 
     calcUsdtCompraLabel.textContent = `Pagas 1 USDT = ${tasaCompra.toFixed(2)} ${moneda} (compra, −${margenCompra}%)`;
     calcUsdtCompraValue.textContent = tasaCompra.toFixed(2);
