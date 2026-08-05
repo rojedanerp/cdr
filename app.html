@@ -287,6 +287,37 @@
                     </div>
                 </form>
 
+                <div class="filtros-panel" id="clientesFiltrosPanel">
+                    <button type="button" class="filtros-toggle" id="clientesFiltrosToggle" aria-expanded="false" aria-controls="clientesFiltrosBody">
+                        <span class="filtros-toggle-left">
+                            <svg class="filtros-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
+                            Filtros
+                            <span class="filtros-count hidden" id="clientesFiltrosCount">0</span>
+                        </span>
+                        <span class="filtros-toggle-right">
+                            <span class="filtros-resultado" id="clientesResultCount"></span>
+                            <svg class="filtros-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </span>
+                    </button>
+                    <div class="filtros-chips" id="clientesFiltrosChips"></div>
+                    <div class="filtros-body" id="clientesFiltrosBody">
+                        <div class="filtros-grid">
+                            <div class="input-group">
+                                <label for="clientesFiltroPais">País destino</label>
+                                <select id="clientesFiltroPais">
+                                    <option value="todos" selected>Todos</option>
+                                </select>
+                            </div>
+                            <div class="input-group filtros-span-2">
+                                <label for="clientesFiltroBuscar">Buscar por nombre o teléfono</label>
+                                <input type="text" id="clientesFiltroBuscar" placeholder="Ej. Juan Pérez">
+                            </div>
+                        </div>
+                        <div class="filtros-actions">
+                            <button type="button" class="btn-secondary" id="clientesFiltroLimpiar">Limpiar filtros</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="table-wrap" id="clientesTableWrap">
                     <table class="data-table">
                         <thead>
@@ -649,6 +680,39 @@
                 <div class="panel-header">
                     <h3>Historial de ventas</h3>
                 </div>
+                <div class="filtros-panel" id="billeteraVentasFiltrosPanel">
+                    <button type="button" class="filtros-toggle" id="billeteraVentasFiltrosToggle" aria-expanded="false" aria-controls="billeteraVentasFiltrosBody">
+                        <span class="filtros-toggle-left">
+                            <svg class="filtros-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
+                            Filtros
+                            <span class="filtros-count hidden" id="billeteraVentasFiltrosCount">0</span>
+                        </span>
+                        <span class="filtros-toggle-right">
+                            <span class="filtros-resultado" id="billeteraVentasResultCount"></span>
+                            <svg class="filtros-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </span>
+                    </button>
+                    <div class="filtros-chips" id="billeteraVentasFiltrosChips"></div>
+                    <div class="filtros-body" id="billeteraVentasFiltrosBody">
+                        <div class="filtros-grid">
+                            <div class="input-group">
+                                <label for="billeteraVentasFiltroDesde">Desde</label>
+                                <input type="date" id="billeteraVentasFiltroDesde">
+                            </div>
+                            <div class="input-group">
+                                <label for="billeteraVentasFiltroHasta">Hasta</label>
+                                <input type="date" id="billeteraVentasFiltroHasta">
+                            </div>
+                            <div class="input-group filtros-span-2">
+                                <label for="billeteraVentasFiltroBuscar">Buscar en concepto</label>
+                                <input type="text" id="billeteraVentasFiltroBuscar" placeholder="Ej. Binance P2P">
+                            </div>
+                        </div>
+                        <div class="filtros-actions">
+                            <button type="button" class="btn-secondary" id="billeteraVentasFiltroLimpiar">Limpiar filtros</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="table-wrap" id="billeteraVentasTableWrap">
                     <table class="data-table">
                         <thead>
@@ -674,6 +738,39 @@
             <div class="panel">
                 <div class="panel-header">
                     <h3>Historial de compras</h3>
+                </div>
+                <div class="filtros-panel" id="billeteraComprasFiltrosPanel">
+                    <button type="button" class="filtros-toggle" id="billeteraComprasFiltrosToggle" aria-expanded="false" aria-controls="billeteraComprasFiltrosBody">
+                        <span class="filtros-toggle-left">
+                            <svg class="filtros-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
+                            Filtros
+                            <span class="filtros-count hidden" id="billeteraComprasFiltrosCount">0</span>
+                        </span>
+                        <span class="filtros-toggle-right">
+                            <span class="filtros-resultado" id="billeteraComprasResultCount"></span>
+                            <svg class="filtros-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </span>
+                    </button>
+                    <div class="filtros-chips" id="billeteraComprasFiltrosChips"></div>
+                    <div class="filtros-body" id="billeteraComprasFiltrosBody">
+                        <div class="filtros-grid">
+                            <div class="input-group">
+                                <label for="billeteraComprasFiltroDesde">Desde</label>
+                                <input type="date" id="billeteraComprasFiltroDesde">
+                            </div>
+                            <div class="input-group">
+                                <label for="billeteraComprasFiltroHasta">Hasta</label>
+                                <input type="date" id="billeteraComprasFiltroHasta">
+                            </div>
+                            <div class="input-group filtros-span-2">
+                                <label for="billeteraComprasFiltroBuscar">Buscar en concepto</label>
+                                <input type="text" id="billeteraComprasFiltroBuscar" placeholder="Ej. Binance">
+                            </div>
+                        </div>
+                        <div class="filtros-actions">
+                            <button type="button" class="btn-secondary" id="billeteraComprasFiltroLimpiar">Limpiar filtros</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="table-wrap" id="billeteraTableWrap">
                     <table class="data-table">
@@ -815,6 +912,39 @@
                         Marcar seleccionadas como una sola boleta (<span id="boletasSeleccionadasCount">0</span>)
                     </button>
                 </div>
+                <div class="filtros-panel" id="boletasPendientesFiltrosPanel">
+                    <button type="button" class="filtros-toggle" id="boletasPendientesFiltrosToggle" aria-expanded="false" aria-controls="boletasPendientesFiltrosBody">
+                        <span class="filtros-toggle-left">
+                            <svg class="filtros-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
+                            Filtros
+                            <span class="filtros-count hidden" id="boletasPendientesFiltrosCount">0</span>
+                        </span>
+                        <span class="filtros-toggle-right">
+                            <span class="filtros-resultado" id="boletasPendientesResultCount"></span>
+                            <svg class="filtros-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </span>
+                    </button>
+                    <div class="filtros-chips" id="boletasPendientesFiltrosChips"></div>
+                    <div class="filtros-body" id="boletasPendientesFiltrosBody">
+                        <div class="filtros-grid">
+                            <div class="input-group">
+                                <label for="boletasPendientesFiltroDesde">Desde</label>
+                                <input type="date" id="boletasPendientesFiltroDesde">
+                            </div>
+                            <div class="input-group">
+                                <label for="boletasPendientesFiltroHasta">Hasta</label>
+                                <input type="date" id="boletasPendientesFiltroHasta">
+                            </div>
+                            <div class="input-group filtros-span-2">
+                                <label for="boletasPendientesFiltroBuscar">Buscar cliente</label>
+                                <input type="text" id="boletasPendientesFiltroBuscar" placeholder="Ej. Juan Pérez">
+                            </div>
+                        </div>
+                        <div class="filtros-actions">
+                            <button type="button" class="btn-secondary" id="boletasPendientesFiltroLimpiar">Limpiar filtros</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="table-wrap" id="boletasPendientesTableWrap">
                     <table class="data-table">
                         <thead>
@@ -839,6 +969,39 @@
             <div class="panel">
                 <div class="panel-header">
                     <h3>Boletas emitidas</h3>
+                </div>
+                <div class="filtros-panel" id="boletasEmitidasFiltrosPanel">
+                    <button type="button" class="filtros-toggle" id="boletasEmitidasFiltrosToggle" aria-expanded="false" aria-controls="boletasEmitidasFiltrosBody">
+                        <span class="filtros-toggle-left">
+                            <svg class="filtros-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 4 20 4 14 12.5 14 19 10 21 10 12.5 4 4"></polygon></svg>
+                            Filtros
+                            <span class="filtros-count hidden" id="boletasEmitidasFiltrosCount">0</span>
+                        </span>
+                        <span class="filtros-toggle-right">
+                            <span class="filtros-resultado" id="boletasEmitidasResultCount"></span>
+                            <svg class="filtros-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </span>
+                    </button>
+                    <div class="filtros-chips" id="boletasEmitidasFiltrosChips"></div>
+                    <div class="filtros-body" id="boletasEmitidasFiltrosBody">
+                        <div class="filtros-grid">
+                            <div class="input-group">
+                                <label for="boletasEmitidasFiltroDesde">Desde</label>
+                                <input type="date" id="boletasEmitidasFiltroDesde">
+                            </div>
+                            <div class="input-group">
+                                <label for="boletasEmitidasFiltroHasta">Hasta</label>
+                                <input type="date" id="boletasEmitidasFiltroHasta">
+                            </div>
+                            <div class="input-group filtros-span-2">
+                                <label for="boletasEmitidasFiltroBuscar">Buscar cliente o folio</label>
+                                <input type="text" id="boletasEmitidasFiltroBuscar" placeholder="Ej. Juan Pérez o 1234">
+                            </div>
+                        </div>
+                        <div class="filtros-actions">
+                            <button type="button" class="btn-secondary" id="boletasEmitidasFiltroLimpiar">Limpiar filtros</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="table-wrap" id="boletasEmitidasTableWrap">
                     <table class="data-table">
