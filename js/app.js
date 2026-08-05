@@ -306,6 +306,12 @@ const clientesBody = document.getElementById('clientesBody');
 const clientesEmpty = document.getElementById('clientesEmpty');
 const clientesTableWrap = document.getElementById('clientesTableWrap');
 const listaClientesDatalist = document.getElementById('listaClientes');
+const clientesFiltroPais = document.getElementById('clientesFiltroPais');
+const clientesFiltroBuscar = document.getElementById('clientesFiltroBuscar');
+const clientesFiltroLimpiar = document.getElementById('clientesFiltroLimpiar');
+// Guarda el listado completo de clientes (tal como llega de Firestore) para
+// poder re-filtrar en el cliente sin volver a consultar.
+let clientesListaCache = [];
 
 function resetClienteForm() {
     clienteForm.reset();
@@ -417,31 +423,90 @@ db.collection('clientes').orderBy('nombre').onSnapshot(snapshot => {
     clientesPorId = {};
     listaClientesDatalist.innerHTML = '';
 
+    const lista = [];
     snapshot.forEach(doc => {
         const data = doc.data();
         const entry = { id: doc.id, ...data };
         clientesCache[normalizarNombre(data.nombre)] = entry;
         clientesPorId[doc.id] = data;
+        lista.push({ id: doc.id, data });
 
         const option = document.createElement('option');
         option.value = data.nombre;
         listaClientesDatalist.appendChild(option);
     });
 
-    clientesBody.innerHTML = '';
-    if (snapshot.empty) {
-        clientesEmpty.style.display = 'block';
-        clientesTableWrap.style.display = 'none';
-    } else {
-        clientesEmpty.style.display = 'none';
-        clientesTableWrap.style.display = 'block';
-        snapshot.forEach(doc => {
-            clientesBody.appendChild(renderClienteRow(doc.id, doc.data()));
-        });
-    }
+    clientesListaCache = lista;
+    poblarSelectPaisesClientes(lista);
+    aplicarFiltroClientes();
 }, error => {
     console.error('Error escuchando clientes:', error);
 });
+
+// Repuebla el <select> de país destino con los países que realmente
+// aparecen en los clientes, conservando la selección actual si sigue existiendo.
+function poblarSelectPaisesClientes(lista) {
+    const paises = [...new Set(lista.map(({ data }) => data.paisDestino).filter(Boolean))].sort();
+    const valorActual = clientesFiltroPais.value;
+    clientesFiltroPais.innerHTML = '<option value="todos">Todos</option>' +
+        paises.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+    clientesFiltroPais.value = paises.includes(valorActual) ? valorActual : 'todos';
+}
+
+// Aplica los filtros de país destino y búsqueda por nombre/teléfono sobre
+// clientesListaCache, y vuelve a pintar la tabla de Clientes.
+function aplicarFiltroClientes() {
+    const paisFiltro = clientesFiltroPais.value;
+    const textoBusqueda = clientesFiltroBuscar.value.trim().toLowerCase();
+    const hayFiltrosActivos = paisFiltro !== 'todos' || textoBusqueda !== '';
+
+    const filtrados = clientesListaCache.filter(({ data }) => {
+        if (paisFiltro !== 'todos' && data.paisDestino !== paisFiltro) return false;
+        if (textoBusqueda) {
+            const enNombre = (data.nombre || '').toLowerCase().includes(textoBusqueda);
+            const enTelefono = (data.telefono || '').toLowerCase().includes(textoBusqueda);
+            if (!enNombre && !enTelefono) return false;
+        }
+        return true;
+    });
+
+    actualizarPanelFiltros('clientes', [
+        {
+            label: 'País destino', activo: paisFiltro !== 'todos',
+            texto: `País: ${paisFiltro}`,
+            onQuitar: () => { clientesFiltroPais.value = 'todos'; aplicarFiltroClientes(); }
+        },
+        {
+            label: 'Búsqueda', activo: textoBusqueda !== '',
+            texto: `Nombre/teléfono: "${clientesFiltroBuscar.value.trim()}"`,
+            onQuitar: () => { clientesFiltroBuscar.value = ''; aplicarFiltroClientes(); }
+        }
+    ], { mostrados: filtrados.length, total: clientesListaCache.length });
+
+    clientesBody.innerHTML = '';
+    if (filtrados.length === 0) {
+        clientesEmpty.style.display = 'block';
+        clientesTableWrap.style.display = 'none';
+        clientesEmpty.querySelector('p').textContent = hayFiltrosActivos
+            ? 'No hay clientes que coincidan con el filtro.'
+            : 'Todavía no hay clientes registrados.';
+        return;
+    }
+    clientesEmpty.style.display = 'none';
+    clientesTableWrap.style.display = 'block';
+    filtrados.forEach(({ id, data }) => {
+        clientesBody.appendChild(renderClienteRow(id, data));
+    });
+}
+
+clientesFiltroPais.addEventListener('change', aplicarFiltroClientes);
+clientesFiltroBuscar.addEventListener('input', aplicarFiltroClientes);
+clientesFiltroLimpiar.addEventListener('click', () => {
+    clientesFiltroPais.value = 'todos';
+    clientesFiltroBuscar.value = '';
+    aplicarFiltroClientes();
+});
+initFiltrosToggle('clientes');
 
 // Autocompletar teléfono en "Nueva Remesa" si el nombre coincide con un cliente existente
 const clienteNombreInput = document.getElementById('clienteNombre');
@@ -2514,6 +2579,13 @@ const billeteraSubmitBtn = document.getElementById('billeteraSubmitBtn');
 const billeteraBody = document.getElementById('billeteraBody');
 const billeteraTableWrap = document.getElementById('billeteraTableWrap');
 const billeteraEmpty = document.getElementById('billeteraEmpty');
+const billeteraComprasFiltroDesde = document.getElementById('billeteraComprasFiltroDesde');
+const billeteraComprasFiltroHasta = document.getElementById('billeteraComprasFiltroHasta');
+const billeteraComprasFiltroBuscar = document.getElementById('billeteraComprasFiltroBuscar');
+const billeteraComprasFiltroLimpiar = document.getElementById('billeteraComprasFiltroLimpiar');
+// Guarda el listado completo de compras de USDT para poder re-filtrar en el
+// cliente sin volver a consultar.
+let billeteraComprasCache = [];
 const billeteraSaldoUsdtEl = document.getElementById('billeteraSaldoUsdt');
 const billeteraClpInvertidoEl = document.getElementById('billeteraClpInvertido');
 const billeteraTasaPromedioEl = document.getElementById('billeteraTasaPromedio');
@@ -2543,6 +2615,13 @@ const billeteraVentaSubmitBtn = document.getElementById('billeteraVentaSubmitBtn
 const billeteraVentasBody = document.getElementById('billeteraVentasBody');
 const billeteraVentasTableWrap = document.getElementById('billeteraVentasTableWrap');
 const billeteraVentasEmpty = document.getElementById('billeteraVentasEmpty');
+const billeteraVentasFiltroDesde = document.getElementById('billeteraVentasFiltroDesde');
+const billeteraVentasFiltroHasta = document.getElementById('billeteraVentasFiltroHasta');
+const billeteraVentasFiltroBuscar = document.getElementById('billeteraVentasFiltroBuscar');
+const billeteraVentasFiltroLimpiar = document.getElementById('billeteraVentasFiltroLimpiar');
+// Guarda el listado completo de ventas de USDT para poder re-filtrar en el
+// cliente sin volver a consultar.
+let billeteraVentasCache = [];
 
 function recalcularTasaCompraBilletera() {
     const clp = parseFloat(billeteraClpGastadoInput.value);
@@ -2714,33 +2793,77 @@ billeteraMovsFiltroLimpiar.addEventListener('click', () => {
 initFiltrosToggle('billeteraMovs');
 
 function renderBilleteraCompras(compras) {
+    billeteraComprasCache = compras;
+    aplicarFiltroBilleteraCompras();
+}
+
+// Aplica los filtros de fecha y búsqueda por concepto sobre
+// billeteraComprasCache, y vuelve a pintar la tabla de Historial de compras.
+function aplicarFiltroBilleteraCompras() {
+    const desdeFiltro = billeteraComprasFiltroDesde.value;
+    const hastaFiltro = billeteraComprasFiltroHasta.value;
+    const textoBusqueda = billeteraComprasFiltroBuscar.value.trim().toLowerCase();
+    const hayFiltrosActivos = !!desdeFiltro || !!hastaFiltro || textoBusqueda !== '';
+
+    const filtrados = billeteraComprasCache.filter(mov => {
+        if ((desdeFiltro || hastaFiltro) && !fechaEnRango(mov.createdAt, desdeFiltro, hastaFiltro)) return false;
+        if (textoBusqueda && !(mov.concepto || '').toLowerCase().includes(textoBusqueda)) return false;
+        return true;
+    });
+
+    actualizarPanelFiltros('billeteraCompras', [
+        {
+            label: 'Rango de fechas', activo: !!desdeFiltro || !!hastaFiltro,
+            texto: `Fecha: ${desdeFiltro || '…'} – ${hastaFiltro || '…'}`,
+            onQuitar: () => { billeteraComprasFiltroDesde.value = ''; billeteraComprasFiltroHasta.value = ''; aplicarFiltroBilleteraCompras(); }
+        },
+        {
+            label: 'Búsqueda', activo: textoBusqueda !== '',
+            texto: `Concepto: "${billeteraComprasFiltroBuscar.value.trim()}"`,
+            onQuitar: () => { billeteraComprasFiltroBuscar.value = ''; aplicarFiltroBilleteraCompras(); }
+        }
+    ], { mostrados: filtrados.length, total: billeteraComprasCache.length });
 
     billeteraBody.innerHTML = '';
-    if (compras.length === 0) {
+    if (filtrados.length === 0) {
         billeteraEmpty.style.display = 'block';
         billeteraTableWrap.style.display = 'none';
+        billeteraEmpty.querySelector('p').textContent = hayFiltrosActivos
+            ? 'No hay compras que coincidan con el filtro.'
+            : 'Todavía no has registrado compras de USDT.';
         return;
     }
     billeteraEmpty.style.display = 'none';
     billeteraTableWrap.style.display = 'block';
 
-    compras
-        .forEach(mov => {
-            const tasa = mov.monto > 0 ? mov.clpGastado / mov.monto : 0;
-            const fecha = formatDate(mov.createdAt);
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${fecha}</td>
-                <td class="mono-cell">${formatMoney(mov.clpGastado, 'CLP')}</td>
-                <td class="mono-cell">${formatMoney(mov.monto, 'USDT')}</td>
-                <td class="mono-cell">${formatMoney(tasa, 'CLP')}</td>
-                <td>${escapeHtml(mov.concepto) || '—'}</td>
-                <td><button type="button" class="btn-icon-action danger" data-compra-id="${mov.compraId}"><i class="ti ti-trash" aria-hidden="true"></i></button></td>
-            `;
-            tr.querySelector('button').addEventListener('click', () => eliminarCompraUsdt(mov.compraId));
-            billeteraBody.appendChild(tr);
-        });
+    filtrados.forEach(mov => {
+        const tasa = mov.monto > 0 ? mov.clpGastado / mov.monto : 0;
+        const fecha = formatDate(mov.createdAt);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${fecha}</td>
+            <td class="mono-cell">${formatMoney(mov.clpGastado, 'CLP')}</td>
+            <td class="mono-cell">${formatMoney(mov.monto, 'USDT')}</td>
+            <td class="mono-cell">${formatMoney(tasa, 'CLP')}</td>
+            <td>${escapeHtml(mov.concepto) || '—'}</td>
+            <td><button type="button" class="btn-icon-action danger" data-compra-id="${mov.compraId}"><i class="ti ti-trash" aria-hidden="true"></i></button></td>
+        `;
+        tr.querySelector('button').addEventListener('click', () => eliminarCompraUsdt(mov.compraId));
+        billeteraBody.appendChild(tr);
+    });
 }
+
+[billeteraComprasFiltroDesde, billeteraComprasFiltroHasta].forEach(el => {
+    el.addEventListener('change', aplicarFiltroBilleteraCompras);
+});
+billeteraComprasFiltroBuscar.addEventListener('input', aplicarFiltroBilleteraCompras);
+billeteraComprasFiltroLimpiar.addEventListener('click', () => {
+    billeteraComprasFiltroDesde.value = '';
+    billeteraComprasFiltroHasta.value = '';
+    billeteraComprasFiltroBuscar.value = '';
+    aplicarFiltroBilleteraCompras();
+});
+initFiltrosToggle('billeteraCompras');
 
 billeteraForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -2815,16 +2938,50 @@ async function eliminarCompraUsdt(compraId) {
 }
 
 function renderBilleteraVentas(ventas) {
+    billeteraVentasCache = ventas;
+    aplicarFiltroBilleteraVentas();
+}
+
+// Aplica los filtros de fecha y búsqueda por concepto sobre
+// billeteraVentasCache, y vuelve a pintar la tabla de Historial de ventas.
+function aplicarFiltroBilleteraVentas() {
+    const desdeFiltro = billeteraVentasFiltroDesde.value;
+    const hastaFiltro = billeteraVentasFiltroHasta.value;
+    const textoBusqueda = billeteraVentasFiltroBuscar.value.trim().toLowerCase();
+    const hayFiltrosActivos = !!desdeFiltro || !!hastaFiltro || textoBusqueda !== '';
+
+    const filtrados = billeteraVentasCache.filter(mov => {
+        if ((desdeFiltro || hastaFiltro) && !fechaEnRango(mov.createdAt, desdeFiltro, hastaFiltro)) return false;
+        if (textoBusqueda && !(mov.concepto || '').toLowerCase().includes(textoBusqueda)) return false;
+        return true;
+    });
+
+    actualizarPanelFiltros('billeteraVentas', [
+        {
+            label: 'Rango de fechas', activo: !!desdeFiltro || !!hastaFiltro,
+            texto: `Fecha: ${desdeFiltro || '…'} – ${hastaFiltro || '…'}`,
+            onQuitar: () => { billeteraVentasFiltroDesde.value = ''; billeteraVentasFiltroHasta.value = ''; aplicarFiltroBilleteraVentas(); }
+        },
+        {
+            label: 'Búsqueda', activo: textoBusqueda !== '',
+            texto: `Concepto: "${billeteraVentasFiltroBuscar.value.trim()}"`,
+            onQuitar: () => { billeteraVentasFiltroBuscar.value = ''; aplicarFiltroBilleteraVentas(); }
+        }
+    ], { mostrados: filtrados.length, total: billeteraVentasCache.length });
+
     billeteraVentasBody.innerHTML = '';
-    if (ventas.length === 0) {
+    if (filtrados.length === 0) {
         billeteraVentasEmpty.style.display = 'block';
         billeteraVentasTableWrap.style.display = 'none';
+        billeteraVentasEmpty.querySelector('p').textContent = hayFiltrosActivos
+            ? 'No hay ventas que coincidan con el filtro.'
+            : 'Todavía no has registrado ventas de USDT.';
         return;
     }
     billeteraVentasEmpty.style.display = 'none';
     billeteraVentasTableWrap.style.display = 'block';
 
-    ventas.forEach(mov => {
+    filtrados.forEach(mov => {
         const vesRecibido = mov.vesRecibido || 0;
         const tasa = mov.monto > 0 ? vesRecibido / mov.monto : 0;
         const fecha = formatDate(mov.createdAt);
@@ -2842,6 +2999,18 @@ function renderBilleteraVentas(ventas) {
         billeteraVentasBody.appendChild(tr);
     });
 }
+
+[billeteraVentasFiltroDesde, billeteraVentasFiltroHasta].forEach(el => {
+    el.addEventListener('change', aplicarFiltroBilleteraVentas);
+});
+billeteraVentasFiltroBuscar.addEventListener('input', aplicarFiltroBilleteraVentas);
+billeteraVentasFiltroLimpiar.addEventListener('click', () => {
+    billeteraVentasFiltroDesde.value = '';
+    billeteraVentasFiltroHasta.value = '';
+    billeteraVentasFiltroBuscar.value = '';
+    aplicarFiltroBilleteraVentas();
+});
+initFiltrosToggle('billeteraVentas');
 
 billeteraVentaForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -3246,9 +3415,21 @@ const boletasEmitidasTableWrap = document.getElementById('boletasEmitidasTableWr
 const boletasEmitidasEmpty = document.getElementById('boletasEmitidasEmpty');
 const boletasMarcarGrupoBtn = document.getElementById('boletasMarcarGrupoBtn');
 const boletasSeleccionadasCount = document.getElementById('boletasSeleccionadasCount');
+const boletasPendientesFiltroDesde = document.getElementById('boletasPendientesFiltroDesde');
+const boletasPendientesFiltroHasta = document.getElementById('boletasPendientesFiltroHasta');
+const boletasPendientesFiltroBuscar = document.getElementById('boletasPendientesFiltroBuscar');
+const boletasPendientesFiltroLimpiar = document.getElementById('boletasPendientesFiltroLimpiar');
+const boletasEmitidasFiltroDesde = document.getElementById('boletasEmitidasFiltroDesde');
+const boletasEmitidasFiltroHasta = document.getElementById('boletasEmitidasFiltroHasta');
+const boletasEmitidasFiltroBuscar = document.getElementById('boletasEmitidasFiltroBuscar');
+const boletasEmitidasFiltroLimpiar = document.getElementById('boletasEmitidasFiltroLimpiar');
 
 let boletasSeleccionadas = new Set();
 let pendientesPorId = {};
+// Guarda los listados completos (tal como salen de renderBoletas) para poder
+// re-filtrar en el cliente sin volver a consultar.
+let boletasPendientesCache = [];
+let boletasEmitidasCache = [];
 
 function actualizarBotonGrupoBoleta() {
     boletasSeleccionadasCount.textContent = boletasSeleccionadas.size;
@@ -3280,68 +3461,162 @@ function renderBoletas(remesas) {
         && r.fechaBoleta.toDate().getFullYear() === hoy.getFullYear());
     boletasEmitidasMes.textContent = emitidasEsteMes.length;
 
-    // --- Tabla: pendientes de boleta ---
+    // --- Tablas: se guardan en cache y se pintan a través de los filtros ---
+    boletasPendientesCache = pendientes;
+    boletasEmitidasCache = emitidas;
+    aplicarFiltroBoletasPendientes();
+    aplicarFiltroBoletasEmitidas();
+}
+
+// Aplica los filtros de fecha y búsqueda por cliente sobre
+// boletasPendientesCache, y vuelve a pintar la tabla de Pendientes de boleta.
+function aplicarFiltroBoletasPendientes() {
+    const desdeFiltro = boletasPendientesFiltroDesde.value;
+    const hastaFiltro = boletasPendientesFiltroHasta.value;
+    const textoBusqueda = boletasPendientesFiltroBuscar.value.trim().toLowerCase();
+    const hayFiltrosActivos = !!desdeFiltro || !!hastaFiltro || textoBusqueda !== '';
+
+    const filtrados = boletasPendientesCache.filter(r => {
+        if ((desdeFiltro || hastaFiltro) && !fechaEnRango(r.createdAt, desdeFiltro, hastaFiltro)) return false;
+        if (textoBusqueda && !(r.clienteNombre || '').toLowerCase().includes(textoBusqueda)) return false;
+        return true;
+    });
+
+    actualizarPanelFiltros('boletasPendientes', [
+        {
+            label: 'Rango de fechas', activo: !!desdeFiltro || !!hastaFiltro,
+            texto: `Fecha: ${desdeFiltro || '…'} – ${hastaFiltro || '…'}`,
+            onQuitar: () => { boletasPendientesFiltroDesde.value = ''; boletasPendientesFiltroHasta.value = ''; aplicarFiltroBoletasPendientes(); }
+        },
+        {
+            label: 'Búsqueda', activo: textoBusqueda !== '',
+            texto: `Cliente: "${boletasPendientesFiltroBuscar.value.trim()}"`,
+            onQuitar: () => { boletasPendientesFiltroBuscar.value = ''; aplicarFiltroBoletasPendientes(); }
+        }
+    ], { mostrados: filtrados.length, total: boletasPendientesCache.length });
+
     boletasPendientesBody.innerHTML = '';
-    if (pendientes.length === 0) {
+    if (filtrados.length === 0) {
         boletasPendientesEmpty.style.display = 'block';
         boletasPendientesTableWrap.style.display = 'none';
-    } else {
-        boletasPendientesEmpty.style.display = 'none';
-        boletasPendientesTableWrap.style.display = 'block';
-        pendientes.forEach(r => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><input type="checkbox" class="boleta-checkbox" data-id="${r.id}" ${boletasSeleccionadas.has(r.id) ? 'checked' : ''}></td>
-                <td>${formatDate(r.createdAt)}</td>
-                <td>${escapeHtml(r.clienteNombre) || '—'}</td>
-                <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
-                <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
-                <td><button type="button" class="btn-icon-action" data-id="${r.id}"><i class="ti ti-receipt" aria-hidden="true"></i> Marcar boleta emitida</button></td>
-            `;
-            tr.querySelector('.boleta-checkbox').addEventListener('change', (e) => {
-                if (e.target.checked) boletasSeleccionadas.add(r.id);
-                else boletasSeleccionadas.delete(r.id);
-                actualizarBotonGrupoBoleta();
-            });
-            tr.querySelector('button').addEventListener('click', () => marcarBoletaEmitida(r.id));
-            boletasPendientesBody.appendChild(tr);
-        });
+        boletasPendientesEmpty.querySelector('p').textContent = hayFiltrosActivos
+            ? 'No hay remesas pendientes que coincidan con el filtro.'
+            : 'No tienes remesas pendientes de boleta.';
+        return;
     }
+    boletasPendientesEmpty.style.display = 'none';
+    boletasPendientesTableWrap.style.display = 'block';
+    filtrados.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="checkbox" class="boleta-checkbox" data-id="${r.id}" ${boletasSeleccionadas.has(r.id) ? 'checked' : ''}></td>
+            <td>${formatDate(r.createdAt)}</td>
+            <td>${escapeHtml(r.clienteNombre) || '—'}</td>
+            <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
+            <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
+            <td><button type="button" class="btn-icon-action" data-id="${r.id}"><i class="ti ti-receipt" aria-hidden="true"></i> Marcar boleta emitida</button></td>
+        `;
+        tr.querySelector('.boleta-checkbox').addEventListener('change', (e) => {
+            if (e.target.checked) boletasSeleccionadas.add(r.id);
+            else boletasSeleccionadas.delete(r.id);
+            actualizarBotonGrupoBoleta();
+        });
+        tr.querySelector('button').addEventListener('click', () => marcarBoletaEmitida(r.id));
+        boletasPendientesBody.appendChild(tr);
+    });
+}
 
-    // --- Tabla: boletas emitidas ---
+// Aplica los filtros de fecha y búsqueda por cliente/folio sobre
+// boletasEmitidasCache, y vuelve a pintar la tabla de Boletas emitidas.
+function aplicarFiltroBoletasEmitidas() {
+    const desdeFiltro = boletasEmitidasFiltroDesde.value;
+    const hastaFiltro = boletasEmitidasFiltroHasta.value;
+    const textoBusqueda = boletasEmitidasFiltroBuscar.value.trim().toLowerCase();
+    const hayFiltrosActivos = !!desdeFiltro || !!hastaFiltro || textoBusqueda !== '';
+
+    const filtrados = boletasEmitidasCache.filter(r => {
+        if ((desdeFiltro || hastaFiltro) && !fechaEnRango(r.createdAt, desdeFiltro, hastaFiltro)) return false;
+        if (textoBusqueda) {
+            const enCliente = (r.clienteNombre || '').toLowerCase().includes(textoBusqueda);
+            const enFolio = (r.folioBoleta || '').toLowerCase().includes(textoBusqueda);
+            if (!enCliente && !enFolio) return false;
+        }
+        return true;
+    });
+
+    actualizarPanelFiltros('boletasEmitidas', [
+        {
+            label: 'Rango de fechas', activo: !!desdeFiltro || !!hastaFiltro,
+            texto: `Fecha: ${desdeFiltro || '…'} – ${hastaFiltro || '…'}`,
+            onQuitar: () => { boletasEmitidasFiltroDesde.value = ''; boletasEmitidasFiltroHasta.value = ''; aplicarFiltroBoletasEmitidas(); }
+        },
+        {
+            label: 'Búsqueda', activo: textoBusqueda !== '',
+            texto: `Cliente/folio: "${boletasEmitidasFiltroBuscar.value.trim()}"`,
+            onQuitar: () => { boletasEmitidasFiltroBuscar.value = ''; aplicarFiltroBoletasEmitidas(); }
+        }
+    ], { mostrados: filtrados.length, total: boletasEmitidasCache.length });
+
     boletasEmitidasBody.innerHTML = '';
-    if (emitidas.length === 0) {
+    if (filtrados.length === 0) {
         boletasEmitidasEmpty.style.display = 'block';
         boletasEmitidasTableWrap.style.display = 'none';
-    } else {
-        boletasEmitidasEmpty.style.display = 'none';
-        boletasEmitidasTableWrap.style.display = 'block';
-
-        // Para las boletas agrupadas, se calcula el total real del grupo
-        // (puede incluir remesas que no vinieron en este mismo listado).
-        const totalesPorGrupo = {};
-        emitidas.forEach(r => {
-            if (!r.grupoBoletaId) return;
-            totalesPorGrupo[r.grupoBoletaId] = (totalesPorGrupo[r.grupoBoletaId] || 0) + (r.montoEnviado || 0);
-        });
-
-        emitidas.forEach(r => {
-            const tr = document.createElement('tr');
-            const grupoInfo = r.grupoBoletaId
-                ? `<div class="cell-subtext">Boleta agrupada · total ${formatMoney(totalesPorGrupo[r.grupoBoletaId], r.monedaEnviado)}</div>`
-                : '';
-            tr.innerHTML = `
-                <td>${formatDate(r.createdAt)}</td>
-                <td>${escapeHtml(r.clienteNombre) || '—'}</td>
-                <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}${grupoInfo}</td>
-                <td>${escapeHtml(r.folioBoleta) || '—'}</td>
-                <td><button type="button" class="btn-icon-action danger" data-id="${r.id}">Quitar marca</button></td>
-            `;
-            tr.querySelector('button').addEventListener('click', () => quitarMarcaBoleta(r.id));
-            boletasEmitidasBody.appendChild(tr);
-        });
+        boletasEmitidasEmpty.querySelector('p').textContent = hayFiltrosActivos
+            ? 'No hay boletas emitidas que coincidan con el filtro.'
+            : 'Todavía no has marcado ninguna boleta como emitida.';
+        return;
     }
+    boletasEmitidasEmpty.style.display = 'none';
+    boletasEmitidasTableWrap.style.display = 'block';
+
+    // Para las boletas agrupadas, se calcula el total real del grupo
+    // (puede incluir remesas que no vinieron en este mismo listado filtrado).
+    const totalesPorGrupo = {};
+    boletasEmitidasCache.forEach(r => {
+        if (!r.grupoBoletaId) return;
+        totalesPorGrupo[r.grupoBoletaId] = (totalesPorGrupo[r.grupoBoletaId] || 0) + (r.montoEnviado || 0);
+    });
+
+    filtrados.forEach(r => {
+        const tr = document.createElement('tr');
+        const grupoInfo = r.grupoBoletaId
+            ? `<div class="cell-subtext">Boleta agrupada · total ${formatMoney(totalesPorGrupo[r.grupoBoletaId], r.monedaEnviado)}</div>`
+            : '';
+        tr.innerHTML = `
+            <td>${formatDate(r.createdAt)}</td>
+            <td>${escapeHtml(r.clienteNombre) || '—'}</td>
+            <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}${grupoInfo}</td>
+            <td>${escapeHtml(r.folioBoleta) || '—'}</td>
+            <td><button type="button" class="btn-icon-action danger" data-id="${r.id}">Quitar marca</button></td>
+        `;
+        tr.querySelector('button').addEventListener('click', () => quitarMarcaBoleta(r.id));
+        boletasEmitidasBody.appendChild(tr);
+    });
 }
+
+[boletasPendientesFiltroDesde, boletasPendientesFiltroHasta].forEach(el => {
+    el.addEventListener('change', aplicarFiltroBoletasPendientes);
+});
+boletasPendientesFiltroBuscar.addEventListener('input', aplicarFiltroBoletasPendientes);
+boletasPendientesFiltroLimpiar.addEventListener('click', () => {
+    boletasPendientesFiltroDesde.value = '';
+    boletasPendientesFiltroHasta.value = '';
+    boletasPendientesFiltroBuscar.value = '';
+    aplicarFiltroBoletasPendientes();
+});
+initFiltrosToggle('boletasPendientes');
+
+[boletasEmitidasFiltroDesde, boletasEmitidasFiltroHasta].forEach(el => {
+    el.addEventListener('change', aplicarFiltroBoletasEmitidas);
+});
+boletasEmitidasFiltroBuscar.addEventListener('input', aplicarFiltroBoletasEmitidas);
+boletasEmitidasFiltroLimpiar.addEventListener('click', () => {
+    boletasEmitidasFiltroDesde.value = '';
+    boletasEmitidasFiltroHasta.value = '';
+    boletasEmitidasFiltroBuscar.value = '';
+    aplicarFiltroBoletasEmitidas();
+});
+initFiltrosToggle('boletasEmitidas');
 
 boletasMarcarGrupoBtn.addEventListener('click', async () => {
     const ids = Array.from(boletasSeleccionadas);
