@@ -19,53 +19,47 @@ window.logout = async () => {
 };
 
 // ============================================
-// NAVEGACIÓN — sidebar + topbar contextual
+// NAVEGACIÓN — inicio con tarjetas + botón "Volver al inicio"
 // ============================================
-const navLinks = document.querySelectorAll('.nav-links li');
 const sections = document.querySelectorAll('.section');
+const homeTiles = document.querySelectorAll('.home-tile');
 const topbarIcon = document.getElementById('topbarIcon');
 const topbarTitle = document.getElementById('topbarTitle');
 const topbarSubtitle = document.getElementById('topbarSubtitle');
+const pageContext = document.getElementById('pageContext');
+const backHomeBtn = document.getElementById('backHomeBtn');
+const HOME_ID = 'home';
 
-function setTopbarFromLink(link) {
-    if (!topbarTitle) return;
-    const iconClass = link.querySelector('i')?.className;
-    if (iconClass && topbarIcon) topbarIcon.className = iconClass;
-    topbarTitle.textContent = link.dataset.title || link.querySelector('.nav-label')?.textContent || '';
-    topbarSubtitle.textContent = link.dataset.subtitle || '';
-}
+function showSection(sectionId) {
+    const target = document.getElementById(sectionId);
+    if (!target) return;
 
-navLinks.forEach(link => {
-    link.addEventListener('click', () => {
-        navLinks.forEach(l => l.classList.remove('active'));
-        sections.forEach(s => s.classList.remove('active'));
+    sections.forEach(s => s.classList.remove('active'));
+    target.classList.add('active');
 
-        link.classList.add('active');
-        document.getElementById(link.dataset.section).classList.add('active');
-        setTopbarFromLink(link);
+    const isHome = sectionId === HOME_ID;
 
-        document.getElementById('sidebar').classList.remove('open');
-    });
-});
+    if (backHomeBtn) backHomeBtn.classList.toggle('visible', !isHome);
+    if (pageContext) pageContext.classList.toggle('hidden', isHome);
 
-document.getElementById('menuToggle').addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('open');
-});
-
-// ============================================
-// SIDEBAR COLAPSABLE
-// ============================================
-const sidebarCollapseToggle = document.getElementById('sidebarCollapseToggle');
-if (sidebarCollapseToggle) {
-    if (localStorage.getItem('sidebarCollapsed') === '1') {
-        document.body.classList.add('sidebar-collapsed');
-        sidebarCollapseToggle.setAttribute('aria-expanded', 'false');
+    if (!isHome && topbarTitle) {
+        const tile = document.querySelector(`.home-tile[data-section="${sectionId}"]`);
+        const iconClass = tile?.querySelector('i')?.className;
+        if (iconClass && topbarIcon) topbarIcon.className = iconClass;
+        topbarTitle.textContent = tile?.dataset.title || tile?.querySelector('.home-tile-title')?.textContent || '';
+        topbarSubtitle.textContent = tile?.dataset.subtitle || '';
     }
-    sidebarCollapseToggle.addEventListener('click', () => {
-        const collapsed = document.body.classList.toggle('sidebar-collapsed');
-        sidebarCollapseToggle.setAttribute('aria-expanded', String(!collapsed));
-        localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
-    });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+window.showSection = showSection;
+
+homeTiles.forEach(tile => {
+    tile.addEventListener('click', () => showSection(tile.dataset.section));
+});
+
+if (backHomeBtn) {
+    backHomeBtn.addEventListener('click', () => showSection(HOME_ID));
 }
 
 // ============================================
@@ -457,7 +451,7 @@ window.editarCliente = (docId) => {
     clienteMessage.textContent = '';
     clienteMessage.className = 'form-message';
     clienteFormNombreInput.focus();
-    document.querySelector('.nav-links li[data-section="clientes"]').click();
+    showSection('clientes');
 };
 
 window.eliminarCliente = async (docId) => {
@@ -817,7 +811,7 @@ window.editarRemesa = (docId) => {
     remesaMessage.textContent = '';
     remesaMessage.className = 'form-message';
 
-    document.querySelector('.nav-links li[data-section="nueva"]').click();
+    showSection('nueva');
 };
 
 window.eliminarRemesa = async (docId) => {
