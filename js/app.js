@@ -312,6 +312,8 @@ const clientesFiltroLimpiar = document.getElementById('clientesFiltroLimpiar');
 // Guarda el listado completo de clientes (tal como llega de Firestore) para
 // poder re-filtrar en el cliente sin volver a consultar.
 let clientesListaCache = [];
+// Subconjunto actualmente visible según los filtros de Clientes, usado para exportar.
+let clientesFiltrado = [];
 
 function resetClienteForm() {
     clienteForm.reset();
@@ -483,6 +485,7 @@ function aplicarFiltroClientes() {
         }
     ], { mostrados: filtrados.length, total: clientesListaCache.length });
 
+    clientesFiltrado = filtrados;
     clientesBody.innerHTML = '';
     if (filtrados.length === 0) {
         clientesEmpty.style.display = 'block';
@@ -507,6 +510,62 @@ clientesFiltroLimpiar.addEventListener('click', () => {
     aplicarFiltroClientes();
 });
 initFiltrosToggle('clientes');
+
+// ============================================
+// EXPORTAR CLIENTES — PDF (jsPDF) y Excel (SheetJS)
+// Exporta siempre lo que está visible en pantalla (respeta los filtros activos).
+// ============================================
+const clientesExportarPdfBtn = document.getElementById('clientesExportarPdfBtn');
+const clientesExportarExcelBtn = document.getElementById('clientesExportarExcelBtn');
+
+function filasExportClientes() {
+    return clientesFiltrado.map(({ data }) => ({
+        Nombre: data.nombre || '—',
+        Teléfono: data.telefono || '—',
+        'País destino': data.paisDestino || '—',
+        'Última remesa': formatClienteFecha(data.ultimaRemesaEn)
+    }));
+}
+
+clientesExportarPdfBtn.addEventListener('click', () => {
+    if (clientesFiltrado.length === 0) {
+        alert('No hay clientes para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportClientes();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(14);
+    doc.text('Clientes', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} · ${filas.length} cliente(s)`, 14, 21);
+
+    doc.autoTable({
+        startY: 26,
+        head: [['Nombre', 'Teléfono', 'País destino', 'Última remesa']],
+        body: filas.map(f => [f.Nombre, f.Teléfono, f['País destino'], f['Última remesa']]),
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        headStyles: { fillColor: [30, 41, 59] },
+        alternateRowStyles: { fillColor: [245, 246, 248] }
+    });
+
+    doc.save(`clientes-${fechaArchivo()}.pdf`);
+});
+
+clientesExportarExcelBtn.addEventListener('click', () => {
+    if (clientesFiltrado.length === 0) {
+        alert('No hay clientes para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportClientes();
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [{ wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Clientes');
+    XLSX.writeFile(libro, `clientes-${fechaArchivo()}.xlsx`);
+});
 
 // Autocompletar teléfono en "Nueva Remesa" si el nombre coincide con un cliente existente
 const clienteNombreInput = document.getElementById('clienteNombre');
@@ -2315,6 +2374,8 @@ const cajaFiltroLimpiar = document.getElementById('cajaFiltroLimpiar');
 // Guarda el listado completo de movimientos de caja (tal como llega de
 // Firestore) para poder re-filtrar en el cliente sin volver a consultar.
 let cajaMovsCache = [];
+// Subconjunto actualmente visible según los filtros de Caja, usado para exportar.
+let cajaFiltrado = [];
 
 function origenBadgeHTML(mov) {
     if (mov.origen === 'remesa') return '<span class="badge badge-neutral">Remesa automática</span>';
@@ -2327,6 +2388,18 @@ function tipoBadgeHTML(tipo) {
     return tipo === 'entrada'
         ? '<span class="badge badge-success">Entrada</span>'
         : '<span class="badge badge-danger">Salida</span>';
+}
+
+// Variantes en texto plano de los badges de arriba, para exportar a PDF/Excel.
+function origenTexto(mov) {
+    if (mov.origen === 'remesa') return 'Remesa automática';
+    if (mov.origen === 'compra_usdt') return 'Compra USDT';
+    if (mov.origen === 'venta_usdt') return 'Venta USDT';
+    return 'Manual';
+}
+
+function tipoTexto(tipo) {
+    return tipo === 'entrada' ? 'Entrada' : 'Salida';
 }
 
 function renderCajaRow(id, mov) {
@@ -2532,6 +2605,7 @@ function aplicarFiltroCaja() {
         }
     ], { mostrados: filtrados.length, total: cajaMovsCache.length });
 
+    cajaFiltrado = filtrados;
     cajaBody.innerHTML = '';
     if (filtrados.length === 0) {
         cajaEmpty.style.display = 'block';
@@ -2567,6 +2641,64 @@ cajaFiltroLimpiar.addEventListener('click', () => {
 initFiltrosToggle('caja');
 
 // ============================================
+// EXPORTAR CAJA (Movimientos) — PDF (jsPDF) y Excel (SheetJS)
+// Exporta siempre lo que está visible en pantalla (respeta los filtros activos).
+// ============================================
+const cajaExportarPdfBtn = document.getElementById('cajaExportarPdfBtn');
+const cajaExportarExcelBtn = document.getElementById('cajaExportarExcelBtn');
+
+function filasExportCaja() {
+    return cajaFiltrado.map(({ mov }) => ({
+        Fecha: formatDate(mov.createdAt),
+        Tipo: tipoTexto(mov.tipo),
+        Moneda: mov.moneda || '—',
+        Monto: moneyTexto(mov.monto, ''),
+        Concepto: mov.concepto || '—',
+        Origen: origenTexto(mov)
+    }));
+}
+
+cajaExportarPdfBtn.addEventListener('click', () => {
+    if (cajaFiltrado.length === 0) {
+        alert('No hay movimientos para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportCaja();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(14);
+    doc.text('Caja — Movimientos', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} · ${filas.length} movimiento(s)`, 14, 21);
+
+    doc.autoTable({
+        startY: 26,
+        head: [['Fecha', 'Tipo', 'Moneda', 'Monto', 'Concepto', 'Origen']],
+        body: filas.map(f => [f.Fecha, f.Tipo, f.Moneda, f.Monto, f.Concepto, f.Origen]),
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        headStyles: { fillColor: [30, 41, 59] },
+        alternateRowStyles: { fillColor: [245, 246, 248] }
+    });
+
+    doc.save(`caja-movimientos-${fechaArchivo()}.pdf`);
+});
+
+cajaExportarExcelBtn.addEventListener('click', () => {
+    if (cajaFiltrado.length === 0) {
+        alert('No hay movimientos para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportCaja();
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 26 }, { wch: 18 }];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Caja');
+    XLSX.writeFile(libro, `caja-movimientos-${fechaArchivo()}.xlsx`);
+});
+
+// ============================================
 // BILLETERA — control de compras de USDT con CLP
 // ============================================
 const billeteraForm = document.getElementById('billeteraForm');
@@ -2586,6 +2718,8 @@ const billeteraComprasFiltroLimpiar = document.getElementById('billeteraComprasF
 // Guarda el listado completo de compras de USDT para poder re-filtrar en el
 // cliente sin volver a consultar.
 let billeteraComprasCache = [];
+// Subconjunto actualmente visible según los filtros de Historial de compras, usado para exportar.
+let billeteraComprasFiltrado = [];
 const billeteraSaldoUsdtEl = document.getElementById('billeteraSaldoUsdt');
 const billeteraClpInvertidoEl = document.getElementById('billeteraClpInvertido');
 const billeteraTasaPromedioEl = document.getElementById('billeteraTasaPromedio');
@@ -2604,6 +2738,8 @@ const billeteraMovsFiltroLimpiar = document.getElementById('billeteraMovsFiltroL
 // re-filtrar en el cliente sin tener que recalcular saldos ni volver a
 // consultar Firestore cada vez que cambia un filtro.
 let billeteraMovsConSaldoCache = [];
+// Subconjunto actualmente visible según los filtros de Todos los movimientos, usado para exportar.
+let billeteraMovsFiltrado = [];
 const billeteraVentaForm = document.getElementById('billeteraVentaForm');
 const billeteraUsdtVendidoInput = document.getElementById('billeteraUsdtVendido');
 const billeteraVesRecibidoInput = document.getElementById('billeteraVesRecibido');
@@ -2622,6 +2758,8 @@ const billeteraVentasFiltroLimpiar = document.getElementById('billeteraVentasFil
 // Guarda el listado completo de ventas de USDT para poder re-filtrar en el
 // cliente sin volver a consultar.
 let billeteraVentasCache = [];
+// Subconjunto actualmente visible según los filtros de Historial de ventas, usado para exportar.
+let billeteraVentasFiltrado = [];
 
 function recalcularTasaCompraBilletera() {
     const clp = parseFloat(billeteraClpGastadoInput.value);
@@ -2751,6 +2889,7 @@ function aplicarFiltroBilleteraMovs() {
         }
     ], { mostrados: filtrados.length, total: billeteraMovsConSaldoCache.length });
 
+    billeteraMovsFiltrado = filtrados;
     billeteraMovsBody.innerHTML = '';
     if (filtrados.length === 0) {
         billeteraMovsEmpty.style.display = 'block';
@@ -2792,6 +2931,64 @@ billeteraMovsFiltroLimpiar.addEventListener('click', () => {
 });
 initFiltrosToggle('billeteraMovs');
 
+// ============================================
+// EXPORTAR BILLETERA (Todos los movimientos) — PDF (jsPDF) y Excel (SheetJS)
+// Exporta siempre lo que está visible en pantalla (respeta los filtros activos).
+// ============================================
+const billeteraMovsExportarPdfBtn = document.getElementById('billeteraMovsExportarPdfBtn');
+const billeteraMovsExportarExcelBtn = document.getElementById('billeteraMovsExportarExcelBtn');
+
+function filasExportBilleteraMovs() {
+    return billeteraMovsFiltrado.map(({ mov, saldo }) => ({
+        Fecha: formatDate(mov.createdAt),
+        Tipo: tipoTexto(mov.tipo),
+        Monto: moneyTexto(mov.monto, 'USDT'),
+        Concepto: mov.concepto || '—',
+        Origen: origenTexto(mov),
+        Saldo: moneyTexto(saldo, 'USDT')
+    }));
+}
+
+billeteraMovsExportarPdfBtn.addEventListener('click', () => {
+    if (billeteraMovsFiltrado.length === 0) {
+        alert('No hay movimientos para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportBilleteraMovs();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(14);
+    doc.text('Billetera — Todos los movimientos de USDT', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} · ${filas.length} movimiento(s)`, 14, 21);
+
+    doc.autoTable({
+        startY: 26,
+        head: [['Fecha', 'Tipo', 'Monto', 'Concepto', 'Origen', 'Saldo']],
+        body: filas.map(f => [f.Fecha, f.Tipo, f.Monto, f.Concepto, f.Origen, f.Saldo]),
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        headStyles: { fillColor: [30, 41, 59] },
+        alternateRowStyles: { fillColor: [245, 246, 248] }
+    });
+
+    doc.save(`billetera-movimientos-${fechaArchivo()}.pdf`);
+});
+
+billeteraMovsExportarExcelBtn.addEventListener('click', () => {
+    if (billeteraMovsFiltrado.length === 0) {
+        alert('No hay movimientos para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportBilleteraMovs();
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 16 }, { wch: 26 }, { wch: 18 }, { wch: 16 }];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Movimientos USDT');
+    XLSX.writeFile(libro, `billetera-movimientos-${fechaArchivo()}.xlsx`);
+});
+
 function renderBilleteraCompras(compras) {
     billeteraComprasCache = compras;
     aplicarFiltroBilleteraCompras();
@@ -2824,6 +3021,7 @@ function aplicarFiltroBilleteraCompras() {
         }
     ], { mostrados: filtrados.length, total: billeteraComprasCache.length });
 
+    billeteraComprasFiltrado = filtrados;
     billeteraBody.innerHTML = '';
     if (filtrados.length === 0) {
         billeteraEmpty.style.display = 'block';
@@ -2864,6 +3062,66 @@ billeteraComprasFiltroLimpiar.addEventListener('click', () => {
     aplicarFiltroBilleteraCompras();
 });
 initFiltrosToggle('billeteraCompras');
+
+// ============================================
+// EXPORTAR BILLETERA (Historial de compras) — PDF (jsPDF) y Excel (SheetJS)
+// Exporta siempre lo que está visible en pantalla (respeta los filtros activos).
+// ============================================
+const billeteraComprasExportarPdfBtn = document.getElementById('billeteraComprasExportarPdfBtn');
+const billeteraComprasExportarExcelBtn = document.getElementById('billeteraComprasExportarExcelBtn');
+
+function filasExportBilleteraCompras() {
+    return billeteraComprasFiltrado.map(mov => {
+        const tasa = mov.monto > 0 ? mov.clpGastado / mov.monto : 0;
+        return {
+            Fecha: formatDate(mov.createdAt),
+            'CLP gastado': moneyTexto(mov.clpGastado, 'CLP'),
+            'USDT comprado': moneyTexto(mov.monto, 'USDT'),
+            Tasa: moneyTexto(tasa, 'CLP'),
+            Concepto: mov.concepto || '—'
+        };
+    });
+}
+
+billeteraComprasExportarPdfBtn.addEventListener('click', () => {
+    if (billeteraComprasFiltrado.length === 0) {
+        alert('No hay compras para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportBilleteraCompras();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(14);
+    doc.text('Billetera — Historial de compras', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} · ${filas.length} compra(s)`, 14, 21);
+
+    doc.autoTable({
+        startY: 26,
+        head: [['Fecha', 'CLP gastado', 'USDT comprado', 'Tasa', 'Concepto']],
+        body: filas.map(f => [f.Fecha, f['CLP gastado'], f['USDT comprado'], f.Tasa, f.Concepto]),
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        headStyles: { fillColor: [30, 41, 59] },
+        alternateRowStyles: { fillColor: [245, 246, 248] }
+    });
+
+    doc.save(`billetera-compras-${fechaArchivo()}.pdf`);
+});
+
+billeteraComprasExportarExcelBtn.addEventListener('click', () => {
+    if (billeteraComprasFiltrado.length === 0) {
+        alert('No hay compras para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportBilleteraCompras();
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 26 }];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Compras USDT');
+    XLSX.writeFile(libro, `billetera-compras-${fechaArchivo()}.xlsx`);
+});
 
 billeteraForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -2969,6 +3227,7 @@ function aplicarFiltroBilleteraVentas() {
         }
     ], { mostrados: filtrados.length, total: billeteraVentasCache.length });
 
+    billeteraVentasFiltrado = filtrados;
     billeteraVentasBody.innerHTML = '';
     if (filtrados.length === 0) {
         billeteraVentasEmpty.style.display = 'block';
@@ -3011,6 +3270,68 @@ billeteraVentasFiltroLimpiar.addEventListener('click', () => {
     aplicarFiltroBilleteraVentas();
 });
 initFiltrosToggle('billeteraVentas');
+
+// ============================================
+// EXPORTAR BILLETERA (Historial de ventas) — PDF (jsPDF) y Excel (SheetJS)
+// Exporta siempre lo que está visible en pantalla (respeta los filtros activos).
+// ============================================
+const billeteraVentasExportarPdfBtn = document.getElementById('billeteraVentasExportarPdfBtn');
+const billeteraVentasExportarExcelBtn = document.getElementById('billeteraVentasExportarExcelBtn');
+
+function filasExportBilleteraVentas() {
+    return billeteraVentasFiltrado.map(mov => {
+        const vesRecibido = mov.vesRecibido || 0;
+        const tasa = mov.monto > 0 ? vesRecibido / mov.monto : 0;
+        return {
+            Fecha: formatDate(mov.createdAt),
+            'USDT vendido': moneyTexto(mov.monto, 'USDT'),
+            'VES recibido': moneyTexto(vesRecibido, 'VES'),
+            Tasa: moneyTexto(tasa, 'VES'),
+            'Comisión USDT': mov.comisionUsdt ? moneyTexto(mov.comisionUsdt, 'USDT') : '—',
+            Concepto: mov.concepto || '—'
+        };
+    });
+}
+
+billeteraVentasExportarPdfBtn.addEventListener('click', () => {
+    if (billeteraVentasFiltrado.length === 0) {
+        alert('No hay ventas para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportBilleteraVentas();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(14);
+    doc.text('Billetera — Historial de ventas', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} · ${filas.length} venta(s)`, 14, 21);
+
+    doc.autoTable({
+        startY: 26,
+        head: [['Fecha', 'USDT vendido', 'VES recibido', 'Tasa', 'Comisión USDT', 'Concepto']],
+        body: filas.map(f => [f.Fecha, f['USDT vendido'], f['VES recibido'], f.Tasa, f['Comisión USDT'], f.Concepto]),
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        headStyles: { fillColor: [30, 41, 59] },
+        alternateRowStyles: { fillColor: [245, 246, 248] }
+    });
+
+    doc.save(`billetera-ventas-${fechaArchivo()}.pdf`);
+});
+
+billeteraVentasExportarExcelBtn.addEventListener('click', () => {
+    if (billeteraVentasFiltrado.length === 0) {
+        alert('No hay ventas para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportBilleteraVentas();
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 26 }];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Ventas USDT');
+    XLSX.writeFile(libro, `billetera-ventas-${fechaArchivo()}.xlsx`);
+});
 
 billeteraVentaForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -3430,14 +3751,24 @@ let pendientesPorId = {};
 // re-filtrar en el cliente sin volver a consultar.
 let boletasPendientesCache = [];
 let boletasEmitidasCache = [];
+// Subconjuntos actualmente visibles según los filtros de cada tabla, usados para exportar.
+let boletasPendientesFiltrado = [];
+let boletasEmitidasFiltrado = [];
 
 function actualizarBotonGrupoBoleta() {
     boletasSeleccionadasCount.textContent = boletasSeleccionadas.size;
     boletasMarcarGrupoBtn.disabled = boletasSeleccionadas.size < 2;
 }
 
+// Determina si una remesa requiere boleta: solo cuando el CLP entra al negocio
+// (el cliente paga en CLP). Si el CLP sale (por ejemplo, un cambio de VES a
+// CLP donde el cliente entrega VES y recibe CLP), no corresponde emitir boleta.
+function requiereBoleta(r) {
+    return (r.monedaEnviado || '').toUpperCase() === 'CLP';
+}
+
 function renderBoletas(remesas) {
-    const activas = remesas.filter(r => r.estado !== 'cancelado');
+    const activas = remesas.filter(r => r.estado !== 'cancelado' && requiereBoleta(r));
     const pendientes = activas.filter(r => !r.boletaEmitida);
     const emitidas = activas.filter(r => r.boletaEmitida);
 
@@ -3495,6 +3826,7 @@ function aplicarFiltroBoletasPendientes() {
         }
     ], { mostrados: filtrados.length, total: boletasPendientesCache.length });
 
+    boletasPendientesFiltrado = filtrados;
     boletasPendientesBody.innerHTML = '';
     if (filtrados.length === 0) {
         boletasPendientesEmpty.style.display = 'block';
@@ -3557,6 +3889,7 @@ function aplicarFiltroBoletasEmitidas() {
         }
     ], { mostrados: filtrados.length, total: boletasEmitidasCache.length });
 
+    boletasEmitidasFiltrado = filtrados;
     boletasEmitidasBody.innerHTML = '';
     if (filtrados.length === 0) {
         boletasEmitidasEmpty.style.display = 'block';
@@ -3606,6 +3939,62 @@ boletasPendientesFiltroLimpiar.addEventListener('click', () => {
 });
 initFiltrosToggle('boletasPendientes');
 
+// ============================================
+// EXPORTAR BOLETAS (Pendientes de boleta) — PDF (jsPDF) y Excel (SheetJS)
+// Exporta siempre lo que está visible en pantalla (respeta los filtros activos).
+// ============================================
+const boletasPendientesExportarPdfBtn = document.getElementById('boletasPendientesExportarPdfBtn');
+const boletasPendientesExportarExcelBtn = document.getElementById('boletasPendientesExportarExcelBtn');
+
+function filasExportBoletasPendientes() {
+    return boletasPendientesFiltrado.map(r => ({
+        Fecha: formatDate(r.createdAt),
+        Cliente: r.clienteNombre || '—',
+        Monto: moneyTexto(r.montoEnviado, r.monedaEnviado),
+        Estado: badgeLabel(r.estado)
+    }));
+}
+
+boletasPendientesExportarPdfBtn.addEventListener('click', () => {
+    if (boletasPendientesFiltrado.length === 0) {
+        alert('No hay remesas pendientes para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportBoletasPendientes();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(14);
+    doc.text('Boletas — Pendientes de boleta', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} · ${filas.length} remesa(s)`, 14, 21);
+
+    doc.autoTable({
+        startY: 26,
+        head: [['Fecha', 'Cliente', 'Monto', 'Estado']],
+        body: filas.map(f => [f.Fecha, f.Cliente, f.Monto, f.Estado]),
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        headStyles: { fillColor: [30, 41, 59] },
+        alternateRowStyles: { fillColor: [245, 246, 248] }
+    });
+
+    doc.save(`boletas-pendientes-${fechaArchivo()}.pdf`);
+});
+
+boletasPendientesExportarExcelBtn.addEventListener('click', () => {
+    if (boletasPendientesFiltrado.length === 0) {
+        alert('No hay remesas pendientes para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportBoletasPendientes();
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 14 }];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Pendientes de boleta');
+    XLSX.writeFile(libro, `boletas-pendientes-${fechaArchivo()}.xlsx`);
+});
+
 [boletasEmitidasFiltroDesde, boletasEmitidasFiltroHasta].forEach(el => {
     el.addEventListener('change', aplicarFiltroBoletasEmitidas);
 });
@@ -3617,6 +4006,69 @@ boletasEmitidasFiltroLimpiar.addEventListener('click', () => {
     aplicarFiltroBoletasEmitidas();
 });
 initFiltrosToggle('boletasEmitidas');
+
+// ============================================
+// EXPORTAR BOLETAS (Boletas emitidas) — PDF (jsPDF) y Excel (SheetJS)
+// Exporta siempre lo que está visible en pantalla (respeta los filtros activos).
+// ============================================
+const boletasEmitidasExportarPdfBtn = document.getElementById('boletasEmitidasExportarPdfBtn');
+const boletasEmitidasExportarExcelBtn = document.getElementById('boletasEmitidasExportarExcelBtn');
+
+function filasExportBoletasEmitidas() {
+    const totalesPorGrupo = {};
+    boletasEmitidasCache.forEach(r => {
+        if (!r.grupoBoletaId) return;
+        totalesPorGrupo[r.grupoBoletaId] = (totalesPorGrupo[r.grupoBoletaId] || 0) + (r.montoEnviado || 0);
+    });
+
+    return boletasEmitidasFiltrado.map(r => ({
+        Fecha: formatDate(r.createdAt),
+        Cliente: r.clienteNombre || '—',
+        Monto: moneyTexto(r.montoEnviado, r.monedaEnviado),
+        Folio: r.folioBoleta || '—',
+        'Total del grupo': r.grupoBoletaId ? moneyTexto(totalesPorGrupo[r.grupoBoletaId], r.monedaEnviado) : '—'
+    }));
+}
+
+boletasEmitidasExportarPdfBtn.addEventListener('click', () => {
+    if (boletasEmitidasFiltrado.length === 0) {
+        alert('No hay boletas emitidas para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportBoletasEmitidas();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(14);
+    doc.text('Boletas — Boletas emitidas', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} · ${filas.length} boleta(s)`, 14, 21);
+
+    doc.autoTable({
+        startY: 26,
+        head: [['Fecha', 'Cliente', 'Monto', 'Folio', 'Total del grupo']],
+        body: filas.map(f => [f.Fecha, f.Cliente, f.Monto, f.Folio, f['Total del grupo']]),
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        headStyles: { fillColor: [30, 41, 59] },
+        alternateRowStyles: { fillColor: [245, 246, 248] }
+    });
+
+    doc.save(`boletas-emitidas-${fechaArchivo()}.pdf`);
+});
+
+boletasEmitidasExportarExcelBtn.addEventListener('click', () => {
+    if (boletasEmitidasFiltrado.length === 0) {
+        alert('No hay boletas emitidas para exportar con los filtros actuales.');
+        return;
+    }
+    const filas = filasExportBoletasEmitidas();
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 14 }, { wch: 18 }];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Boletas emitidas');
+    XLSX.writeFile(libro, `boletas-emitidas-${fechaArchivo()}.xlsx`);
+});
 
 boletasMarcarGrupoBtn.addEventListener('click', async () => {
     const ids = Array.from(boletasSeleccionadas);
