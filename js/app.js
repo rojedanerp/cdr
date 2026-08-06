@@ -8,6 +8,8 @@ auth.onAuthStateChanged(user => {
         window.location.href = 'index.html';
     } else {
         document.getElementById('userEmail').textContent = user.email;
+        const avatar = document.getElementById('topbarUserAvatar');
+        if (avatar) avatar.textContent = user.email.slice(0, 1);
     }
 });
 
@@ -17,10 +19,21 @@ window.logout = async () => {
 };
 
 // ============================================
-// NAVEGACIÓN DEL SIDEBAR
+// NAVEGACIÓN — sidebar + topbar contextual
 // ============================================
 const navLinks = document.querySelectorAll('.nav-links li');
 const sections = document.querySelectorAll('.section');
+const topbarIcon = document.getElementById('topbarIcon');
+const topbarTitle = document.getElementById('topbarTitle');
+const topbarSubtitle = document.getElementById('topbarSubtitle');
+
+function setTopbarFromLink(link) {
+    if (!topbarTitle) return;
+    const iconClass = link.querySelector('i')?.className;
+    if (iconClass && topbarIcon) topbarIcon.className = iconClass;
+    topbarTitle.textContent = link.dataset.title || link.querySelector('.nav-label')?.textContent || '';
+    topbarSubtitle.textContent = link.dataset.subtitle || '';
+}
 
 navLinks.forEach(link => {
     link.addEventListener('click', () => {
@@ -29,6 +42,7 @@ navLinks.forEach(link => {
 
         link.classList.add('active');
         document.getElementById(link.dataset.section).classList.add('active');
+        setTopbarFromLink(link);
 
         document.getElementById('sidebar').classList.remove('open');
     });
@@ -37,6 +51,57 @@ navLinks.forEach(link => {
 document.getElementById('menuToggle').addEventListener('click', () => {
     document.getElementById('sidebar').classList.toggle('open');
 });
+
+// ============================================
+// SIDEBAR COLAPSABLE
+// ============================================
+const sidebarCollapseToggle = document.getElementById('sidebarCollapseToggle');
+if (sidebarCollapseToggle) {
+    if (localStorage.getItem('sidebarCollapsed') === '1') {
+        document.body.classList.add('sidebar-collapsed');
+        sidebarCollapseToggle.setAttribute('aria-expanded', 'false');
+    }
+    sidebarCollapseToggle.addEventListener('click', () => {
+        const collapsed = document.body.classList.toggle('sidebar-collapsed');
+        sidebarCollapseToggle.setAttribute('aria-expanded', String(!collapsed));
+        localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
+    });
+}
+
+// ============================================
+// MENÚ DE USUARIO (topbar)
+// ============================================
+const topbarUserBtn = document.getElementById('topbarUserBtn');
+const topbarUserMenu = document.getElementById('topbarUserMenu');
+if (topbarUserBtn && topbarUserMenu) {
+    topbarUserBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = topbarUserMenu.classList.toggle('open');
+        topbarUserBtn.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', (e) => {
+        if (!topbarUserMenu.contains(e.target) && e.target !== topbarUserBtn) {
+            topbarUserMenu.classList.remove('open');
+            topbarUserBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
+
+// ============================================
+// RELOJ DEL TOPBAR
+// ============================================
+const topbarClock = document.getElementById('topbarClock');
+if (topbarClock) {
+    const updateClock = () => {
+        const now = new Date();
+        topbarClock.textContent = now.toLocaleString('es-CL', {
+            weekday: 'short', day: '2-digit', month: 'short',
+            hour: '2-digit', minute: '2-digit'
+        });
+    };
+    updateClock();
+    setInterval(updateClock, 30000);
+}
 
 // ============================================
 // UTILIDADES
