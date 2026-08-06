@@ -78,15 +78,12 @@ button {
    que antes se usaban como iconos. Tamaño y
    alineación consistentes en cada contexto.
    ============================================ */
-.nav-links li i {
-  font-size: 17px;
-  width: 18px;
-  text-align: center;
+.home-tile > i,
+.back-home-btn i {
   flex-shrink: 0;
 }
 
 .btn-logout i,
-.menu-toggle i,
 .btn-primary i,
 .btn-secondary i,
 .btn-icon-action i,
@@ -335,36 +332,44 @@ button {
 }
 
 /* ============================================
-   APP SHELL
+   APP SHELL — barra superior + navegación en
+   pestañas horizontales + contenido a ancho
+   completo (sin panel lateral fijo)
    ============================================ */
-.sidebar {
-  position: fixed;
+.appbar {
+  position: sticky;
   top: 0;
-  left: 0;
-  width: var(--sidebar-width);
-  height: 100vh;
+  height: var(--topbar-height);
+  padding: 0 28px;
   background: var(--route-blue-dark);
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 16px;
   z-index: 100;
-  transition: width 0.2s ease, transform 0.2s ease;
-  overflow: hidden;
 }
 
-.sidebar-header {
+.appbar-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 18px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  min-height: var(--topbar-height);
+  gap: 10px;
+  margin-right: auto;
 }
 
-.sidebar-logo-mark {
-  flex-shrink: 0;
+.appbar-brand svg rect,
+.appbar-brand svg path {
+  fill: #fff;
+  stroke: #fff;
 }
 
-.sidebar-brand-name {
+.appbar-brand svg path[stroke="#b8860b"] {
+  stroke: #e8b84b;
+}
+
+.appbar-brand svg path[stroke="#0e7c7b"] {
+  stroke: #2fb3a8;
+}
+
+.appbar-brand-name {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 16px;
@@ -372,180 +377,7 @@ button {
   white-space: nowrap;
 }
 
-.nav-links {
-  list-style: none;
-  padding: 12px;
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.nav-links li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
-  border-radius: var(--radius-sm);
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  border-left: 3px solid transparent;
-  transition: background 0.15s ease, color 0.15s ease;
-  margin-bottom: 2px;
-  white-space: nowrap;
-}
-
-.nav-links li:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-}
-
-.nav-links li.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  border-left-color: var(--peso-gold);
-}
-
-.nav-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sidebar-collapse-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: calc(100% - 24px);
-  margin: 0 12px 12px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.06);
-  border: none;
-  border-radius: var(--radius-sm);
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: background 0.15s ease;
-}
-
-.sidebar-collapse-toggle:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-}
-
-.sidebar-collapse-toggle i {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-/* Estado colapsado: sidebar angosto, solo íconos */
-body.sidebar-collapsed .sidebar {
-  width: var(--sidebar-width-collapsed);
-}
-
-body.sidebar-collapsed .sidebar-brand-name,
-body.sidebar-collapsed .nav-label {
-  display: none;
-}
-
-body.sidebar-collapsed .sidebar-header {
-  justify-content: center;
-  padding: 18px 10px;
-}
-
-body.sidebar-collapsed .nav-links li {
-  justify-content: center;
-  padding: 12px;
-}
-
-body.sidebar-collapsed .sidebar-collapse-toggle {
-  justify-content: center;
-  padding: 12px;
-}
-
-body.sidebar-collapsed .sidebar-collapse-toggle i {
-  transform: rotate(180deg);
-}
-
-body.sidebar-collapsed .main-content,
-body.sidebar-collapsed .topbar {
-  margin-left: var(--sidebar-width-collapsed);
-}
-
-.menu-toggle {
-  display: none;
-  position: fixed;
-  top: 16px;
-  left: 16px;
-  z-index: 110;
-  width: 40px;
-  height: 40px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
-  font-size: 16px;
-}
-
-/* ============================================
-   TOPBAR
-   ============================================ */
-.topbar {
-  position: sticky;
-  top: 0;
-  margin-left: var(--sidebar-width);
-  height: var(--topbar-height);
-  padding: 0 32px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  z-index: 90;
-  transition: margin-left 0.2s ease;
-}
-
-.topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
-.topbar-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.topbar-title > i {
-  font-size: 20px;
-  color: var(--route-blue);
-  flex-shrink: 0;
-}
-
-.topbar-title h1 {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--ink);
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.topbar-title span {
-  font-size: 12px;
-  color: var(--slate);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.topbar-right {
+.appbar-right {
   display: flex;
   align-items: center;
   gap: 18px;
@@ -555,7 +387,7 @@ body.sidebar-collapsed .topbar {
 .topbar-clock {
   font-family: var(--font-mono);
   font-size: 13px;
-  color: var(--slate);
+  color: rgba(255, 255, 255, 0.75);
   white-space: nowrap;
 }
 
@@ -568,26 +400,26 @@ body.sidebar-collapsed .topbar {
   align-items: center;
   gap: 10px;
   padding: 6px 10px 6px 6px;
-  background: var(--canvas);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
   font-family: inherit;
 }
 
 .topbar-user-btn:hover {
-  background: var(--route-blue-light);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .topbar-user-btn i {
   font-size: 14px;
-  color: var(--slate);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .topbar-user-avatar {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--route-blue);
+  background: var(--peso-gold);
   color: #fff;
   font-size: 12px;
   font-weight: 600;
@@ -600,7 +432,7 @@ body.sidebar-collapsed .topbar {
 
 .topbar-user-email {
   font-size: 13px;
-  color: var(--ink);
+  color: #fff;
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -618,7 +450,7 @@ body.sidebar-collapsed .topbar {
   box-shadow: var(--shadow-md);
   padding: 8px;
   display: none;
-  z-index: 95;
+  z-index: 105;
 }
 
 .topbar-user-menu.open {
@@ -644,11 +476,140 @@ body.sidebar-collapsed .topbar {
   background: var(--danger-light);
 }
 
+/* Botón para volver al inicio, en flujo normal sobre cada sección */
+.back-home-btn {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 9px 15px;
+  background: var(--route-blue-light);
+  border: none;
+  border-radius: 999px;
+  color: var(--route-blue);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.back-home-btn:hover {
+  background: var(--route-blue);
+  color: #fff;
+  transform: translateX(-2px);
+}
+
+.back-home-btn.visible {
+  display: inline-flex;
+}
+
+.back-home-btn i {
+  font-size: 15px;
+}
+
+/* Encabezado de página, en línea sobre el contenido de cada sección */
+.page-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.page-context.hidden {
+  display: none;
+}
+
+.page-context > i {
+  font-size: 22px;
+  color: var(--route-blue);
+  flex-shrink: 0;
+}
+
+.page-context h1 {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.page-context span {
+  font-size: 13px;
+  color: var(--slate);
+}
+
 .main-content {
-  margin-left: var(--sidebar-width);
+  max-width: 1280px;
+  margin: 0 auto;
   padding: 28px 32px 60px;
   min-height: calc(100vh - var(--topbar-height));
-  transition: margin-left 0.2s ease;
+}
+
+/* ============================================
+   INICIO — launcher con tarjetas
+   ============================================ */
+.home-hero {
+  margin-bottom: 24px;
+}
+
+.home-hero h1 {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.home-hero p {
+  font-size: 14px;
+  color: var(--slate);
+}
+
+.home-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.home-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 22px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.home-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--route-blue);
+}
+
+.home-tile > i {
+  font-size: 26px;
+  color: var(--route-blue);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--route-blue-light);
+}
+
+.home-tile-title {
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.home-tile-subtitle {
+  font-size: 12.5px;
+  color: var(--slate);
+  line-height: 1.4;
 }
 
 .section {
@@ -1530,52 +1491,20 @@ body.sidebar-collapsed .topbar {
    RESPONSIVE
    ============================================ */
 @media (max-width: 860px) {
-  .sidebar {
-    width: var(--sidebar-width);
-    transform: translateX(-100%);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-
-  .sidebar-brand-name,
-  .nav-label {
-    display: inline;
-  }
-
-  body.sidebar-collapsed .sidebar {
-    width: var(--sidebar-width);
-  }
-
-  .menu-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .main-content,
-  .topbar,
-  body.sidebar-collapsed .main-content,
-  body.sidebar-collapsed .topbar {
-    margin-left: 0;
-  }
-
-  .topbar {
-    padding: 0 16px 0 64px;
+  .appbar {
+    padding: 0 16px;
   }
 
   .topbar-clock {
     display: none;
   }
 
-  .topbar-title span {
-    display: none;
-  }
-
   .main-content {
     padding: 20px 20px 40px;
+  }
+
+  .home-tiles {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 
   .stats-grid {
@@ -1586,6 +1515,10 @@ body.sidebar-collapsed .topbar {
 @media (max-width: 560px) {
   .topbar-user-email {
     display: none;
+  }
+
+  .home-tiles {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
