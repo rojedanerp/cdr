@@ -246,9 +246,15 @@
 
         <!-- CLIENTES -->
         <section id="clientes" class="section">
-            <div class="section-header">
-                <h2>Clientes</h2>
-                <p class="section-subtitle">Personas que envían dinero a través de nosotros</p>
+            <div class="section-header section-header-row">
+                <div>
+                    <h2>Clientes</h2>
+                    <p class="section-subtitle">Personas que envían dinero a través de nosotros</p>
+                </div>
+                <div class="section-header-actions">
+                    <button type="button" class="btn-secondary" id="clientesExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar PDF</button>
+                    <button type="button" class="btn-secondary" id="clientesExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar Excel</button>
+                </div>
             </div>
 
             <div class="panel">
@@ -479,6 +485,10 @@
             <div class="panel">
                 <div class="panel-header">
                     <h3>Movimientos</h3>
+                    <div class="section-header-actions">
+                        <button type="button" class="btn-secondary" id="cajaExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar PDF</button>
+                        <button type="button" class="btn-secondary" id="cajaExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar Excel</button>
+                    </div>
                 </div>
                 <p class="tasa-intro">
                     Las remesas pagadas en efectivo generan aquí una entrada automática. Si editas o eliminas
@@ -679,6 +689,10 @@
             <div class="panel">
                 <div class="panel-header">
                     <h3>Historial de ventas</h3>
+                    <div class="section-header-actions">
+                        <button type="button" class="btn-secondary" id="billeteraVentasExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar PDF</button>
+                        <button type="button" class="btn-secondary" id="billeteraVentasExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar Excel</button>
+                    </div>
                 </div>
                 <div class="filtros-panel" id="billeteraVentasFiltrosPanel">
                     <button type="button" class="filtros-toggle" id="billeteraVentasFiltrosToggle" aria-expanded="false" aria-controls="billeteraVentasFiltrosBody">
@@ -738,6 +752,10 @@
             <div class="panel">
                 <div class="panel-header">
                     <h3>Historial de compras</h3>
+                    <div class="section-header-actions">
+                        <button type="button" class="btn-secondary" id="billeteraComprasExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar PDF</button>
+                        <button type="button" class="btn-secondary" id="billeteraComprasExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar Excel</button>
+                    </div>
                 </div>
                 <div class="filtros-panel" id="billeteraComprasFiltrosPanel">
                     <button type="button" class="filtros-toggle" id="billeteraComprasFiltrosToggle" aria-expanded="false" aria-controls="billeteraComprasFiltrosBody">
@@ -796,6 +814,10 @@
             <div class="panel">
                 <div class="panel-header">
                     <h3>Todos los movimientos de USDT</h3>
+                    <div class="section-header-actions">
+                        <button type="button" class="btn-secondary" id="billeteraMovsExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar PDF</button>
+                        <button type="button" class="btn-secondary" id="billeteraMovsExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar Excel</button>
+                    </div>
                 </div>
                 <p class="tasa-intro">
                     Compras (entra USDT) y remesas enviadas en USDT (sale USDT), en orden — con el saldo
@@ -899,10 +921,16 @@
             <div class="panel">
                 <div class="panel-header">
                     <h3>Pendientes de boleta</h3>
+                    <div class="section-header-actions">
+                        <button type="button" class="btn-secondary" id="boletasPendientesExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar PDF</button>
+                        <button type="button" class="btn-secondary" id="boletasPendientesExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar Excel</button>
+                    </div>
                 </div>
                 <p class="tasa-intro">
-                    Remesas activas (no canceladas) a las que todavía no les has hecho la boleta en
-                    e-Boleta del SII. Cuando la emitas ahí, marca aquí "Boleta emitida" y pega el folio
+                    Remesas activas (no canceladas) donde el CLP entró al negocio (el cliente pagó en
+                    CLP) y todavía no les has hecho la boleta en e-Boleta del SII. Los cambios donde el
+                    CLP sale (por ejemplo, VES a CLP) no requieren boleta y no aparecen aquí.
+                    Cuando la emitas en el SII, marca aquí "Boleta emitida" y pega el folio
                     para llevar el control — esto no genera ni envía nada al SII, es solo tu checklist.
                     Si un mismo pago del cliente cubrió varias remesas, marca esas filas y usa
                     "Marcar seleccionadas como una sola boleta" para agruparlas bajo un solo folio.
@@ -969,6 +997,10 @@
             <div class="panel">
                 <div class="panel-header">
                     <h3>Boletas emitidas</h3>
+                    <div class="section-header-actions">
+                        <button type="button" class="btn-secondary" id="boletasEmitidasExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar PDF</button>
+                        <button type="button" class="btn-secondary" id="boletasEmitidasExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar Excel</button>
+                    </div>
                 </div>
                 <div class="filtros-panel" id="boletasEmitidasFiltrosPanel">
                     <button type="button" class="filtros-toggle" id="boletasEmitidasFiltrosToggle" aria-expanded="false" aria-controls="boletasEmitidasFiltrosBody">
@@ -1650,6 +1682,6 @@
     </div>
 
     <script src="js/calculadora.js?v=21"></script>
-    <script type="module" src="js/app.js?v=19"></script>
+    <script type="module" src="js/app.js?v=21"></script>
 </body>
 </html>
