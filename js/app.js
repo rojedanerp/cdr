@@ -123,6 +123,26 @@ const formatDate = (timestamp) => {
     return timestamp.toDate().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
+// ============================================
+// AUDITORÍA — registro automático de cambios importantes
+// (tasas, remesas y caja), para poder reconstruir qué
+// pasó y quién lo hizo si algún día aparece una diferencia.
+// ============================================
+const auditoriaColeccion = db.collection('auditoria');
+
+function registrarAuditoria(tipo, accion, detalle = {}) {
+    auditoriaColeccion.add({
+        tipo,     // 'tasa' | 'remesa' | 'caja'
+        accion,   // 'crear' | 'editar' | 'eliminar' | 'abrir' | 'cerrar'
+        detalle,
+        usuarioEmail: auth.currentUser ? auth.currentUser.email : null,
+        usuarioUid: auth.currentUser ? auth.currentUser.uid : null,
+        creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(err => console.warn('No se pudo registrar la auditoría:', err));
+    // No bloqueante a propósito: si falla el registro de auditoría, la
+    // operación principal (guardar tasa, remesa, caja) igual debe completarse.
+}
+
 // Comprueba si un Firestore Timestamp cae dentro del rango [desde, hasta]
 // (strings 'YYYY-MM-DD' que vienen de un <input type="date">, ambos inclusive).
 // Un extremo vacío significa "sin límite" por ese lado.
@@ -220,6 +240,26 @@ let autocompletarToken = 0;
 
 function claveTasa(origen, destino) {
     return `${(origen || '').trim().toUpperCase()}_${(destino || '').trim().toUpperCase()}`;
+}
+
+// Convierte un monto de una moneda a otra usando las tasas guardadas en
+// Configuración (tasasCache). Prueba el par directo en ambos sentidos y, si
+// no existe, intenta un puente pasando por CLP (la moneda base del negocio).
+// Devuelve null si no hay ninguna tasa configurada que permita el cálculo.
+function convertirMoneda(monto, desde, hacia) {
+    if (desde === hacia) return monto;
+
+    const tasaInversa = tasasCache[claveTasa(hacia, desde)]; // 1 hacia = X desde
+    if (tasaInversa) return monto / tasaInversa;
+
+    const tasaDirecta = tasasCache[claveTasa(desde, hacia)]; // 1 desde = X hacia
+    if (tasaDirecta) return monto * tasaDirecta;
+
+    if (desde !== 'CLP' && hacia !== 'CLP') {
+        const enClp = convertirMoneda(monto, desde, 'CLP');
+        if (enClp !== null) return convertirMoneda(enClp, 'CLP', hacia);
+    }
+    return null;
 }
 
 // Consulta (y cachea por sesión) las tasas en vivo de una moneda base
@@ -742,6 +782,7 @@ remesaForm.addEventListener('submit', async (e) => {
         };
 
         let remesaIdGuardada = remesaDocId;
+        const remesaAnterior = remesaDocId ? remesasPorId[remesaDocId] : null;
         if (remesaDocId) {
             data.actualizadoEn = firebase.firestore.FieldValue.serverTimestamp();
             data.actualizadoPor = auth.currentUser ? auth.currentUser.email : null;
@@ -752,6 +793,29 @@ remesaForm.addEventListener('submit', async (e) => {
             data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
             const nuevaRemesa = await db.collection('remesas').add(data);
             remesaIdGuardada = nuevaRemesa.id;
+        }
+
+        if (remesaAnterior) {
+            // Solo se registran los campos que realmente cambiaron
+            const cambios = {};
+            ['montoEnviado', 'monedaEnviado', 'tasaCambio', 'montoRecibido', 'monedaRecibido', 'estado', 'formaPago', 'comisionDestino'].forEach(campo => {
+                if (data[campo] !== undefined && data[campo] !== remesaAnterior[campo]) {
+                    cambios[campo] = { antes: remesaAnterior[campo] ?? null, despues: data[campo] };
+                }
+            });
+            registrarAuditoria('remesa', 'editar', {
+                remesaId: remesaIdGuardada,
+                cliente: clienteNombre,
+                cambios
+            });
+        } else {
+            registrarAuditoria('remesa', 'crear', {
+                remesaId: remesaIdGuardada,
+                cliente: clienteNombre,
+                montoEnviado,
+                monedaEnviado: data.monedaEnviado,
+                tasaCambio
+            });
         }
 
         // Crear/actualizar/quitar el movimiento de caja automático ligado a esta remesa
@@ -816,9 +880,16 @@ window.editarRemesa = (docId) => {
 
 window.eliminarRemesa = async (docId) => {
     if (!confirm('¿Eliminar esta remesa? Esta acción no se puede deshacer.')) return;
+    const remesaEliminada = remesasPorId[docId] || null;
     try {
         await db.collection('remesas').doc(docId).delete();
         await eliminarMovimientosCajaDeRemesa(docId);
+        registrarAuditoria('remesa', 'eliminar', {
+            remesaId: docId,
+            cliente: remesaEliminada ? remesaEliminada.clienteNombre : null,
+            montoEnviado: remesaEliminada ? remesaEliminada.montoEnviado : null,
+            monedaEnviado: remesaEliminada ? remesaEliminada.monedaEnviado : null
+        });
     } catch (error) {
         console.error('Error al eliminar remesa:', error);
         alert('No se pudo eliminar la remesa. Intenta de nuevo.');
@@ -1110,6 +1181,117 @@ historialExportarExcelBtn.addEventListener('click', () => {
     XLSX.writeFile(libro, `historial-remesas-${fechaArchivo()}.xlsx`);
 });
 
+// ============================================
+// DASHBOARD EJECUTIVO — caja disponible, totales convertidos,
+// ganancia del día, operaciones y clientes atendidos hoy, y la
+// última tasa realmente usada en una remesa.
+// Se recalcula cada vez que cambian remesas, caja, cierres o tasas.
+// ============================================
+function actualizarDashboardEjecutivo() {
+    const hoy = new Date();
+    const esHoy = (ts) => ts && ts.toDate && ts.toDate().toDateString() === hoy.toDateString();
+    const remesasHoy = historialCache.filter(({ r }) => esHoy(r.createdAt));
+
+    const operacionesEl = document.querySelector('[data-stat="operaciones-dia"]');
+    if (operacionesEl) operacionesEl.textContent = remesasHoy.length;
+
+    const clientesHoy = new Set(remesasHoy.map(({ r }) => r.clienteNombre).filter(Boolean)).size;
+    const clientesEl = document.querySelector('[data-stat="clientes-dia"]');
+    if (clientesEl) clientesEl.textContent = clientesHoy;
+
+    // Ganancia del día, agrupada por moneda de envío (igual que en Reportes),
+    // solo considerando remesas que tienen tasa de referencia guardada.
+    const gananciaPorMoneda = {};
+    remesasHoy.forEach(({ r }) => {
+        if (r.tasaReferencia == null || !(r.tasaReferencia > 0) || r.montoRecibido == null) return;
+        const moneda = r.monedaEnviado || '?';
+        gananciaPorMoneda[moneda] = (gananciaPorMoneda[moneda] || 0) + calcularGananciaNeta(r);
+    });
+    const gananciaEl = document.querySelector('[data-stat="ganancia-dia"]');
+    if (gananciaEl) {
+        const entradas = Object.entries(gananciaPorMoneda);
+        gananciaEl.textContent = entradas.length === 0 ? '$0' : entradas.map(([m, v]) => formatMoney(v, m)).join(' · ');
+    }
+
+    // Última tasa realmente usada: la remesa más reciente con tasa registrada
+    // (historialCache ya viene ordenado por createdAt descendente).
+    const ultimaTasaEl = document.querySelector('[data-stat="ultima-tasa"]');
+    const ultimaTasaHint = document.getElementById('dashUltimaTasaHint');
+    const ultimaConTasa = historialCache.find(({ r }) => r.tasaCambio && r.monedaEnviado && r.monedaRecibido);
+    if (ultimaTasaEl) {
+        if (ultimaConTasa) {
+            const { r } = ultimaConTasa;
+            ultimaTasaEl.textContent = `1 ${r.monedaEnviado} = ${r.tasaCambio} ${r.monedaRecibido}`;
+            if (ultimaTasaHint) {
+                const fecha = r.createdAt && r.createdAt.toDate ? r.createdAt.toDate().toLocaleString('es-CL') : '—';
+                ultimaTasaHint.textContent = `Usada el ${fecha}${r.clienteNombre ? ` · ${r.clienteNombre}` : ''}`;
+            }
+        } else {
+            ultimaTasaEl.textContent = '—';
+            if (ultimaTasaHint) ultimaTasaHint.textContent = 'Aún no hay remesas registradas';
+        }
+    }
+
+    // Caja disponible: saldo real por moneda (caja abierta en vivo, o el
+    // último saldo contado si está cerrada), igual que en la sección Caja.
+    const { saldosPorMoneda } = calcularSaldosActuales(movimientosCajaActuales);
+    const monedas = Object.keys(saldosPorMoneda).sort();
+    const cajaDisponibleEl = document.getElementById('dashCajaDisponible');
+    const cajaDisponibleHint = document.getElementById('dashCajaDisponibleHint');
+    if (cajaDisponibleEl) {
+        if (monedas.length === 0) {
+            cajaDisponibleEl.textContent = '—';
+            if (cajaDisponibleHint) cajaDisponibleHint.textContent = 'Sin movimientos de caja todavía';
+        } else {
+            cajaDisponibleEl.innerHTML = monedas.map(m => `
+                <span class="stat-value-list-row">
+                    <span class="stat-value-list-moneda">${escapeHtml(m)}</span>
+                    <span>${formatMoney(saldosPorMoneda[m], '')}</span>
+                </span>
+            `).join('');
+            if (cajaDisponibleHint) {
+                cajaDisponibleHint.textContent = cierreAbiertoActual
+                    ? 'Caja abierta · saldo en vivo'
+                    : 'Caja cerrada · último saldo contado';
+            }
+        }
+    }
+
+    // Totales convertidos a USD y a moneda local (CLP), usando las tasas
+    // configuradas en Configuración. Si falta una tasa para alguna moneda,
+    // el total queda incompleto y se avisa en el hint (no se inventa un valor).
+    let totalUsd = 0, totalUsdCompleto = true;
+    let totalLocal = 0, totalLocalCompleto = true;
+    monedas.forEach(m => {
+        const enUsd = convertirMoneda(saldosPorMoneda[m], m, 'USD');
+        if (enUsd === null) totalUsdCompleto = false; else totalUsd += enUsd;
+        const enLocal = convertirMoneda(saldosPorMoneda[m], m, 'CLP');
+        if (enLocal === null) totalLocalCompleto = false; else totalLocal += enLocal;
+    });
+
+    const totalUsdEl = document.querySelector('[data-stat="total-usd"]');
+    const totalUsdHint = document.getElementById('dashTotalUsdHint');
+    if (totalUsdEl) {
+        totalUsdEl.textContent = monedas.length === 0 ? '—' : formatMoney(totalUsd, 'USD');
+        if (totalUsdHint) {
+            totalUsdHint.textContent = monedas.length === 0
+                ? 'Sin saldo en caja'
+                : (totalUsdCompleto ? 'Convertido con tus tasas configuradas' : 'Incompleto: falta una tasa a USD para alguna moneda');
+        }
+    }
+
+    const totalLocalEl = document.querySelector('[data-stat="total-local"]');
+    const totalLocalHint = document.getElementById('dashTotalLocalHint');
+    if (totalLocalEl) {
+        totalLocalEl.textContent = monedas.length === 0 ? '—' : formatMoney(totalLocal, 'CLP');
+        if (totalLocalHint) {
+            totalLocalHint.textContent = monedas.length === 0
+                ? 'Sin saldo en caja'
+                : (totalLocalCompleto ? 'Convertido con tus tasas configuradas' : 'Incompleto: falta una tasa a CLP para alguna moneda');
+        }
+    }
+}
+
 db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     // --- Historial completo ---
     remesasPorId = {};
@@ -1130,21 +1312,8 @@ db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
 
     renderBoletas(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
 
-    // --- Estadísticas del dashboard ---
-    const docs = snapshot.docs.map(d => d.data());
-    const hoy = new Date();
-    const esHoy = (ts) => ts && ts.toDate && ts.toDate().toDateString() === hoy.toDateString();
-    const esEsteMes = (ts) => ts && ts.toDate && ts.toDate().getMonth() === hoy.getMonth() && ts.toDate().getFullYear() === hoy.getFullYear();
-
-    const enviadoHoy = docs.filter(r => esHoy(r.createdAt)).reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
-    const remesasMes = docs.filter(r => esEsteMes(r.createdAt)).length;
-    const pendientes = docs.filter(r => r.estado === 'pendiente').length;
-    const clientesActivos = new Set(docs.map(r => r.clienteNombre).filter(Boolean)).size;
-
-    document.querySelector('[data-stat="enviado-hoy"]').textContent = enviadoHoy ? enviadoHoy.toLocaleString('es-CL') : '0';
-    document.querySelector('[data-stat="remesas-mes"]').textContent = remesasMes;
-    document.querySelector('[data-stat="pendientes"]').textContent = pendientes;
-    document.querySelector('[data-stat="clientes-activos"]').textContent = clientesActivos;
+    // --- Dashboard ejecutivo: operaciones, clientes, ganancia y última tasa ---
+    actualizarDashboardEjecutivo();
 
     // --- Últimas remesas en el dashboard (máx 5) ---
     const ultimasWrap = dashboardPanel.querySelector('.dashboard-latest-wrap');
@@ -1261,6 +1430,8 @@ tasaForm.addEventListener('submit', async (e) => {
     const tasaMercadoRaw = tasaMercadoValorInput ? parseFloat(tasaMercadoValorInput.value) : NaN;
     const tasaMercado = isNaN(tasaMercadoRaw) ? null : tasaMercadoRaw;
     const docId = claveTasa(origen, destino);
+    const tasaAnterior = tasasCache[`__doc_${docId}`] || null;
+    const esEdicion = !!tasaAnterior;
 
     tasaSubmitBtn.disabled = true;
     tasaSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
@@ -1277,6 +1448,14 @@ tasaForm.addEventListener('submit', async (e) => {
             actualizadoEn: firebase.firestore.FieldValue.serverTimestamp(),
             actualizadoPor: auth.currentUser ? auth.currentUser.email : null
         }, { merge: true });
+
+        registrarAuditoria('tasa', esEdicion ? 'editar' : 'crear', {
+            par: `${origen}/${destino}`,
+            tasaAnterior: tasaAnterior ? tasaAnterior.tasa : null,
+            tasaNueva: tasa,
+            tasaMercadoAnterior: tasaAnterior ? tasaAnterior.tasaMercado : null,
+            tasaMercadoNueva: tasaMercado
+        });
 
         resetTasaForm();
         tasaMessage.textContent = 'Tasa guardada correctamente.';
@@ -1310,8 +1489,13 @@ window.editarTasa = (docId) => {
 
 window.eliminarTasa = async (docId) => {
     if (!confirm('¿Eliminar esta tasa de cambio?')) return;
+    const tasaEliminada = tasasCache[`__doc_${docId}`] || null;
     try {
         await db.collection('tasasCambio').doc(docId).delete();
+        registrarAuditoria('tasa', 'eliminar', {
+            par: tasaEliminada ? `${tasaEliminada.monedaOrigen}/${tasaEliminada.monedaDestino}` : docId,
+            tasa: tasaEliminada ? tasaEliminada.tasa : null
+        });
     } catch (error) {
         console.error('Error al eliminar tasa de cambio:', error);
         alert('No se pudo eliminar la tasa. Intenta de nuevo.');
@@ -1362,6 +1546,8 @@ db.collection('tasasCambio').orderBy('monedaOrigen').onSnapshot(snapshot => {
             tasasBody.appendChild(renderTasaRow(doc.id, doc.data()));
         });
     }
+
+    actualizarDashboardEjecutivo();
 }, error => {
     console.error('Error escuchando tasas de cambio:', error);
 });
@@ -2584,6 +2770,7 @@ cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
 
     movimientosCajaActuales = movimientos;
     actualizarVistaCierre();
+    actualizarDashboardEjecutivo();
 
     cajaMovsCache = movimientos.map(mov => ({ id: mov.id, mov }));
     const monedasCaja = [...new Set(movimientos.map(m => m.moneda).filter(Boolean))].sort();
@@ -3546,7 +3733,7 @@ aperturaSubmitBtn.addEventListener('click', async () => {
     aperturaMessage.className = 'form-message';
 
     try {
-        await cierresColeccion.add({
+        const nuevaCaja = await cierresColeccion.add({
             estado: 'abierto',
             fecha: new Date().toISOString().slice(0, 10),
             saldosIniciales,
@@ -3559,6 +3746,10 @@ aperturaSubmitBtn.addEventListener('click', async () => {
             saldosContados: null,
             diferencias: null,
             notas: ''
+        });
+        registrarAuditoria('caja', 'abrir', {
+            cierreId: nuevaCaja.id,
+            saldosIniciales
         });
         aperturaFilas.innerHTML = '';
         agregarFilaApertura();
@@ -3707,6 +3898,12 @@ cierreSubmitBtn.addEventListener('click', async () => {
             diferencias,
             notas: cierreNotasInput.value.trim()
         });
+        registrarAuditoria('caja', 'cerrar', {
+            cierreId: cierreAbiertoActual.id,
+            saldosEsperados,
+            saldosContados,
+            diferencias
+        });
         cierreFormWrap.classList.add('hidden');
         cierreNotasInput.value = '';
     } catch (error) {
@@ -3777,6 +3974,7 @@ cierresColeccion.orderBy('abiertoEn', 'desc').onSnapshot(snapshot => {
     actualizarVistaCierre();
     renderHistorialCierres(cerrados);
     renderCajaSaldos(movimientosCajaActuales); // re-sincroniza las tarjetas de arriba con la apertura vigente
+    actualizarDashboardEjecutivo();
 }, error => {
     console.error('Error al escuchar cierres de caja:', error);
 });
@@ -4606,3 +4804,93 @@ window.compartirTasaImagen = async (docId) => {
     tasaPreviewImg.src = URL.createObjectURL(blob);
     tasaPreviewOverlay.classList.remove('hidden');
 };
+
+// ============================================
+// VISTA DE AUDITORÍA — lista de solo lectura
+// ============================================
+const AUDITORIA_TIPO_LABEL = { tasa: 'Tasa', remesa: 'Remesa', caja: 'Caja' };
+const AUDITORIA_ACCION_LABEL = {
+    crear: 'Creación', editar: 'Edición', eliminar: 'Eliminación',
+    abrir: 'Apertura de caja', cerrar: 'Cierre de caja'
+};
+const AUDITORIA_ACCION_BADGE = {
+    crear: 'badge-success', editar: 'badge-pending', eliminar: 'badge-danger',
+    abrir: 'badge-success', cerrar: 'badge-neutral'
+};
+
+// Convierte el objeto "detalle" guardado en cada registro en una frase legible,
+// sin mostrar el JSON crudo.
+function formatearDetalleAuditoria(tipo, accion, detalle = {}) {
+    if (tipo === 'tasa') {
+        if (accion === 'eliminar') return `Par ${detalle.par || '—'} (tasa ${detalle.tasa ?? '—'})`;
+        const partes = [`Par ${detalle.par || '—'}: ${detalle.tasaAnterior ?? '—'} → ${detalle.tasaNueva ?? '—'}`];
+        if (detalle.tasaMercadoNueva != null && detalle.tasaMercadoNueva !== detalle.tasaMercadoAnterior) {
+            partes.push(`mercado ${detalle.tasaMercadoAnterior ?? '—'} → ${detalle.tasaMercadoNueva}`);
+        }
+        return partes.join(', ');
+    }
+    if (tipo === 'remesa') {
+        const base = `${detalle.cliente || 'Cliente sin nombre'}${detalle.remesaId ? ` (#${detalle.remesaId.slice(0, 6)})` : ''}`;
+        if (accion === 'crear') return `${base}: ${formatMoney(detalle.montoEnviado, detalle.monedaEnviado)} a tasa ${detalle.tasaCambio ?? '—'}`;
+        if (accion === 'eliminar') return `${base}: ${formatMoney(detalle.montoEnviado, detalle.monedaEnviado)}`;
+        const campos = Object.keys(detalle.cambios || {});
+        if (campos.length === 0) return `${base}: sin cambios de valor detectados`;
+        return `${base}: ${campos.map(c => `${c} ${detalle.cambios[c].antes ?? '—'} → ${detalle.cambios[c].despues ?? '—'}`).join('; ')}`;
+    }
+    if (tipo === 'caja') {
+        if (accion === 'abrir') {
+            const saldos = Object.entries(detalle.saldosIniciales || {}).map(([m, v]) => formatMoney(v, m)).join(', ');
+            return `Saldos iniciales: ${saldos || '—'}`;
+        }
+        if (accion === 'cerrar') {
+            const diffs = Object.entries(detalle.diferencias || {})
+                .filter(([, v]) => v !== 0)
+                .map(([m, v]) => formatMoney(v, m));
+            return diffs.length ? `Diferencias: ${diffs.join(', ')}` : 'Sin diferencias';
+        }
+    }
+    return '—';
+}
+
+const auditoriaBody = document.getElementById('auditoriaBody');
+const auditoriaEmpty = document.getElementById('auditoriaEmpty');
+const auditoriaFiltroTipo = document.getElementById('auditoriaFiltroTipo');
+const auditoriaFiltroBuscar = document.getElementById('auditoriaFiltroBuscar');
+let auditoriaRegistros = [];
+
+function renderAuditoria() {
+    if (!auditoriaBody) return;
+    const tipoFiltro = auditoriaFiltroTipo ? auditoriaFiltroTipo.value : 'todos';
+    const busqueda = auditoriaFiltroBuscar ? auditoriaFiltroBuscar.value.trim().toLowerCase() : '';
+
+    const filtrados = auditoriaRegistros.filter(r => {
+        if (tipoFiltro !== 'todos' && r.tipo !== tipoFiltro) return false;
+        if (!busqueda) return true;
+        const texto = `${r.usuarioEmail || ''} ${JSON.stringify(r.detalle || {})}`.toLowerCase();
+        return texto.includes(busqueda);
+    });
+
+    auditoriaBody.innerHTML = '';
+    filtrados.forEach(r => {
+        const fecha = r.creadoEn && r.creadoEn.toDate ? r.creadoEn.toDate().toLocaleString('es-CL') : '—';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${fecha}</td>
+            <td>${AUDITORIA_TIPO_LABEL[r.tipo] || escapeHtml(r.tipo)}</td>
+            <td><span class="badge ${AUDITORIA_ACCION_BADGE[r.accion] || 'badge-neutral'}">${AUDITORIA_ACCION_LABEL[r.accion] || escapeHtml(r.accion)}</span></td>
+            <td>${escapeHtml(formatearDetalleAuditoria(r.tipo, r.accion, r.detalle))}</td>
+            <td>${escapeHtml(r.usuarioEmail || '—')}</td>
+        `;
+        auditoriaBody.appendChild(tr);
+    });
+
+    auditoriaEmpty.classList.toggle('hidden', filtrados.length > 0);
+}
+
+if (auditoriaFiltroTipo) auditoriaFiltroTipo.addEventListener('change', renderAuditoria);
+if (auditoriaFiltroBuscar) auditoriaFiltroBuscar.addEventListener('input', renderAuditoria);
+
+auditoriaColeccion.orderBy('creadoEn', 'desc').limit(300).onSnapshot(snapshot => {
+    auditoriaRegistros = snapshot.docs.map(doc => doc.data());
+    renderAuditoria();
+}, err => console.warn('No se pudo cargar la auditoría:', err));
