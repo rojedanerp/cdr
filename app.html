@@ -22,72 +22,90 @@
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <svg width="84" height="52" viewBox="0 0 260 160" role="img" aria-label="Logo Lagomarcambios">
+            <svg width="34" height="34" viewBox="0 0 260 160" role="img" aria-label="Logo Lagomarcambios" class="sidebar-logo-mark">
                 <rect x="16" y="38" width="17" height="90" rx="8.5" fill="#ffffff"/>
                 <rect x="16" y="111" width="44" height="17" rx="8.5" fill="#ffffff"/>
                 <path d="M83 128 L104 58 L120 82 L138 42 L163 128" fill="none" stroke="#ffffff" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
                 <path d="M225 47 A42 42 0 1 0 225 121" fill="none" stroke="#e8b84b" stroke-width="15" stroke-linecap="round"/>
                 <path d="M14 146 Q 44 131 74 146 T 134 146 T 194 146 T 250 146" fill="none" stroke="#2fb3a8" stroke-width="9" stroke-linecap="round"/>
             </svg>
-            <span>Lagomarcambios</span>
+            <span class="sidebar-brand-name">Lagomarcambios</span>
         </div>
-        
+
         <ul class="nav-links">
-            <li class="active" data-section="dashboard">
-                <i class="ti ti-layout-dashboard" aria-hidden="true"></i> Dashboard
+            <li class="active" data-section="dashboard" data-title="Panel de Control" data-subtitle="Resumen de operaciones de hoy">
+                <i class="ti ti-layout-dashboard" aria-hidden="true"></i> <span class="nav-label">Dashboard</span>
             </li>
-            <li data-section="nueva">
-                <i class="ti ti-send" aria-hidden="true"></i> Nueva Remesa
+            <li data-section="nueva" data-title="Nueva Remesa" data-subtitle="Registrar un nuevo envío">
+                <i class="ti ti-send" aria-hidden="true"></i> <span class="nav-label">Nueva Remesa</span>
             </li>
-            <li data-section="clientes">
-                <i class="ti ti-users" aria-hidden="true"></i> Clientes
+            <li data-section="clientes" data-title="Clientes" data-subtitle="Administra tu cartera de clientes">
+                <i class="ti ti-users" aria-hidden="true"></i> <span class="nav-label">Clientes</span>
             </li>
-            <li data-section="caja">
-                <i class="ti ti-cash" aria-hidden="true"></i> Caja
+            <li data-section="caja" data-title="Caja" data-subtitle="Apertura, cierre y movimientos de caja">
+                <i class="ti ti-cash" aria-hidden="true"></i> <span class="nav-label">Caja</span>
             </li>
-            <li data-section="billetera">
-                <i class="ti ti-wallet" aria-hidden="true"></i> Billetera
+            <li data-section="billetera" data-title="Billetera" data-subtitle="Compra, venta y movimientos de divisas">
+                <i class="ti ti-wallet" aria-hidden="true"></i> <span class="nav-label">Billetera</span>
             </li>
-            <li data-section="boletas">
-                <i class="ti ti-receipt" aria-hidden="true"></i> Boletas
+            <li data-section="boletas" data-title="Boletas" data-subtitle="Boletas pendientes y emitidas">
+                <i class="ti ti-receipt" aria-hidden="true"></i> <span class="nav-label">Boletas</span>
             </li>
-            <li data-section="calculadora">
-                <i class="ti ti-calculator" aria-hidden="true"></i> Calculadora de Tasas
+            <li data-section="calculadora" data-title="Calculadora de Tasas" data-subtitle="Conversión rápida entre monedas">
+                <i class="ti ti-calculator" aria-hidden="true"></i> <span class="nav-label">Calculadora de Tasas</span>
             </li>
-            <li data-section="historial">
-                <i class="ti ti-history" aria-hidden="true"></i> Historial
+            <li data-section="historial" data-title="Historial" data-subtitle="Registro completo de operaciones">
+                <i class="ti ti-history" aria-hidden="true"></i> <span class="nav-label">Historial</span>
             </li>
-            <li data-section="conciliacion">
-                <i class="ti ti-clipboard-check" aria-hidden="true"></i> Conciliación SII
+            <li data-section="conciliacion" data-title="Conciliación SII" data-subtitle="Cruce entre remesas y boletas">
+                <i class="ti ti-clipboard-check" aria-hidden="true"></i> <span class="nav-label">Conciliación SII</span>
             </li>
-            <li data-section="reportes">
-                <i class="ti ti-report" aria-hidden="true"></i> Reportes
+            <li data-section="reportes" data-title="Reportes" data-subtitle="Indicadores y gráficos del negocio">
+                <i class="ti ti-report" aria-hidden="true"></i> <span class="nav-label">Reportes</span>
             </li>
-            <li data-section="config">
-                <i class="ti ti-settings" aria-hidden="true"></i> Configuración
+            <li data-section="config" data-title="Configuración" data-subtitle="Preferencias del sistema">
+                <i class="ti ti-settings" aria-hidden="true"></i> <span class="nav-label">Configuración</span>
             </li>
         </ul>
-        
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <span id="userEmail">usuario@empresa.com</span>
-            </div>
-            <button onclick="logout()" class="btn-logout"><i class="ti ti-logout" aria-hidden="true"></i> Cerrar Sesión</button>
-        </div>
+
+        <button class="sidebar-collapse-toggle" id="sidebarCollapseToggle" aria-label="Contraer menú" aria-expanded="true">
+            <i class="ti ti-chevrons-left" aria-hidden="true"></i> <span class="nav-label">Contraer menú</span>
+        </button>
     </nav>
 
     <!-- Mobile toggle -->
     <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú"><i class="ti ti-menu-2" aria-hidden="true"></i></button>
 
+    <!-- Topbar -->
+    <header class="topbar" id="topbar">
+        <div class="topbar-left">
+            <div class="topbar-title">
+                <i class="ti ti-layout-dashboard" id="topbarIcon" aria-hidden="true"></i>
+                <div>
+                    <h1 id="topbarTitle">Panel de Control</h1>
+                    <span id="topbarSubtitle">Resumen de operaciones de hoy</span>
+                </div>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <span class="topbar-clock" id="topbarClock"></span>
+            <div class="topbar-user">
+                <button class="topbar-user-btn" id="topbarUserBtn" aria-haspopup="true" aria-expanded="false">
+                    <span class="topbar-user-avatar" id="topbarUserAvatar">U</span>
+                    <span class="topbar-user-email" id="userEmail">usuario@empresa.com</span>
+                    <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="topbar-user-menu" id="topbarUserMenu">
+                    <button onclick="logout()" class="btn-logout"><i class="ti ti-logout" aria-hidden="true"></i> Cerrar sesión</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
     <!-- Main Content -->
     <main class="main-content">
         <!-- DASHBOARD -->
         <section id="dashboard" class="section active">
-            <div class="section-header">
-                <h2>Panel de Control</h2>
-                <p class="section-subtitle">Resumen de operaciones de hoy</p>
-            </div>
-
             <div class="stats-grid">
                 <div class="stat-card">
                     <span class="stat-label">Enviado hoy</span>
