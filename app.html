@@ -122,31 +122,55 @@
                     <span class="home-tile-title">Configuración</span>
                     <span class="home-tile-subtitle">Preferencias del sistema</span>
                 </div>
+                <div class="home-tile" data-section="auditoria" data-title="Auditoría" data-subtitle="Historial de cambios importantes">
+                    <i class="ti ti-shield-check" aria-hidden="true"></i>
+                    <span class="home-tile-title">Auditoría</span>
+                    <span class="home-tile-subtitle">Historial de cambios importantes</span>
+                </div>
             </div>
         </section>
 
         <!-- DASHBOARD -->
         <section id="dashboard" class="section">
+            <div class="section-header">
+                <h2>Panel de Control</h2>
+                <p class="section-subtitle">Resumen ejecutivo del día</p>
+            </div>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <span class="stat-label">Enviado hoy</span>
-                    <span class="stat-value" data-stat="enviado-hoy">—</span>
-                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                    <span class="stat-label">Caja disponible</span>
+                    <div class="stat-value stat-value-list" id="dashCajaDisponible">—</div>
+                    <span class="stat-hint" id="dashCajaDisponibleHint">Sin movimientos de caja todavía</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">Remesas del mes</span>
-                    <span class="stat-value" data-stat="remesas-mes">—</span>
-                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                    <span class="stat-label">Total en USD</span>
+                    <span class="stat-value" data-stat="total-usd">—</span>
+                    <span class="stat-hint" id="dashTotalUsdHint">Convertido con tus tasas configuradas</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">Pendientes</span>
-                    <span class="stat-value" data-stat="pendientes">—</span>
-                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                    <span class="stat-label">Total en moneda local</span>
+                    <span class="stat-value" data-stat="total-local">—</span>
+                    <span class="stat-hint" id="dashTotalLocalHint">Convertido con tus tasas configuradas</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">Clientes activos</span>
-                    <span class="stat-value" data-stat="clientes-activos">—</span>
-                    <span class="stat-hint">Se actualizará al conectar Firestore</span>
+                    <span class="stat-label">Ganancia del día</span>
+                    <span class="stat-value" data-stat="ganancia-dia">—</span>
+                    <span class="stat-hint">Remesas de hoy con tasa de referencia</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Operaciones realizadas</span>
+                    <span class="stat-value" data-stat="operaciones-dia">—</span>
+                    <span class="stat-hint">Remesas registradas hoy</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Clientes atendidos</span>
+                    <span class="stat-value" data-stat="clientes-dia">—</span>
+                    <span class="stat-hint">Clientes distintos atendidos hoy</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Última tasa utilizada</span>
+                    <span class="stat-value stat-value-small" data-stat="ultima-tasa">—</span>
+                    <span class="stat-hint" id="dashUltimaTasaHint">Aún no hay remesas registradas</span>
                 </div>
             </div>
 
@@ -1686,6 +1710,53 @@
                     <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">ExchangeRate-API</a>,
                     actualizadas aproximadamente una vez al día. Para tasas fijas o negociadas, guárdalas manualmente arriba.
                 </p>
+            </div>
+        </section>
+
+        <!-- AUDITORÍA -->
+        <section id="auditoria" class="section">
+            <div class="section-header">
+                <h2>Auditoría</h2>
+                <p class="section-subtitle">Registro automático de tasas, remesas y caja, con fecha y usuario</p>
+            </div>
+
+            <div class="panel">
+                <div class="filtros-panel" id="auditoriaFiltrosPanel">
+                    <div class="filtros-grid">
+                        <div class="input-group">
+                            <label for="auditoriaFiltroTipo">Tipo</label>
+                            <select id="auditoriaFiltroTipo">
+                                <option value="todos" selected>Todos</option>
+                                <option value="tasa">Tasas de cambio</option>
+                                <option value="remesa">Remesas</option>
+                                <option value="caja">Caja</option>
+                            </select>
+                        </div>
+                        <div class="input-group filtros-span-2">
+                            <label for="auditoriaFiltroBuscar">Buscar</label>
+                            <input type="text" id="auditoriaFiltroBuscar" placeholder="Ej. cliente, moneda, usuario">
+                        </div>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Acción</th>
+                                <th>Detalle</th>
+                                <th>Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditoriaBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="auditoriaEmpty">
+                    <i class="ti ti-shield-check empty-state-icon" aria-hidden="true"></i>
+                    <p>Todavía no hay registros de auditoría.</p>
+                    <span class="empty-state-hint">Aparecerán aquí en cuanto guardes una tasa, una remesa o abras/cierres caja.</span>
+                </div>
             </div>
         </section>
     </main>

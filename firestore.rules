@@ -79,6 +79,18 @@ service cloud.firestore {
         && request.resource.data.estado in ['abierto', 'cerrado'];
     }
 
+    // Auditoría: registro automático de cambios importantes (tasas, remesas, caja).
+    // Es un historial de solo lectura: se puede crear y leer, pero nunca editar
+    // ni borrar, para que el registro sea confiable.
+    match /auditoria/{logId} {
+      allow read: if autenticado();
+      allow create: if autenticado()
+        && request.resource.data.tipo is string
+        && request.resource.data.accion is string
+        && request.resource.data.creadoEn == request.time;
+      allow update, delete: if false;
+    }
+
     // Por defecto, todo lo demás queda bloqueado
     match /{document=**} {
       allow read, write: if false;
