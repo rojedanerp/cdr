@@ -1004,6 +1004,28 @@ button {
   color: var(--slate-light);
 }
 
+.stat-value-small {
+  font-size: 16px;
+}
+
+.stat-value-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 16px;
+}
+
+.stat-value-list .stat-value-list-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stat-value-list .stat-value-list-row .stat-value-list-moneda {
+  color: var(--slate);
+  font-weight: 500;
+}
+
 /* ============================================
    PANELS / TABLES
    ============================================ */
