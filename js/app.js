@@ -1263,7 +1263,7 @@ function actualizarDashboardEjecutivo() {
     let totalUsd = 0, totalUsdCompleto = true;
     let totalLocal = 0, totalLocalCompleto = true;
     monedas.forEach(m => {
-        const enUsd = convertirMoneda(saldosPorMoneda[m], m, 'USD');
+        const enUsd = convertirMoneda(saldosPorMoneda[m], m, 'USDT');
         if (enUsd === null) totalUsdCompleto = false; else totalUsd += enUsd;
         const enLocal = convertirMoneda(saldosPorMoneda[m], m, 'CLP');
         if (enLocal === null) totalLocalCompleto = false; else totalLocal += enLocal;
@@ -1272,11 +1272,11 @@ function actualizarDashboardEjecutivo() {
     const totalUsdEl = document.querySelector('[data-stat="total-usd"]');
     const totalUsdHint = document.getElementById('dashTotalUsdHint');
     if (totalUsdEl) {
-        totalUsdEl.textContent = monedas.length === 0 ? '—' : formatMoney(totalUsd, 'USD');
+        totalUsdEl.textContent = monedas.length === 0 ? '—' : formatMoney(totalUsd, 'USDT');
         if (totalUsdHint) {
             totalUsdHint.textContent = monedas.length === 0
                 ? 'Sin saldo en caja'
-                : (totalUsdCompleto ? 'Convertido con tus tasas configuradas' : 'Incompleto: falta una tasa a USD para alguna moneda');
+                : (totalUsdCompleto ? 'Convertido con tus tasas configuradas' : 'Incompleto: falta una tasa a USDT para alguna moneda');
         }
     }
 
