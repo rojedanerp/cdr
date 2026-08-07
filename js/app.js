@@ -3984,6 +3984,7 @@ cierresColeccion.orderBy('abiertoEn', 'desc').onSnapshot(snapshot => {
 // ============================================
 const boletasPendientesCount = document.getElementById('boletasPendientesCount');
 const boletasPendientesMonto = document.getElementById('boletasPendientesMonto');
+const boletasPendientesFacturasCount = document.getElementById('boletasPendientesFacturasCount');
 const boletasEmitidasMes = document.getElementById('boletasEmitidasMes');
 const boletasPendientesBody = document.getElementById('boletasPendientesBody');
 const boletasPendientesTableWrap = document.getElementById('boletasPendientesTableWrap');
@@ -4024,6 +4025,24 @@ function requiereBoleta(r) {
     return (r.monedaEnviado || '').toUpperCase() === 'CLP';
 }
 
+// A partir de este monto en CLP, corresponde emitir factura en vez de boleta.
+const UMBRAL_FACTURA_CLP = 500000;
+
+// Devuelve 'factura' o 'boleta' según el monto enviado en CLP. Solo tiene
+// sentido llamarla cuando requiereBoleta(r) es true.
+function tipoDocumento(r) {
+    return (r.montoEnviado || 0) > UMBRAL_FACTURA_CLP ? 'factura' : 'boleta';
+}
+
+function tipoDocumentoLabel(r) {
+    return tipoDocumento(r) === 'factura' ? 'Factura' : 'Boleta';
+}
+
+function tipoDocumentoBadgeHtml(r) {
+    const esFactura = tipoDocumento(r) === 'factura';
+    return `<span class="badge ${esFactura ? 'badge-danger' : 'badge-neutral'}">${esFactura ? 'Factura' : 'Boleta'}</span>`;
+}
+
 function renderBoletas(remesas) {
     const activas = remesas.filter(r => r.estado !== 'cancelado' && requiereBoleta(r));
     const pendientes = activas.filter(r => !r.boletaEmitida);
@@ -4042,6 +4061,9 @@ function renderBoletas(remesas) {
         .filter(r => (r.monedaEnviado || '').toUpperCase() === 'CLP')
         .reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
     boletasPendientesMonto.textContent = formatMoney(montoPendienteClp, 'CLP');
+    if (boletasPendientesFacturasCount) {
+        boletasPendientesFacturasCount.textContent = pendientes.filter(r => tipoDocumento(r) === 'factura').length;
+    }
 
     const hoy = new Date();
     const emitidasEsteMes = emitidas.filter(r => r.fechaBoleta && r.fechaBoleta.toDate
@@ -4097,13 +4119,15 @@ function aplicarFiltroBoletasPendientes() {
     boletasPendientesTableWrap.style.display = 'block';
     filtrados.forEach(r => {
         const tr = document.createElement('tr');
+        const esFactura = tipoDocumento(r) === 'factura';
         tr.innerHTML = `
             <td><input type="checkbox" class="boleta-checkbox" data-id="${r.id}" ${boletasSeleccionadas.has(r.id) ? 'checked' : ''}></td>
             <td>${formatDate(r.createdAt)}</td>
             <td>${escapeHtml(r.clienteNombre) || '—'}</td>
             <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
+            <td>${tipoDocumentoBadgeHtml(r)}</td>
             <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
-            <td><button type="button" class="btn-icon-action" data-id="${r.id}"><i class="ti ti-receipt" aria-hidden="true"></i> Marcar boleta emitida</button></td>
+            <td><button type="button" class="btn-icon-action" data-id="${r.id}"><i class="ti ti-receipt" aria-hidden="true"></i> Marcar ${esFactura ? 'factura' : 'boleta'} emitida</button></td>
         `;
         tr.querySelector('.boleta-checkbox').addEventListener('change', (e) => {
             if (e.target.checked) boletasSeleccionadas.add(r.id);
@@ -4169,13 +4193,15 @@ function aplicarFiltroBoletasEmitidas() {
 
     filtrados.forEach(r => {
         const tr = document.createElement('tr');
+        const esFactura = tipoDocumento(r) === 'factura';
         const grupoInfo = r.grupoBoletaId
-            ? `<div class="cell-subtext">Boleta agrupada · total ${formatMoney(totalesPorGrupo[r.grupoBoletaId], r.monedaEnviado)}</div>`
+            ? `<div class="cell-subtext">${esFactura ? 'Factura' : 'Boleta'} agrupada · total ${formatMoney(totalesPorGrupo[r.grupoBoletaId], r.monedaEnviado)}</div>`
             : '';
         tr.innerHTML = `
             <td>${formatDate(r.createdAt)}</td>
             <td>${escapeHtml(r.clienteNombre) || '—'}</td>
             <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}${grupoInfo}</td>
+            <td>${tipoDocumentoBadgeHtml(r)}</td>
             <td>${escapeHtml(r.folioBoleta) || '—'}</td>
             <td><button type="button" class="btn-icon-action danger" data-id="${r.id}">Quitar marca</button></td>
         `;
@@ -4208,6 +4234,7 @@ function filasExportBoletasPendientes() {
         Fecha: formatDate(r.createdAt),
         Cliente: r.clienteNombre || '—',
         Monto: moneyTexto(r.montoEnviado, r.monedaEnviado),
+        Tipo: tipoDocumentoLabel(r),
         Estado: badgeLabel(r.estado)
     }));
 }
@@ -4229,8 +4256,8 @@ boletasPendientesExportarPdfBtn.addEventListener('click', () => {
 
     doc.autoTable({
         startY: 26,
-        head: [['Fecha', 'Cliente', 'Monto', 'Estado']],
-        body: filas.map(f => [f.Fecha, f.Cliente, f.Monto, f.Estado]),
+        head: [['Fecha', 'Cliente', 'Monto', 'Tipo', 'Estado']],
+        body: filas.map(f => [f.Fecha, f.Cliente, f.Monto, f.Tipo, f.Estado]),
         styles: { fontSize: 8.5, cellPadding: 3 },
         headStyles: { fillColor: [30, 41, 59] },
         alternateRowStyles: { fillColor: [245, 246, 248] }
@@ -4246,7 +4273,7 @@ boletasPendientesExportarExcelBtn.addEventListener('click', () => {
     }
     const filas = filasExportBoletasPendientes();
     const hoja = XLSX.utils.json_to_sheet(filas);
-    hoja['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 14 }];
+    hoja['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 10 }, { wch: 14 }];
     const libro = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(libro, hoja, 'Pendientes de boleta');
     XLSX.writeFile(libro, `boletas-pendientes-${fechaArchivo()}.xlsx`);
@@ -4282,6 +4309,7 @@ function filasExportBoletasEmitidas() {
         Fecha: formatDate(r.createdAt),
         Cliente: r.clienteNombre || '—',
         Monto: moneyTexto(r.montoEnviado, r.monedaEnviado),
+        Tipo: tipoDocumentoLabel(r),
         Folio: r.folioBoleta || '—',
         'Total del grupo': r.grupoBoletaId ? moneyTexto(totalesPorGrupo[r.grupoBoletaId], r.monedaEnviado) : '—'
     }));
@@ -4304,8 +4332,8 @@ boletasEmitidasExportarPdfBtn.addEventListener('click', () => {
 
     doc.autoTable({
         startY: 26,
-        head: [['Fecha', 'Cliente', 'Monto', 'Folio', 'Total del grupo']],
-        body: filas.map(f => [f.Fecha, f.Cliente, f.Monto, f.Folio, f['Total del grupo']]),
+        head: [['Fecha', 'Cliente', 'Monto', 'Tipo', 'Folio', 'Total del grupo']],
+        body: filas.map(f => [f.Fecha, f.Cliente, f.Monto, f.Tipo, f.Folio, f['Total del grupo']]),
         styles: { fontSize: 8.5, cellPadding: 3 },
         headStyles: { fillColor: [30, 41, 59] },
         alternateRowStyles: { fillColor: [245, 246, 248] }
@@ -4321,7 +4349,7 @@ boletasEmitidasExportarExcelBtn.addEventListener('click', () => {
     }
     const filas = filasExportBoletasEmitidas();
     const hoja = XLSX.utils.json_to_sheet(filas);
-    hoja['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 14 }, { wch: 18 }];
+    hoja['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, { wch: 18 }];
     const libro = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(libro, hoja, 'Boletas emitidas');
     XLSX.writeFile(libro, `boletas-emitidas-${fechaArchivo()}.xlsx`);
@@ -4338,10 +4366,17 @@ boletasMarcarGrupoBtn.addEventListener('click', async () => {
         return;
     }
 
+    const tipos = new Set(seleccionadas.map(r => tipoDocumento(r)));
+    if (tipos.size > 1) {
+        alert(`Las remesas seleccionadas requieren documentos distintos (boleta y factura, según si superan los ${formatMoney(UMBRAL_FACTURA_CLP, 'CLP')}). Solo puedes agrupar remesas que usen el mismo tipo de documento.`);
+        return;
+    }
+    const esFactura = tipos.has('factura');
+
     const moneda = seleccionadas[0].monedaEnviado;
     const total = seleccionadas.reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
     const folio = prompt(
-        `Vas a agrupar ${seleccionadas.length} remesas en una sola boleta por ${formatMoney(total, moneda)}.\n\nNúmero de folio de la boleta en e-Boleta (opcional):`,
+        `Vas a agrupar ${seleccionadas.length} remesas en una sola ${esFactura ? 'factura' : 'boleta'} por ${formatMoney(total, moneda)}.\n\nNúmero de folio de la ${esFactura ? 'factura' : 'boleta'} en e-Boleta (opcional):`,
         ''
     );
     if (folio === null) return; // canceló
@@ -4366,7 +4401,12 @@ boletasMarcarGrupoBtn.addEventListener('click', async () => {
 });
 
 async function marcarBoletaEmitida(remesaId) {
-    const folio = prompt('Número de folio de la boleta en e-Boleta (opcional, puedes dejarlo en blanco):', '');
+    const r = pendientesPorId[remesaId];
+    const esFactura = r && tipoDocumento(r) === 'factura';
+    const folio = prompt(
+        `Número de folio de la ${esFactura ? 'factura' : 'boleta'} en e-Boleta (opcional, puedes dejarlo en blanco):`,
+        ''
+    );
     if (folio === null) return; // canceló el prompt
     try {
         await db.collection('remesas').doc(remesaId).update({
@@ -4376,12 +4416,12 @@ async function marcarBoletaEmitida(remesaId) {
         });
     } catch (error) {
         console.error('Error al marcar boleta emitida:', error);
-        alert('No se pudo marcar la boleta. Intenta de nuevo.');
+        alert(`No se pudo marcar la ${esFactura ? 'factura' : 'boleta'}. Intenta de nuevo.`);
     }
 }
 
 async function quitarMarcaBoleta(remesaId) {
-    if (!confirm('¿Quitar la marca de boleta emitida de esta remesa? Volverá a aparecer como pendiente.')) return;
+    if (!confirm('¿Quitar la marca de documento emitido (boleta/factura) de esta remesa? Volverá a aparecer como pendiente.')) return;
     try {
         await db.collection('remesas').doc(remesaId).update({
             boletaEmitida: false,
