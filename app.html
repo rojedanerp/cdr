@@ -963,20 +963,24 @@
         <section id="boletas" class="section">
             <div class="section-header">
                 <h2>Boletas</h2>
-                <p class="section-subtitle">Control de boletas SII emitidas manualmente en e-Boleta</p>
+                <p class="section-subtitle">Control de boletas y facturas SII emitidas manualmente en e-Boleta</p>
             </div>
 
             <div class="stats-grid">
                 <div class="stat-card">
-                    <span class="stat-label">Remesas sin boleta</span>
+                    <span class="stat-label">Remesas sin boleta/factura</span>
                     <span class="stat-value" id="boletasPendientesCount">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">De esas, requieren factura</span>
+                    <span class="stat-value" id="boletasPendientesFacturasCount">0</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">Total sin boletear (CLP)</span>
                     <span class="stat-value" id="boletasPendientesMonto">0</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-label">Boletas emitidas este mes</span>
+                    <span class="stat-label">Boletas/facturas emitidas este mes</span>
                     <span class="stat-value" id="boletasEmitidasMes">0</span>
                 </div>
             </div>
@@ -991,16 +995,18 @@
                 </div>
                 <p class="tasa-intro">
                     Remesas activas (no canceladas) donde el CLP entró al negocio (el cliente pagó en
-                    CLP) y todavía no les has hecho la boleta en e-Boleta del SII. Los cambios donde el
-                    CLP sale (por ejemplo, VES a CLP) no requieren boleta y no aparecen aquí.
-                    Cuando la emitas en el SII, marca aquí "Boleta emitida" y pega el folio
-                    para llevar el control — esto no genera ni envía nada al SII, es solo tu checklist.
-                    Si un mismo pago del cliente cubrió varias remesas, marca esas filas y usa
-                    "Marcar seleccionadas como una sola boleta" para agruparlas bajo un solo folio.
+                    CLP) y todavía no les has hecho el documento en e-Boleta del SII. Los cambios donde el
+                    CLP sale (por ejemplo, VES a CLP) no requieren boleta ni factura y no aparecen aquí.
+                    Hasta $500.000 CLP corresponde boleta; sobre ese monto corresponde factura — cada fila
+                    muestra qué tipo de documento le toca. Cuando lo emitas en el SII, marca aquí
+                    "emitida/o" y pega el folio para llevar el control — esto no genera ni envía nada
+                    al SII, es solo tu checklist. Si un mismo pago del cliente cubrió varias remesas del
+                    mismo tipo de documento, marca esas filas y usa "Marcar seleccionadas como un solo
+                    documento" para agruparlas bajo un solo folio.
                 </p>
                 <div class="tasa-form-actions" style="margin-bottom: 12px;">
                     <button type="button" class="btn-secondary" id="boletasMarcarGrupoBtn" disabled>
-                        Marcar seleccionadas como una sola boleta (<span id="boletasSeleccionadasCount">0</span>)
+                        Marcar seleccionadas como un solo documento (<span id="boletasSeleccionadasCount">0</span>)
                     </button>
                 </div>
                 <div class="filtros-panel" id="boletasPendientesFiltrosPanel">
@@ -1044,6 +1050,7 @@
                                 <th>Fecha</th>
                                 <th>Cliente</th>
                                 <th>Monto enviado</th>
+                                <th>Tipo</th>
                                 <th>Estado remesa</th>
                                 <th>Acciones</th>
                             </tr>
@@ -1105,6 +1112,7 @@
                                 <th>Fecha remesa</th>
                                 <th>Cliente</th>
                                 <th>Monto enviado</th>
+                                <th>Tipo</th>
                                 <th>Folio</th>
                                 <th>Acciones</th>
                             </tr>
@@ -1126,49 +1134,7 @@
                 <p class="section-subtitle">Tres calculadoras independientes. Toca el título de cada una para abrirla o minimizarla.</p>
             </div>
 
-            <!-- 1. Conversión rápida -->
-            <div class="panel calc-panel" id="calcConvPanel">
-                <button type="button" class="calc-panel-toggle" id="calcConvToggle" aria-expanded="false" aria-controls="calcConvBody">
-                    <span class="calc-panel-toggle-text">
-                        <h3><i class="ti ti-cash calc-panel-icon" aria-hidden="true"></i> Conversión rápida — Dólares a Bolívares y Pesos</h3>
-                        <p class="section-subtitle">Solo edita Cantidad y DolarVzla. Bolívares y Pesos se calculan solos con la tasa ofrecida para remesas CLP → VES.</p>
-                    </span>
-                    <span class="calc-panel-chevron">▾</span>
-                </button>
-                <div class="calc-panel-body" id="calcConvBody">
-                    <div class="form-grid">
-                        <div class="input-group">
-                            <label for="convCantidad">Cantidad (USD)</label>
-                            <input type="number" id="convCantidad" placeholder="55" step="any" inputmode="decimal" value="55">
-                        </div>
-                        <div class="input-group">
-                            <label for="convDolarVzla">DolarVzla (Bs. por 1 USD)</label>
-                            <input type="number" id="convDolarVzla" placeholder="752.09" step="any" inputmode="decimal" value="752.09">
-                        </div>
-                    </div>
-
-                    <div class="calc-result calc-result-secondary" id="convCambioBox">
-                        <span class="calc-result-label" id="convCambioLabel">Cambio (tipo de cambio CLP → VES, en vivo)</span>
-                        <span class="calc-result-value" id="convCambioValue">—</span>
-                    </div>
-
-                    <div class="calc-result calc-result-secondary" id="convBolivaresBox">
-                        <span class="calc-result-label">Bolivares</span>
-                        <span class="calc-result-value" id="convBolivaresValue">—</span>
-                    </div>
-
-                    <div class="calc-result" id="convPesosBox">
-                        <span class="calc-result-label">Pesos</span>
-                        <span class="calc-result-value" id="convPesosValue">—</span>
-                    </div>
-
-                    <div class="calc-panel-actions">
-                        <button type="button" class="btn-secondary" id="convCompartirBtn"><i class="ti ti-share-2" aria-hidden="true"></i> Compartir como imagen</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 2. Tasa cruzada -->
+            <!-- 1. Tasa cruzada -->
             <div class="panel calc-panel" id="calcCruzadaPanel">
                 <button type="button" class="calc-panel-toggle" id="calcCruzadaToggle" aria-expanded="false" aria-controls="calcCruzadaBody">
                     <span class="calc-panel-toggle-text">
@@ -1213,6 +1179,48 @@
 
                     <div class="tasa-form-actions">
                         <button type="button" class="btn-primary btn-form" id="calcGuardarBtn" disabled>Usar tasa con margen en Configuración</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Conversión rápida -->
+            <div class="panel calc-panel" id="calcConvPanel">
+                <button type="button" class="calc-panel-toggle" id="calcConvToggle" aria-expanded="false" aria-controls="calcConvBody">
+                    <span class="calc-panel-toggle-text">
+                        <h3><i class="ti ti-cash calc-panel-icon" aria-hidden="true"></i> Conversión rápida — Dólares a Bolívares y Pesos</h3>
+                        <p class="section-subtitle">Solo edita Cantidad y DolarVzla. Bolívares y Pesos se calculan solos con la tasa ofrecida para remesas CLP → VES.</p>
+                    </span>
+                    <span class="calc-panel-chevron">▾</span>
+                </button>
+                <div class="calc-panel-body" id="calcConvBody">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="convCantidad">Cantidad (USD)</label>
+                            <input type="number" id="convCantidad" placeholder="55" step="any" inputmode="decimal" value="55">
+                        </div>
+                        <div class="input-group">
+                            <label for="convDolarVzla">DolarVzla (Bs. por 1 USD)</label>
+                            <input type="number" id="convDolarVzla" placeholder="752.09" step="any" inputmode="decimal" value="752.09">
+                        </div>
+                    </div>
+
+                    <div class="calc-result calc-result-secondary" id="convCambioBox">
+                        <span class="calc-result-label" id="convCambioLabel">Cambio (tipo de cambio CLP → VES, en vivo)</span>
+                        <span class="calc-result-value" id="convCambioValue">—</span>
+                    </div>
+
+                    <div class="calc-result calc-result-secondary" id="convBolivaresBox">
+                        <span class="calc-result-label">Bolivares</span>
+                        <span class="calc-result-value" id="convBolivaresValue">—</span>
+                    </div>
+
+                    <div class="calc-result" id="convPesosBox">
+                        <span class="calc-result-label">Pesos</span>
+                        <span class="calc-result-value" id="convPesosValue">—</span>
+                    </div>
+
+                    <div class="calc-panel-actions">
+                        <button type="button" class="btn-secondary" id="convCompartirBtn"><i class="ti ti-share-2" aria-hidden="true"></i> Compartir como imagen</button>
                     </div>
                 </div>
             </div>
@@ -1792,6 +1800,6 @@
     </div>
 
     <script src="js/calculadora.js?v=21"></script>
-    <script type="module" src="js/app.js?v=21"></script>
+    <script type="module" src="js/app.js?v=22"></script>
 </body>
 </html>
