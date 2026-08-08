@@ -969,6 +969,57 @@ function initFiltrosToggle(prefix) {
     });
 }
 
+// ============================================
+// PANELES MINIMIZABLES GENÉRICOS (título clicable en panel-header)
+// Usado por Historial de ventas/compras y Movimientos de USDT en
+// Billetera para no ocupar tanto espacio de golpe. El estado
+// (abierto/cerrado) de cada uno se recuerda en localStorage.
+// ============================================
+const PANEL_COLAPSABLE_STORAGE_KEY = 'panelesColapsablesAbiertos';
+
+function leerEstadoPanelesColapsables() {
+    try {
+        return JSON.parse(localStorage.getItem(PANEL_COLAPSABLE_STORAGE_KEY)) || {};
+    } catch (error) {
+        return {};
+    }
+}
+
+function guardarEstadoPanelColapsable(id, abierto) {
+    const estado = leerEstadoPanelesColapsables();
+    estado[id] = abierto;
+    try {
+        localStorage.setItem(PANEL_COLAPSABLE_STORAGE_KEY, JSON.stringify(estado));
+    } catch (error) {
+        // localStorage no disponible (modo privado, etc.) — no es crítico.
+    }
+}
+
+// panelId: id del contenedor .panel (ej. 'billeteraVentasPanel') → usa los
+// ids {panelId sin "Panel"}CollapseToggle. abiertoPorDefecto solo se usa
+// la primera vez, antes de que exista una preferencia guardada.
+function initPanelCollapseToggle(panelId, toggleId, abiertoPorDefecto) {
+    const panel = document.getElementById(panelId);
+    const toggle = document.getElementById(toggleId);
+    if (!panel || !toggle) return;
+
+    const estadoGuardado = leerEstadoPanelesColapsables()[panelId];
+    const abierto = estadoGuardado !== undefined ? estadoGuardado : abiertoPorDefecto;
+    panel.classList.toggle('abierto', abierto);
+    toggle.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+
+    toggle.addEventListener('click', () => {
+        const ahoraAbierto = panel.classList.toggle('abierto');
+        toggle.setAttribute('aria-expanded', ahoraAbierto ? 'true' : 'false');
+        guardarEstadoPanelColapsable(panelId, ahoraAbierto);
+    });
+}
+
+// Los tres empiezan minimizados para ahorrar espacio en Billetera.
+initPanelCollapseToggle('billeteraVentasPanel', 'billeteraVentasCollapseToggle', false);
+initPanelCollapseToggle('billeteraComprasPanel', 'billeteraComprasCollapseToggle', false);
+initPanelCollapseToggle('billeteraMovsPanel', 'billeteraMovsCollapseToggle', false);
+
 // Repinta la fila de "chips" con los filtros activos de un panel, el
 // contador junto al botón "Filtros" y el texto "X de Y" del resultado.
 // prefix: mismo prefijo usado en initFiltrosToggle.
