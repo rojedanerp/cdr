@@ -1588,6 +1588,26 @@
             </div>
 
             <div class="panel">
+                <div class="panel-header"><h3>Resumen por moneda</h3></div>
+                <p class="tasa-intro">
+                    Cuánto dinero entró (lo que el cliente pagó) y salió (lo que recibió el destinatario) por cada
+                    moneda, más la comisión total cobrada en cada una. Respeta el periodo y los filtros activos.
+                </p>
+                <div class="table-wrap" id="repMonedaWrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Moneda</th><th># Entradas</th><th>Total entrado</th><th># Salidas</th><th>Total salido</th><th>Comisión total</th></tr>
+                        </thead>
+                        <tbody id="repMonedaBody"></tbody>
+                    </table>
+                </div>
+                <div class="empty-state" id="repMonedaEmpty">
+                    <i class="ti ti-coin empty-state-icon" aria-hidden="true"></i>
+                    <p>No hay remesas en este periodo.</p>
+                </div>
+            </div>
+
+            <div class="panel">
                 <div class="panel-header">
                     <h3>Remesas por día</h3>
                     <span class="input-hint" id="repChartSubtitulo"></span>
