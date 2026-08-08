@@ -10,7 +10,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function autenticado() {
-      return request.auth != null;
+      return request.auth != null
+        && request.auth.token.email == 'rojedanspa@gmail.com';
     }
 
     // Remesas: cada envío registrado
