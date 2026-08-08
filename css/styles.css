@@ -1349,6 +1349,49 @@ button {
   display: block;
 }
 
+/* ============================================
+   PANELES MINIMIZABLES GENÉRICOS — usados por
+   Historial de ventas/compras y Movimientos de
+   USDT en Billetera. El título en panel-header
+   se convierte en botón; el resto del panel
+   (filtros, tabla, empty-state) se colapsa.
+   ============================================ */
+.panel-collapse-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-body);
+  text-align: left;
+}
+
+.panel-collapse-toggle h3 {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.panel-collapse-chevron {
+  color: var(--slate);
+  flex-shrink: 0;
+  font-size: 13px;
+  transition: transform 0.15s ease;
+}
+
+.panel.abierto .panel-collapse-chevron {
+  transform: rotate(180deg);
+}
+
+.panel-collapsible-body {
+  display: none;
+}
+
+.panel.abierto .panel-collapsible-body {
+  display: block;
+}
+
 .calc-result-secondary {
   background: var(--canvas);
   border-color: var(--border);
