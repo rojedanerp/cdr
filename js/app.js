@@ -154,6 +154,15 @@ const fechaEnRango = (timestamp, desde, hasta) => {
     return true;
 };
 
+// Devuelve la fecha de hoy en formato 'YYYY-MM-DD' (hora local), lista
+// para precargar un <input type="date">.
+function hoyInputValue() {
+    const hoy = new Date();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    return `${hoy.getFullYear()}-${mes}-${dia}`;
+}
+
 const badgeClass = (estado) => {
     if (estado === 'completado') return 'badge badge-success';
     if (estado === 'cancelado') return 'badge badge-danger';
@@ -4217,6 +4226,11 @@ const boletasEmitidasFiltroDesde = document.getElementById('boletasEmitidasFiltr
 const boletasEmitidasFiltroHasta = document.getElementById('boletasEmitidasFiltroHasta');
 const boletasEmitidasFiltroBuscar = document.getElementById('boletasEmitidasFiltroBuscar');
 const boletasEmitidasFiltroLimpiar = document.getElementById('boletasEmitidasFiltroLimpiar');
+
+// Filtro de fecha "Boletas emitidas" arranca mostrando solo el día de hoy;
+// el usuario puede ampliarlo o quitarlo cuando quiera.
+if (boletasEmitidasFiltroDesde && !boletasEmitidasFiltroDesde.value) boletasEmitidasFiltroDesde.value = hoyInputValue();
+if (boletasEmitidasFiltroHasta && !boletasEmitidasFiltroHasta.value) boletasEmitidasFiltroHasta.value = hoyInputValue();
 
 let boletasSeleccionadas = new Set();
 let pendientesPorId = {};
