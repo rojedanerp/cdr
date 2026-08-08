@@ -4149,6 +4149,7 @@ const boletasPendientesCount = document.getElementById('boletasPendientesCount')
 const boletasPendientesMonto = document.getElementById('boletasPendientesMonto');
 const boletasPendientesFacturasCount = document.getElementById('boletasPendientesFacturasCount');
 const boletasEmitidasMes = document.getElementById('boletasEmitidasMes');
+const boletasEmitidasTotal = document.getElementById('boletasEmitidasTotal');
 const boletasPendientesBody = document.getElementById('boletasPendientesBody');
 const boletasPendientesTableWrap = document.getElementById('boletasPendientesTableWrap');
 const boletasPendientesEmpty = document.getElementById('boletasPendientesEmpty');
@@ -4233,6 +4234,7 @@ function renderBoletas(remesas) {
         && r.fechaBoleta.toDate().getMonth() === hoy.getMonth()
         && r.fechaBoleta.toDate().getFullYear() === hoy.getFullYear());
     boletasEmitidasMes.textContent = emitidasEsteMes.length;
+    boletasEmitidasTotal.textContent = emitidas.length;
 
     // --- Tablas: se guardan en cache y se pintan a través de los filtros ---
     boletasPendientesCache = pendientes;
