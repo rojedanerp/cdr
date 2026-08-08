@@ -4149,7 +4149,6 @@ const boletasPendientesCount = document.getElementById('boletasPendientesCount')
 const boletasPendientesMonto = document.getElementById('boletasPendientesMonto');
 const boletasPendientesFacturasCount = document.getElementById('boletasPendientesFacturasCount');
 const boletasEmitidasMes = document.getElementById('boletasEmitidasMes');
-const boletasEmitidasTotal = document.getElementById('boletasEmitidasTotal');
 const boletasEmitidasMonto = document.getElementById('boletasEmitidasMonto');
 const boletasPendientesBody = document.getElementById('boletasPendientesBody');
 const boletasPendientesTableWrap = document.getElementById('boletasPendientesTableWrap');
@@ -4230,12 +4229,6 @@ function renderBoletas(remesas) {
         boletasPendientesFacturasCount.textContent = pendientes.filter(r => tipoDocumento(r) === 'factura').length;
     }
 
-    const hoy = new Date();
-    const emitidasEsteMes = emitidas.filter(r => r.fechaBoleta && r.fechaBoleta.toDate
-        && r.fechaBoleta.toDate().getMonth() === hoy.getMonth()
-        && r.fechaBoleta.toDate().getFullYear() === hoy.getFullYear());
-    boletasEmitidasMes.textContent = emitidasEsteMes.length;
-    boletasEmitidasTotal.textContent = emitidas.length;
     const montoEmitidoClp = emitidas
         .filter(r => (r.monedaEnviado || '').toUpperCase() === 'CLP')
         .reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
@@ -4341,6 +4334,7 @@ function aplicarFiltroBoletasEmitidas() {
     ], { mostrados: filtrados.length, total: boletasEmitidasCache.length });
 
     boletasEmitidasFiltrado = filtrados;
+    boletasEmitidasMes.textContent = filtrados.length;
     boletasEmitidasBody.innerHTML = '';
     if (filtrados.length === 0) {
         boletasEmitidasEmpty.style.display = 'block';
