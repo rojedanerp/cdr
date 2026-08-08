@@ -2065,7 +2065,7 @@ function renderizarReportes() {
     // --- Stat: cantidad ---
     repStatCantidad.textContent = enPeriodo.length;
 
-    // --- Stat: ticket promedio (en la moneda de envío más frecuente del periodo) ---
+    // --- Stat: monto enviado (total, en la moneda de envío más frecuente del periodo) ---
     const conteoMonedaEnviado = {};
     enPeriodo.forEach(r => {
         const m = (r.monedaEnviado || '').toUpperCase();
@@ -2077,7 +2077,7 @@ function renderizarReportes() {
         const moneda = monedaPrincipal[0];
         const delGrupo = enPeriodo.filter(r => (r.monedaEnviado || '').toUpperCase() === moneda);
         const totalEnviado = delGrupo.reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
-        repStatTicket.textContent = formatMoney(delGrupo.length ? totalEnviado / delGrupo.length : 0, moneda);
+        repStatTicket.textContent = formatMoney(totalEnviado, moneda);
     } else {
         repStatTicket.textContent = '—';
     }
@@ -2446,7 +2446,7 @@ reportesExportarPdfBtn.addEventListener('click', () => {
 
     doc.autoTable({
         startY: 26,
-        head: [['Remesas', 'Ticket promedio', 'Ganancia neta estimada', 'Sin tasa de referencia']],
+        head: [['Remesas', 'Monto enviado', 'Ganancia neta estimada', 'Sin tasa de referencia']],
         body: [[stats.cantidad, stats.ticket, stats.ganancia, stats.sinRef]],
         styles: { fontSize: 8.5, cellPadding: 3 },
         headStyles: { fillColor: [30, 41, 59] }
@@ -2514,7 +2514,7 @@ reportesExportarExcelBtn.addEventListener('click', () => {
     const hojaResumen = XLSX.utils.json_to_sheet([{
         Periodo: periodoLabel,
         'Remesas en el periodo': stats.cantidad,
-        'Ticket promedio': stats.ticket,
+        'Monto enviado': stats.ticket,
         'Ganancia neta estimada': stats.ganancia,
         'Sin tasa de referencia': stats.sinRef
     }]);
