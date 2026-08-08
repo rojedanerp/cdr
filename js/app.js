@@ -175,20 +175,68 @@ const montoRecibidoInput = document.getElementById('montoRecibido');
 const monedaEnviadoInput = document.getElementById('monedaEnviado');
 const monedaRecibidoInput = document.getElementById('monedaRecibido');
 const tasaHint = document.getElementById('tasaHint');
+const modoCalculoEnviadoBtn = document.getElementById('modoCalculoEnviadoBtn');
+const modoCalculoRecibidoBtn = document.getElementById('modoCalculoRecibidoBtn');
+const calcBadgeEnviado = document.getElementById('calcBadgeEnviado');
+const calcBadgeRecibido = document.getElementById('calcBadgeRecibido');
 
-function recalcularMontoRecibido() {
-    const enviado = parseFloat(montoEnviadoInput.value);
+// El usuario puede elegir si ingresa el "monto enviado" (y la app calcula
+// cuánto se recibe) o el "monto a recibir" (y la app calcula cuánto hay que
+// enviar para lograrlo). El campo que no se está ingresando queda de solo
+// lectura y se recalcula en vivo.
+let modoCalculo = 'enviado'; // 'enviado' | 'recibido'
+
+function aplicarModoCalculo() {
+    const esEnviado = modoCalculo === 'enviado';
+
+    modoCalculoEnviadoBtn.classList.toggle('active', esEnviado);
+    modoCalculoRecibidoBtn.classList.toggle('active', !esEnviado);
+
+    montoEnviadoInput.readOnly = !esEnviado;
+    montoEnviadoInput.classList.toggle('input-readonly', !esEnviado);
+    calcBadgeEnviado.classList.toggle('hidden', esEnviado);
+
+    montoRecibidoInput.readOnly = esEnviado;
+    montoRecibidoInput.classList.toggle('input-readonly', esEnviado);
+    calcBadgeRecibido.classList.toggle('hidden', !esEnviado);
+
+    recalcularMontos();
+}
+
+function recalcularMontos() {
     const tasa = parseFloat(tasaCambioInput.value);
-    if (!isNaN(enviado) && !isNaN(tasa)) {
-        const resultado = enviado * tasa;
-        montoRecibidoInput.value = formatMoney(resultado, monedaRecibidoInput.value);
+
+    if (modoCalculo === 'enviado') {
+        const enviado = parseFloat(montoEnviadoInput.value);
+        if (!isNaN(enviado) && !isNaN(tasa)) {
+            montoRecibidoInput.value = (enviado * tasa).toFixed(2);
+        } else {
+            montoRecibidoInput.value = '';
+        }
     } else {
-        montoRecibidoInput.value = '—';
+        const recibido = parseFloat(montoRecibidoInput.value);
+        if (!isNaN(recibido) && !isNaN(tasa) && tasa > 0) {
+            montoEnviadoInput.value = (recibido / tasa).toFixed(2);
+        } else {
+            montoEnviadoInput.value = '';
+        }
     }
 }
 
-[montoEnviadoInput, tasaCambioInput, monedaRecibidoInput].forEach(el => {
-    el.addEventListener('input', recalcularMontoRecibido);
+modoCalculoEnviadoBtn.addEventListener('click', () => {
+    if (modoCalculo === 'enviado') return;
+    modoCalculo = 'enviado';
+    aplicarModoCalculo();
+});
+
+modoCalculoRecibidoBtn.addEventListener('click', () => {
+    if (modoCalculo === 'recibido') return;
+    modoCalculo = 'recibido';
+    aplicarModoCalculo();
+});
+
+[montoEnviadoInput, montoRecibidoInput, tasaCambioInput].forEach(el => {
+    el.addEventListener('input', recalcularMontos);
 });
 
 // ============================================
@@ -293,7 +341,7 @@ function aplicarTasaAlFormulario(valor, tasaReferenciaReal) {
     tasaReferenciaActual = (tasaReferenciaReal !== undefined && tasaReferenciaReal !== null)
         ? tasaReferenciaReal
         : valor;
-    recalcularMontoRecibido();
+    recalcularMontos();
 }
 
 async function intentarAutocompletarTasa() {
@@ -335,7 +383,7 @@ async function intentarAutocompletarTasa() {
     isAutoFilling = true;
     tasaCambioInput.value = '';
     isAutoFilling = false;
-    recalcularMontoRecibido();
+    recalcularMontos();
 
     const token = ++autocompletarToken;
     tasaHint.textContent = 'Buscando tasa en vivo...';
@@ -701,7 +749,8 @@ let remesasPorId = {};
 function resetRemesaForm() {
     remesaForm.reset();
     remesaDocIdInput.value = '';
-    montoRecibidoInput.value = '—';
+    modoCalculo = 'enviado';
+    aplicarModoCalculo();
     actualizarVisibilidadBanco();
     comisionDestinoInput.disabled = false;
     comisionDestinoInput.classList.remove('input-readonly');
@@ -728,7 +777,11 @@ remesaForm.addEventListener('submit', async (e) => {
     const montoEnviado = parseFloat(montoEnviadoInput.value);
     const tasaCambio = parseFloat(tasaCambioInput.value);
     const monedaRecibido = monedaRecibidoInput.value.trim().toUpperCase();
-    const montoRecibido = montoEnviado * tasaCambio;
+    // El monto a recibir se toma directamente del campo (ya sea que el
+    // usuario lo haya ingresado a mano o que se haya calculado en vivo a
+    // partir del monto enviado), para que ambos modos de cálculo queden
+    // consistentes al guardar.
+    const montoRecibido = parseFloat(montoRecibidoInput.value);
     const clienteNombre = clienteNombreInput.value.trim();
     const clienteTelefono = clienteTelefonoInput.value.trim();
     const formaPago = formaPagoSelect.value;
@@ -854,13 +907,15 @@ window.editarRemesa = (docId) => {
     clienteTelefonoInput.value = r.clienteTelefono || '';
     document.getElementById('paisOrigen').value = r.paisOrigen || '';
     document.getElementById('paisDestino').value = r.paisDestino || '';
+    modoCalculo = 'enviado'; // al editar siempre se parte desde el monto enviado guardado
+    aplicarModoCalculo();
     montoEnviadoInput.value = r.montoEnviado != null ? r.montoEnviado : '';
     document.getElementById('monedaEnviado').value = r.monedaEnviado || '';
     tasaManual = true; // evita que el autocompletado pise la tasa original al editar
     tasaReferenciaActual = r.tasaReferencia != null ? r.tasaReferencia : null;
     tasaCambioInput.value = r.tasaCambio != null ? r.tasaCambio : '';
     monedaRecibidoInput.value = r.monedaRecibido || '';
-    recalcularMontoRecibido();
+    recalcularMontos();
     document.getElementById('estado').value = r.estado || 'pendiente';
     formaPagoSelect.value = r.formaPago || 'efectivo';
     actualizarVisibilidadBanco();
