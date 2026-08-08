@@ -761,14 +761,18 @@
                 </form>
             </div>
 
-            <div class="panel">
+            <div class="panel" id="billeteraVentasPanel">
                 <div class="panel-header">
-                    <h3>Historial de ventas</h3>
+                    <button type="button" class="panel-collapse-toggle" id="billeteraVentasCollapseToggle" aria-expanded="false" aria-controls="billeteraVentasCollapseBody">
+                        <h3>Historial de ventas</h3>
+                        <span class="panel-collapse-chevron">▾</span>
+                    </button>
                     <div class="section-header-actions">
                         <button type="button" class="btn-secondary" id="billeteraVentasExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar PDF</button>
                         <button type="button" class="btn-secondary" id="billeteraVentasExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar Excel</button>
                     </div>
                 </div>
+                <div class="panel-collapsible-body" id="billeteraVentasCollapseBody">
                 <div class="filtros-panel" id="billeteraVentasFiltrosPanel">
                     <button type="button" class="filtros-toggle" id="billeteraVentasFiltrosToggle" aria-expanded="false" aria-controls="billeteraVentasFiltrosBody">
                         <span class="filtros-toggle-left">
@@ -822,16 +826,21 @@
                     <i class="ti ti-exchange empty-state-icon" aria-hidden="true"></i>
                     <p>Todavía no has registrado ventas de USDT.</p>
                 </div>
+                </div>
             </div>
 
-            <div class="panel">
+            <div class="panel" id="billeteraComprasPanel">
                 <div class="panel-header">
-                    <h3>Historial de compras</h3>
+                    <button type="button" class="panel-collapse-toggle" id="billeteraComprasCollapseToggle" aria-expanded="false" aria-controls="billeteraComprasCollapseBody">
+                        <h3>Historial de compras</h3>
+                        <span class="panel-collapse-chevron">▾</span>
+                    </button>
                     <div class="section-header-actions">
                         <button type="button" class="btn-secondary" id="billeteraComprasExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar PDF</button>
                         <button type="button" class="btn-secondary" id="billeteraComprasExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar Excel</button>
                     </div>
                 </div>
+                <div class="panel-collapsible-body" id="billeteraComprasCollapseBody">
                 <div class="filtros-panel" id="billeteraComprasFiltrosPanel">
                     <button type="button" class="filtros-toggle" id="billeteraComprasFiltrosToggle" aria-expanded="false" aria-controls="billeteraComprasFiltrosBody">
                         <span class="filtros-toggle-left">
@@ -884,16 +893,21 @@
                     <i class="ti ti-coin empty-state-icon" aria-hidden="true"></i>
                     <p>Todavía no has registrado compras de USDT.</p>
                 </div>
+                </div>
             </div>
 
-            <div class="panel">
+            <div class="panel" id="billeteraMovsPanel">
                 <div class="panel-header">
-                    <h3>Todos los movimientos de USDT</h3>
+                    <button type="button" class="panel-collapse-toggle" id="billeteraMovsCollapseToggle" aria-expanded="false" aria-controls="billeteraMovsCollapseBody">
+                        <h3>Todos los movimientos de USDT</h3>
+                        <span class="panel-collapse-chevron">▾</span>
+                    </button>
                     <div class="section-header-actions">
                         <button type="button" class="btn-secondary" id="billeteraMovsExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar PDF</button>
                         <button type="button" class="btn-secondary" id="billeteraMovsExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar Excel</button>
                     </div>
                 </div>
+                <div class="panel-collapsible-body" id="billeteraMovsCollapseBody">
                 <p class="tasa-intro">
                     Compras (entra USDT) y remesas enviadas en USDT (sale USDT), en orden — con el saldo
                     que va quedando después de cada movimiento, para que sepas para dónde se fue cada USDT.
@@ -967,6 +981,7 @@
                 <div class="empty-state" id="billeteraMovsEmpty">
                     <i class="ti ti-inbox empty-state-icon" aria-hidden="true"></i>
                     <p id="billeteraMovsEmptyText">Todavía no hay movimientos de USDT.</p>
+                </div>
                 </div>
             </div>
         </section>
