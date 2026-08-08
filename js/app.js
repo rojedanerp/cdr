@@ -1869,6 +1869,9 @@ const repVolumenEmpty = document.getElementById('repVolumenEmpty');
 const repGananciaBody = document.getElementById('repGananciaBody');
 const repGananciaWrap = document.getElementById('repGananciaWrap');
 const repGananciaEmpty = document.getElementById('repGananciaEmpty');
+const repMonedaBody = document.getElementById('repMonedaBody');
+const repMonedaWrap = document.getElementById('repMonedaWrap');
+const repMonedaEmpty = document.getElementById('repMonedaEmpty');
 
 // Snapshot del último render, usado por los botones de exportar (PDF/Excel)
 // para que siempre exporten exactamente lo que se ve en pantalla.
@@ -1876,7 +1879,8 @@ let reportesExportState = {
     periodoLabel: '',
     stats: { cantidad: 0, ticket: '—', ganancia: '—', sinRef: 0 },
     volumen: [],   // [{ mes, moneda, count, total }]
-    ganancia: []   // [{ fecha, cliente, enviado, tasaAplicada, tasaReferencia, gananciaNeta, monedaGanancia }]
+    ganancia: [],  // [{ fecha, cliente, enviado, tasaAplicada, tasaReferencia, gananciaNeta, monedaGanancia }]
+    resumenMoneda: [] // [{ moneda, entradasCount, entradasTotal, salidasCount, salidasTotal, comisionTotal }]
 };
 
 // Filtros avanzados de Reportes (mismo patrón colapsable de Historial/Caja/Billetera)
@@ -2102,8 +2106,83 @@ function renderizarReportes() {
     };
 
     renderizarGraficoDiario(enPeriodo, periodo, desde, hasta);
+    renderizarResumenPorMoneda(enPeriodo);
     renderizarVolumenMensual(enPeriodo);
     renderizarGananciaPorRemesa(conReferencia);
+}
+
+// Resumen por moneda: cuánto dinero entró (montoEnviado, lo que pagó el
+// cliente) y salió (montoRecibido, lo que recibió el destinatario) en cada
+// moneda, más la comisión total cobrada (comisionDestino aplicado sobre
+// montoRecibido), agrupado por la moneda en la que ocurre cada movimiento.
+// Una misma moneda puede tener entradas y salidas a la vez (ej. CLP como
+// moneda de envío en unas remesas y como moneda de destino en otras).
+function renderizarResumenPorMoneda(remesas) {
+    if (!repMonedaBody) return;
+
+    const grupos = {};
+    const getGrupo = (moneda) => {
+        if (!grupos[moneda]) {
+            grupos[moneda] = {
+                moneda,
+                entradasCount: 0, entradasTotal: 0,
+                salidasCount: 0, salidasTotal: 0,
+                comisionTotal: 0
+            };
+        }
+        return grupos[moneda];
+    };
+
+    remesas.forEach(r => {
+        const monedaEnv = (r.monedaEnviado || '').toUpperCase();
+        const monedaRec = (r.monedaRecibido || '').toUpperCase();
+
+        if (monedaEnv && r.montoEnviado != null) {
+            const g = getGrupo(monedaEnv);
+            g.entradasCount += 1;
+            g.entradasTotal += r.montoEnviado;
+        }
+        if (monedaRec && r.montoRecibido != null) {
+            const g = getGrupo(monedaRec);
+            g.salidasCount += 1;
+            g.salidasTotal += r.montoRecibido;
+            g.comisionTotal += r.montoRecibido * ((r.comisionDestino || 0) / 100);
+        }
+    });
+
+    const filas = Object.values(grupos).sort((a, b) => a.moneda.localeCompare(b.moneda));
+
+    repMonedaBody.innerHTML = '';
+    if (filas.length === 0) {
+        repMonedaWrap.style.display = 'none';
+        repMonedaEmpty.style.display = 'block';
+        reportesExportState.resumenMoneda = [];
+        return;
+    }
+    repMonedaWrap.style.display = 'block';
+    repMonedaEmpty.style.display = 'none';
+
+    reportesExportState.resumenMoneda = filas.map(f => ({
+        moneda: f.moneda,
+        entradasCount: f.entradasCount,
+        entradasTotal: moneyTexto(f.entradasTotal, f.moneda),
+        salidasCount: f.salidasCount,
+        salidasTotal: moneyTexto(f.salidasTotal, f.moneda),
+        comisionTotal: moneyTexto(f.comisionTotal, f.moneda)
+    }));
+
+    filas.forEach(f => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${escapeHtml(f.moneda)}</td>
+            <td>${f.entradasCount}</td>
+            <td class="mono-cell">${formatMoney(f.entradasTotal, f.moneda)}</td>
+            <td>${f.salidasCount}</td>
+            <td class="mono-cell">${formatMoney(f.salidasTotal, f.moneda)}</td>
+            <td class="mono-cell">${formatMoney(f.comisionTotal, f.moneda)}</td>
+        `;
+        repMonedaBody.appendChild(tr);
+    });
 }
 
 // Dibuja las barras del gráfico a partir de una lista de "buckets"
@@ -2351,8 +2430,8 @@ const reportesExportarPdfBtn = document.getElementById('reportesExportarPdfBtn')
 const reportesExportarExcelBtn = document.getElementById('reportesExportarExcelBtn');
 
 reportesExportarPdfBtn.addEventListener('click', () => {
-    const { stats, volumen, ganancia, periodoLabel } = reportesExportState;
-    if (Number(stats.cantidad) === 0 && volumen.length === 0 && ganancia.length === 0) {
+    const { stats, volumen, ganancia, resumenMoneda, periodoLabel } = reportesExportState;
+    if (Number(stats.cantidad) === 0 && volumen.length === 0 && ganancia.length === 0 && resumenMoneda.length === 0) {
         alert('No hay datos para exportar con los filtros actuales.');
         return;
     }
@@ -2375,7 +2454,23 @@ reportesExportarPdfBtn.addEventListener('click', () => {
 
     let cursorY = doc.lastAutoTable.finalY + 10;
 
+    if (resumenMoneda.length > 0) {
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        doc.text('Resumen por moneda', 14, cursorY);
+        doc.autoTable({
+            startY: cursorY + 4,
+            head: [['Moneda', '# Entradas', 'Total entrado', '# Salidas', 'Total salido', 'Comisión total']],
+            body: resumenMoneda.map(f => [f.moneda, f.entradasCount, f.entradasTotal, f.salidasCount, f.salidasTotal, f.comisionTotal]),
+            styles: { fontSize: 8.5, cellPadding: 3 },
+            headStyles: { fillColor: [30, 41, 59] },
+            alternateRowStyles: { fillColor: [245, 246, 248] }
+        });
+        cursorY = doc.lastAutoTable.finalY + 10;
+    }
+
     if (volumen.length > 0) {
+        if (cursorY > 180) { doc.addPage(); cursorY = 15; }
         doc.setFontSize(11);
         doc.setTextColor(0);
         doc.text('Volumen mensual por moneda destino', 14, cursorY);
@@ -2409,8 +2504,8 @@ reportesExportarPdfBtn.addEventListener('click', () => {
 });
 
 reportesExportarExcelBtn.addEventListener('click', () => {
-    const { stats, volumen, ganancia, periodoLabel } = reportesExportState;
-    if (Number(stats.cantidad) === 0 && volumen.length === 0 && ganancia.length === 0) {
+    const { stats, volumen, ganancia, resumenMoneda, periodoLabel } = reportesExportState;
+    if (Number(stats.cantidad) === 0 && volumen.length === 0 && ganancia.length === 0 && resumenMoneda.length === 0) {
         alert('No hay datos para exportar con los filtros actuales.');
         return;
     }
@@ -2425,6 +2520,19 @@ reportesExportarExcelBtn.addEventListener('click', () => {
     }]);
     hojaResumen['!cols'] = [{ wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(libro, hojaResumen, 'Resumen');
+
+    if (resumenMoneda.length > 0) {
+        const hojaResumenMoneda = XLSX.utils.json_to_sheet(resumenMoneda.map(f => ({
+            Moneda: f.moneda,
+            '# Entradas': f.entradasCount,
+            'Total entrado': f.entradasTotal,
+            '# Salidas': f.salidasCount,
+            'Total salido': f.salidasTotal,
+            'Comisión total': f.comisionTotal
+        })));
+        hojaResumenMoneda['!cols'] = [{ wch: 10 }, { wch: 12 }, { wch: 18 }, { wch: 12 }, { wch: 18 }, { wch: 16 }];
+        XLSX.utils.book_append_sheet(libro, hojaResumenMoneda, 'Resumen por moneda');
+    }
 
     if (volumen.length > 0) {
         const hojaVolumen = XLSX.utils.json_to_sheet(volumen.map(f => ({
