@@ -4150,6 +4150,7 @@ const boletasPendientesMonto = document.getElementById('boletasPendientesMonto')
 const boletasPendientesFacturasCount = document.getElementById('boletasPendientesFacturasCount');
 const boletasEmitidasMes = document.getElementById('boletasEmitidasMes');
 const boletasEmitidasTotal = document.getElementById('boletasEmitidasTotal');
+const boletasEmitidasMonto = document.getElementById('boletasEmitidasMonto');
 const boletasPendientesBody = document.getElementById('boletasPendientesBody');
 const boletasPendientesTableWrap = document.getElementById('boletasPendientesTableWrap');
 const boletasPendientesEmpty = document.getElementById('boletasPendientesEmpty');
@@ -4235,6 +4236,10 @@ function renderBoletas(remesas) {
         && r.fechaBoleta.toDate().getFullYear() === hoy.getFullYear());
     boletasEmitidasMes.textContent = emitidasEsteMes.length;
     boletasEmitidasTotal.textContent = emitidas.length;
+    const montoEmitidoClp = emitidas
+        .filter(r => (r.monedaEnviado || '').toUpperCase() === 'CLP')
+        .reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
+    boletasEmitidasMonto.textContent = formatMoney(montoEmitidoClp, 'CLP');
 
     // --- Tablas: se guardan en cache y se pintan a través de los filtros ---
     boletasPendientesCache = pendientes;
