@@ -1113,6 +1113,48 @@ button {
   font-weight: 500;
 }
 
+.calc-badge {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--transfer-teal);
+}
+
+.calc-badge.hidden {
+  display: none;
+}
+
+.modo-calculo-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  width: fit-content;
+}
+
+.modo-calculo-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--slate);
+  background: var(--surface);
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.modo-calculo-btn + .modo-calculo-btn {
+  border-left: 1px solid var(--border);
+}
+
+.modo-calculo-btn:hover {
+  background: var(--canvas);
+}
+
+.modo-calculo-btn.active {
+  background: var(--route-blue);
+  color: #fff;
+}
+
 /* ============================================
    TASAS DE CAMBIO (CONFIGURACIÓN)
    ============================================ */
