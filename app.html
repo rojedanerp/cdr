@@ -229,8 +229,20 @@
                             <option value="República Dominicana"></option>
                         </datalist>
 
+                        <div class="input-group filtros-span-2">
+                            <label>¿Qué monto quieres ingresar?</label>
+                            <div class="modo-calculo-toggle" role="radiogroup" aria-label="Qué monto ingresar">
+                                <button type="button" class="modo-calculo-btn active" id="modoCalculoEnviadoBtn" data-modo="enviado">
+                                    Monto enviado
+                                </button>
+                                <button type="button" class="modo-calculo-btn" id="modoCalculoRecibidoBtn" data-modo="recibido">
+                                    Monto a recibir
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="input-group">
-                            <label for="montoEnviado">Monto enviado</label>
+                            <label for="montoEnviado">Monto enviado <span class="calc-badge hidden" id="calcBadgeEnviado">(calculado)</span></label>
                             <input type="number" id="montoEnviado" required min="0" step="0.01" placeholder="0">
                         </div>
                         <div class="input-group">
@@ -249,8 +261,8 @@
                         </div>
 
                         <div class="input-group">
-                            <label for="montoRecibido">Monto a recibir (calculado)</label>
-                            <input type="text" id="montoRecibido" class="input-readonly" readonly value="—">
+                            <label for="montoRecibido">Monto a recibir <span class="calc-badge" id="calcBadgeRecibido">(calculado)</span></label>
+                            <input type="number" id="montoRecibido" class="input-readonly" readonly required min="0" step="0.01" placeholder="0" value="">
                         </div>
                         <div class="input-group">
                             <label for="estado">Estado</label>
