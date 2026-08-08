@@ -4229,11 +4229,6 @@ function renderBoletas(remesas) {
         boletasPendientesFacturasCount.textContent = pendientes.filter(r => tipoDocumento(r) === 'factura').length;
     }
 
-    const montoEmitidoClp = emitidas
-        .filter(r => (r.monedaEnviado || '').toUpperCase() === 'CLP')
-        .reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
-    boletasEmitidasMonto.textContent = formatMoney(montoEmitidoClp, 'CLP');
-
     // --- Tablas: se guardan en cache y se pintan a través de los filtros ---
     boletasPendientesCache = pendientes;
     boletasEmitidasCache = emitidas;
@@ -4335,6 +4330,10 @@ function aplicarFiltroBoletasEmitidas() {
 
     boletasEmitidasFiltrado = filtrados;
     boletasEmitidasMes.textContent = filtrados.length;
+    const montoEmitidoClp = filtrados
+        .filter(r => (r.monedaEnviado || '').toUpperCase() === 'CLP')
+        .reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
+    boletasEmitidasMonto.textContent = formatMoney(montoEmitidoClp, 'CLP');
     boletasEmitidasBody.innerHTML = '';
     if (filtrados.length === 0) {
         boletasEmitidasEmpty.style.display = 'block';
