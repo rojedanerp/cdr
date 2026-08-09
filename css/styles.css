@@ -1571,6 +1571,86 @@ button {
   margin-top: 2px;
 }
 
+.cierre-monedas-grupos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cierre-moneda-grupo {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.cierre-moneda-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-family: var(--font-display);
+}
+
+.cierre-bancos-filas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cierre-banco-fila {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.cierre-banco-fila input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+.btn-form-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.cierre-moneda-total {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-weight: 600;
+}
+
+.historial-cierre-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.historial-cierre-moneda-linea {
+  font-size: 13px;
+}
+
+.historial-cierre-bancos {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  margin: 2px 0 0 4px;
+}
+
+.historial-cierre-acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;
