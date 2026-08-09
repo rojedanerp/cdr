@@ -443,6 +443,17 @@
 
                 <!-- SIN CAJA ABIERTA: formulario de apertura -->
                 <div id="cierreCerradoView">
+                    <div id="cierreUltimoArqueoBox" class="cierre-ultimo-arqueo hidden">
+                        <div class="cierre-ultimo-arqueo-texto">
+                            <i class="ti ti-circle-check" aria-hidden="true"></i>
+                            <span>Caja cerrada. Descarga el arqueo de hoy:</span>
+                        </div>
+                        <div class="cierre-ultimo-arqueo-acciones">
+                            <button type="button" class="btn-secondary" id="cierreUltimoArqueoPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> PDF</button>
+                            <button type="button" class="btn-secondary" id="cierreUltimoArqueoExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Excel</button>
+                            <button type="button" class="btn-icon-action" id="cierreUltimoArqueoCerrarBtn" title="Cerrar aviso"><i class="ti ti-x" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
                     <p class="tasa-intro">
                         No hay una caja abierta. Ábrela indicando el efectivo con el que partes hoy. Agrega una fila
                         por cada banco/cuenta (aunque sea la misma moneda) para poder contar por separado al cerrar.
