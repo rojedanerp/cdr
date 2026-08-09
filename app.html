@@ -444,8 +444,8 @@
                 <!-- SIN CAJA ABIERTA: formulario de apertura -->
                 <div id="cierreCerradoView">
                     <p class="tasa-intro">
-                        No hay una caja abierta. Ábrela indicando el efectivo con el que partes hoy, por moneda,
-                        para poder comparar contra lo contado al cerrar.
+                        No hay una caja abierta. Ábrela indicando el efectivo con el que partes hoy. Agrega una fila
+                        por cada banco/cuenta (aunque sea la misma moneda) para poder contar por separado al cerrar.
                     </p>
                     <div id="aperturaFilas" class="apertura-filas"></div>
                     <div class="tasa-form-actions" style="margin-top:12px;">
@@ -476,15 +476,8 @@
                     </div>
 
                     <div id="cierreFormWrap" class="hidden" style="margin-top:16px;">
-                        <p class="tasa-intro">Cuenta el efectivo real en caja y regístralo por moneda.</p>
-                        <div class="table-wrap">
-                            <table class="data-table">
-                                <thead>
-                                    <tr><th>Moneda</th><th>Saldo esperado</th><th>Saldo contado</th><th>Diferencia</th></tr>
-                                </thead>
-                                <tbody id="cierreFormBody"></tbody>
-                            </table>
-                        </div>
+                        <p class="tasa-intro">Cuenta el efectivo real en caja, desglosado por banco/cuenta dentro de cada moneda.</p>
+                        <div id="cierreFormBody" class="cierre-monedas-grupos"></div>
                         <div class="input-group" style="margin-top:12px;">
                             <label for="cierreNotas">Notas (opcional)</label>
                             <input type="text" id="cierreNotas" placeholder="Ej. Faltante por vuelto mal dado">
@@ -504,11 +497,15 @@
             <div class="panel">
                 <div class="panel-header">
                     <h3>Historial de cierres</h3>
+                    <div class="section-header-actions">
+                        <button type="button" class="btn-secondary" id="cierresExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar historial PDF</button>
+                        <button type="button" class="btn-secondary" id="cierresExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar historial Excel</button>
+                    </div>
                 </div>
                 <div class="table-wrap" id="cierresHistorialWrap">
                     <table class="data-table">
                         <thead>
-                            <tr><th>Fecha</th><th>Moneda</th><th>Inicial</th><th>Esperado</th><th>Contado</th><th>Diferencia</th><th>Cerrado por</th></tr>
+                            <tr><th>Fecha</th><th>Detalle por moneda / banco</th><th>Cerrado por</th><th>Arqueo</th></tr>
                         </thead>
                         <tbody id="cierresHistorialBody"></tbody>
                     </table>
