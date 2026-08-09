@@ -3900,6 +3900,29 @@ const cierreCancelBtn = document.getElementById('cierreCancelBtn');
 const cierresHistorialBody = document.getElementById('cierresHistorialBody');
 const cierresHistorialEmpty = document.getElementById('cierresHistorialEmpty');
 const cierresHistorialWrap = document.getElementById('cierresHistorialWrap');
+const cierreUltimoArqueoBox = document.getElementById('cierreUltimoArqueoBox');
+const cierreUltimoArqueoPdfBtn = document.getElementById('cierreUltimoArqueoPdfBtn');
+const cierreUltimoArqueoExcelBtn = document.getElementById('cierreUltimoArqueoExcelBtn');
+const cierreUltimoArqueoCerrarBtn = document.getElementById('cierreUltimoArqueoCerrarBtn');
+let ultimoArqueoCerradoId = null; // id del cierre que se acaba de cerrar, para el botón de descarga rápida
+
+function ocultarUltimoArqueoBox() {
+    ultimoArqueoCerradoId = null;
+    cierreUltimoArqueoBox.classList.add('hidden');
+}
+
+function mostrarUltimoArqueoBox(id) {
+    ultimoArqueoCerradoId = id;
+    cierreUltimoArqueoBox.classList.remove('hidden');
+}
+
+cierreUltimoArqueoPdfBtn.addEventListener('click', () => {
+    if (ultimoArqueoCerradoId) window.descargarArqueoPDF(ultimoArqueoCerradoId);
+});
+cierreUltimoArqueoExcelBtn.addEventListener('click', () => {
+    if (ultimoArqueoCerradoId) window.descargarArqueoExcel(ultimoArqueoCerradoId);
+});
+cierreUltimoArqueoCerrarBtn.addEventListener('click', ocultarUltimoArqueoBox);
 
 // --- Apertura: filas dinámicas de moneda + saldo inicial ---
 const aperturaFilas = document.getElementById('aperturaFilas');
@@ -3985,6 +4008,7 @@ aperturaSubmitBtn.addEventListener('click', async () => {
         aperturaFilas.innerHTML = '';
         agregarFilaApertura();
         aperturaMessage.textContent = '';
+        ocultarUltimoArqueoBox();
     } catch (error) {
         console.error('Error al abrir caja:', error);
         aperturaMessage.textContent = 'No se pudo abrir la caja. Intenta de nuevo.';
@@ -4197,7 +4221,9 @@ cierreSubmitBtn.addEventListener('click', async () => {
     cierreMessage.className = 'form-message';
 
     try {
-        await cierresColeccion.doc(cierreAbiertoActual.id).update({
+        const idCerrado = cierreAbiertoActual.id;
+        const notas = cierreNotasInput.value.trim();
+        await cierresColeccion.doc(idCerrado).update({
             estado: 'cerrado',
             cerradoEn: firebase.firestore.FieldValue.serverTimestamp(),
             cerradoPorEmail: auth.currentUser ? auth.currentUser.email : null,
@@ -4205,14 +4231,32 @@ cierreSubmitBtn.addEventListener('click', async () => {
             saldosContados,
             saldosContadosDetalle,
             diferencias,
-            notas: cierreNotasInput.value.trim()
+            notas
         });
         registrarAuditoria('caja', 'cerrar', {
-            cierreId: cierreAbiertoActual.id,
+            cierreId: idCerrado,
             saldosEsperados,
             saldosContados,
             diferencias
         });
+
+        // Guardamos localmente el arqueo recién cerrado (con la hora actual
+        // como aproximación de cerradoEn) para poder ofrecer la descarga
+        // inmediata del PDF/Excel de HOY, sin depender de que la escucha en
+        // tiempo real de Firestore ya haya refrescado el historial completo.
+        cierresCerradosCache[idCerrado] = {
+            ...cierreAbiertoActual.data,
+            estado: 'cerrado',
+            cerradoEn: firebase.firestore.Timestamp.now(),
+            cerradoPorEmail: auth.currentUser ? auth.currentUser.email : null,
+            saldosEsperados,
+            saldosContados,
+            saldosContadosDetalle,
+            diferencias,
+            notas
+        };
+        mostrarUltimoArqueoBox(idCerrado);
+
         cierreFormWrap.classList.add('hidden');
         cierreNotasInput.value = '';
     } catch (error) {
