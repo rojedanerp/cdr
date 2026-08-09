@@ -3927,6 +3927,10 @@ aperturaAgregarFilaBtn.addEventListener('click', agregarFilaApertura);
 aperturaSubmitBtn.addEventListener('click', async () => {
     const saldosIniciales = {};
     const conceptosIniciales = {};
+    // Desglose por banco/cuenta dentro de cada moneda: cada fila del formulario
+    // de apertura se guarda como una entrada separada (aunque comparta moneda
+    // con otra fila), para poder contarlas por separado al cerrar la caja.
+    const saldosInicialesDetalle = {};
     aperturaFilas.querySelectorAll('.apertura-fila').forEach(fila => {
         const moneda = fila.querySelector('.apertura-moneda').value.trim().toUpperCase();
         const monto = parseFloat(fila.querySelector('.apertura-monto').value);
@@ -3940,6 +3944,8 @@ aperturaSubmitBtn.addEventListener('click', async () => {
                     ? `${conceptosIniciales[moneda]}; ${concepto}`
                     : concepto;
             }
+            if (!saldosInicialesDetalle[moneda]) saldosInicialesDetalle[moneda] = [];
+            saldosInicialesDetalle[moneda].push({ banco: concepto || 'Efectivo / Sin banco', monto });
         }
     });
 
@@ -3961,12 +3967,14 @@ aperturaSubmitBtn.addEventListener('click', async () => {
             fecha: new Date().toISOString().slice(0, 10),
             saldosIniciales,
             conceptosIniciales,
+            saldosInicialesDetalle,
             abiertoEn: firebase.firestore.FieldValue.serverTimestamp(),
             abiertoPorEmail: auth.currentUser ? auth.currentUser.email : null,
             cerradoEn: null,
             cerradoPorEmail: null,
             saldosEsperados: null,
             saldosContados: null,
+            saldosContadosDetalle: null,
             diferencias: null,
             notas: ''
         });
@@ -4034,10 +4042,15 @@ function actualizarVistaCierre() {
         const esperado = inicial + entradas - salidas;
         resumenPorMoneda[moneda] = esperado;
 
-        const trResumen = document.createElement('tr');
+        const bancosIniciales = (data.saldosInicialesDetalle && data.saldosInicialesDetalle[moneda]) || [];
         const conceptoInicial = (data.conceptosIniciales && data.conceptosIniciales[moneda]) || '';
+        const subtextBancos = bancosIniciales.length > 0
+            ? bancosIniciales.map(b => `<div class="cell-subtext">${escapeHtml(b.banco)}: ${formatMoney(b.monto, '')}</div>`).join('')
+            : (conceptoInicial ? `<div class="cell-subtext">${escapeHtml(conceptoInicial)}</div>` : '');
+
+        const trResumen = document.createElement('tr');
         trResumen.innerHTML = `
-            <td>${escapeHtml(moneda)}${conceptoInicial ? `<div class="cell-subtext">${escapeHtml(conceptoInicial)}</div>` : ''}</td>
+            <td>${escapeHtml(moneda)}${subtextBancos}</td>
             <td class="mono-cell">${formatMoney(inicial, '')}</td>
             <td class="mono-cell">${formatMoney(entradas, '')}</td>
             <td class="mono-cell">${formatMoney(salidas, '')}</td>
@@ -4045,32 +4058,91 @@ function actualizarVistaCierre() {
         `;
         cierreResumenBody.appendChild(trResumen);
 
-        const trForm = document.createElement('tr');
-        trForm.innerHTML = `
-            <td>${escapeHtml(moneda)}</td>
-            <td class="mono-cell">${formatMoney(esperado, '')}</td>
-            <td><input type="number" step="0.01" min="0" class="cierre-contado-input" data-moneda="${escapeHtml(moneda)}" placeholder="0"></td>
-            <td class="mono-cell" data-moneda-diff="${escapeHtml(moneda)}">—</td>
+        // --- Grupo de conteo para esta moneda, con una fila editable por banco/cuenta ---
+        const grupo = document.createElement('div');
+        grupo.className = 'cierre-moneda-grupo';
+        grupo.dataset.moneda = moneda;
+        grupo.innerHTML = `
+            <div class="cierre-moneda-header">
+                <strong>${escapeHtml(moneda)}</strong>
+                <span class="cell-subtext">Esperado: ${formatMoney(esperado, '')}</span>
+            </div>
+            <div class="cierre-bancos-filas" data-bancos-moneda="${escapeHtml(moneda)}"></div>
+            <button type="button" class="btn-secondary btn-form-sm btn-agregar-banco-cierre" data-moneda="${escapeHtml(moneda)}">+ Agregar banco/cuenta</button>
+            <div class="cierre-moneda-total">
+                <span>Total contado: <span class="mono-cell" data-moneda-total="${escapeHtml(moneda)}">${formatMoney(0, '')}</span></span>
+                <span class="mono-cell" data-moneda-diff="${escapeHtml(moneda)}">—</span>
+            </div>
         `;
-        cierreFormBody.appendChild(trForm);
-    });
+        cierreFormBody.appendChild(grupo);
 
-    cierreFormBody.querySelectorAll('.cierre-contado-input').forEach(input => {
-        input.addEventListener('input', () => {
-            const moneda = input.dataset.moneda;
-            const celda = cierreFormBody.querySelector(`[data-moneda-diff="${moneda}"]`);
-            const contado = parseFloat(input.value);
-            if (isNaN(contado)) {
-                celda.textContent = '—';
-                celda.className = 'mono-cell';
-                return;
-            }
-            const diferencia = contado - resumenPorMoneda[moneda];
-            celda.textContent = formatMoney(diferencia, '');
-            celda.className = 'mono-cell ' + (diferencia === 0 ? '' : (diferencia > 0 ? 'rep-ganancia-positiva' : 'rep-ganancia-negativa'));
-        });
+        const bancosContainer = grupo.querySelector('.cierre-bancos-filas');
+        if (bancosIniciales.length > 0) {
+            bancosIniciales.forEach(b => agregarFilaBancoCierre(bancosContainer, moneda, b.banco));
+        } else {
+            agregarFilaBancoCierre(bancosContainer, moneda, conceptoInicial || '');
+        }
     });
 }
+
+// Crea una fila editable (banco/cuenta + monto contado + botón eliminar) dentro
+// del grupo de una moneda en el formulario de cierre, y la deja lista para
+// recalcular el total/diferencia de esa moneda cada vez que cambia.
+function agregarFilaBancoCierre(container, moneda, bancoNombre) {
+    const fila = document.createElement('div');
+    fila.className = 'cierre-banco-fila';
+    fila.innerHTML = `
+        <input type="text" class="cierre-banco-nombre-input" placeholder="Banco/cuenta (ej. BancoEstado)" value="${escapeHtml(bancoNombre || '')}">
+        <input type="number" step="0.01" min="0" class="cierre-contado-input" data-moneda="${escapeHtml(moneda)}" placeholder="0">
+        <button type="button" class="btn-icon-action danger" aria-label="Quitar banco"><i class="ti ti-x" aria-hidden="true"></i></button>
+    `;
+    fila.querySelector('.cierre-contado-input').addEventListener('input', () => recalcularTotalContadoMoneda(moneda));
+    fila.querySelector('button').addEventListener('click', () => {
+        if (container.children.length > 1) {
+            fila.remove();
+            recalcularTotalContadoMoneda(moneda);
+        }
+    });
+    container.appendChild(fila);
+}
+
+// Suma los montos contados de todas las filas de banco de una moneda, y
+// actualiza el total y la diferencia contra el saldo esperado de esa moneda.
+function recalcularTotalContadoMoneda(moneda) {
+    const grupo = cierreFormBody.querySelector(`.cierre-moneda-grupo[data-moneda="${moneda}"]`);
+    if (!grupo) return;
+    const inputs = grupo.querySelectorAll('.cierre-contado-input');
+    let total = 0;
+    let algunaValida = false;
+    inputs.forEach(input => {
+        const valor = parseFloat(input.value);
+        if (!isNaN(valor)) { total += valor; algunaValida = true; }
+    });
+
+    const totalEl = grupo.querySelector(`[data-moneda-total="${moneda}"]`);
+    const diffEl = grupo.querySelector(`[data-moneda-diff="${moneda}"]`);
+    totalEl.textContent = formatMoney(total, '');
+
+    if (!algunaValida) {
+        diffEl.textContent = '—';
+        diffEl.className = 'mono-cell';
+        return;
+    }
+    const diferencia = total - (resumenPorMoneda[moneda] || 0);
+    diffEl.textContent = formatMoney(diferencia, '');
+    diffEl.className = 'mono-cell ' + (diferencia === 0 ? '' : (diferencia > 0 ? 'rep-ganancia-positiva' : 'rep-ganancia-negativa'));
+}
+
+cierreFormBody.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-agregar-banco-cierre');
+    if (!btn) return;
+    const moneda = btn.dataset.moneda;
+    const container = cierreFormBody.querySelector(`.cierre-bancos-filas[data-bancos-moneda="${moneda}"]`);
+    if (container) {
+        agregarFilaBancoCierre(container, moneda, '');
+        recalcularTotalContadoMoneda(moneda);
+    }
+});
 
 abrirCierreFormBtn.addEventListener('click', () => {
     cierreFormWrap.classList.remove('hidden');
@@ -4086,15 +4158,28 @@ cierreSubmitBtn.addEventListener('click', async () => {
     if (!cierreAbiertoActual) return;
 
     const saldosContados = {};
+    const saldosContadosDetalle = {};
     let faltaAlguno = false;
-    cierreFormBody.querySelectorAll('.cierre-contado-input').forEach(input => {
-        const contado = parseFloat(input.value);
-        if (isNaN(contado)) { faltaAlguno = true; return; }
-        saldosContados[input.dataset.moneda] = contado;
+    cierreFormBody.querySelectorAll('.cierre-moneda-grupo').forEach(grupo => {
+        const moneda = grupo.dataset.moneda;
+        let total = 0;
+        let algunaValida = false;
+        const detalle = [];
+        grupo.querySelectorAll('.cierre-banco-fila').forEach(fila => {
+            const banco = fila.querySelector('.cierre-banco-nombre-input').value.trim() || 'Efectivo / Sin banco';
+            const monto = parseFloat(fila.querySelector('.cierre-contado-input').value);
+            if (isNaN(monto)) return;
+            total += monto;
+            algunaValida = true;
+            detalle.push({ banco, monto });
+        });
+        if (!algunaValida) { faltaAlguno = true; return; }
+        saldosContados[moneda] = total;
+        saldosContadosDetalle[moneda] = detalle;
     });
 
     if (faltaAlguno || Object.keys(saldosContados).length === 0) {
-        cierreMessage.textContent = 'Ingresa el saldo contado para cada moneda antes de confirmar.';
+        cierreMessage.textContent = 'Ingresa el saldo contado de al menos un banco/cuenta para cada moneda antes de confirmar.';
         cierreMessage.className = 'form-message form-message-error';
         return;
     }
@@ -4118,6 +4203,7 @@ cierreSubmitBtn.addEventListener('click', async () => {
             cerradoPorEmail: auth.currentUser ? auth.currentUser.email : null,
             saldosEsperados,
             saldosContados,
+            saldosContadosDetalle,
             diferencias,
             notas: cierreNotasInput.value.trim()
         });
@@ -4141,38 +4227,70 @@ cierreSubmitBtn.addEventListener('click', async () => {
 });
 
 // --- Historial de cierres cerrados ---
+// Guarda los datos completos de cada cierre cerrado (por id) para poder
+// armar el arqueo en PDF/Excel sin volver a consultar Firestore.
+let cierresCerradosCache = {};
+
+// Arma la lista de monedas (con su desglose por banco, si existe) de un
+// cierre, para reutilizar tanto en el render de la tabla como en las
+// exportaciones PDF/Excel.
+function detalleMonedasCierre(data) {
+    const monedas = new Set([
+        ...Object.keys(data.saldosIniciales || {}),
+        ...Object.keys(data.saldosContados || {})
+    ]);
+    return [...monedas].sort().map(moneda => {
+        const inicial = (data.saldosIniciales && data.saldosIniciales[moneda]) || 0;
+        const esperado = (data.saldosEsperados && data.saldosEsperados[moneda]) || 0;
+        const contado = (data.saldosContados && data.saldosContados[moneda]) || 0;
+        const diferencia = (data.diferencias && data.diferencias[moneda]) || 0;
+        const bancosIniciales = (data.saldosInicialesDetalle && data.saldosInicialesDetalle[moneda]) || [];
+        const bancosContados = (data.saldosContadosDetalle && data.saldosContadosDetalle[moneda]) || [];
+        return { moneda, inicial, esperado, contado, diferencia, bancosIniciales, bancosContados };
+    });
+}
+
 function renderHistorialCierres(cerrados) {
     cierresHistorialBody.innerHTML = '';
-    let filas = 0;
+    cierresCerradosCache = {};
+    cerrados.forEach(({ id, data }) => { cierresCerradosCache[id] = data; });
 
-    cerrados.forEach(({ data }) => {
-        const monedas = new Set([
-            ...Object.keys(data.saldosIniciales || {}),
-            ...Object.keys(data.saldosContados || {})
-        ]);
-        monedas.forEach(moneda => {
-            filas++;
-            const inicial = (data.saldosIniciales && data.saldosIniciales[moneda]) || 0;
-            const esperado = (data.saldosEsperados && data.saldosEsperados[moneda]) || 0;
-            const contado = (data.saldosContados && data.saldosContados[moneda]) || 0;
-            const diferencia = (data.diferencias && data.diferencias[moneda]) || 0;
-            const claseDiff = diferencia === 0 ? '' : (diferencia > 0 ? 'rep-ganancia-positiva' : 'rep-ganancia-negativa');
+    cerrados.forEach(({ id, data }) => {
+        const monedas = detalleMonedasCierre(data);
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${formatDate(data.cerradoEn || data.abiertoEn)}</td>
-                <td>${escapeHtml(moneda)}</td>
-                <td class="mono-cell">${formatMoney(inicial, '')}</td>
-                <td class="mono-cell">${formatMoney(esperado, '')}</td>
-                <td class="mono-cell">${formatMoney(contado, '')}</td>
-                <td class="mono-cell ${claseDiff}">${formatMoney(diferencia, '')}</td>
-                <td>${escapeHtml(data.cerradoPorEmail) || '—'}</td>
+        const detalleHTML = monedas.map(m => {
+            const claseDiff = m.diferencia === 0 ? '' : (m.diferencia > 0 ? 'rep-ganancia-positiva' : 'rep-ganancia-negativa');
+            const bancosHTML = m.bancosContados.length > 0
+                ? m.bancosContados.map(b => `<div class="historial-cierre-bancos">${escapeHtml(b.banco)}: ${formatMoney(b.monto, '')}</div>`).join('')
+                : '';
+            return `
+                <div class="historial-cierre-moneda-linea">
+                    <strong>${escapeHtml(m.moneda)}</strong>
+                    — Inicial: ${formatMoney(m.inicial, '')}
+                    · Esperado: ${formatMoney(m.esperado, '')}
+                    · Contado: ${formatMoney(m.contado, '')}
+                    · Dif.: <span class="${claseDiff}">${formatMoney(m.diferencia, '')}</span>
+                    ${bancosHTML}
+                </div>
             `;
-            cierresHistorialBody.appendChild(tr);
-        });
+        }).join('');
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${formatDate(data.cerradoEn || data.abiertoEn)}</td>
+            <td><div class="historial-cierre-detalle">${detalleHTML}</div></td>
+            <td>${escapeHtml(data.cerradoPorEmail) || '—'}</td>
+            <td>
+                <div class="historial-cierre-acciones">
+                    <button type="button" class="btn-icon-action" onclick="descargarArqueoPDF('${id}')"><i class="ti ti-file-text" aria-hidden="true"></i> PDF</button>
+                    <button type="button" class="btn-icon-action" onclick="descargarArqueoExcel('${id}')"><i class="ti ti-table" aria-hidden="true"></i> Excel</button>
+                </div>
+            </td>
+        `;
+        cierresHistorialBody.appendChild(tr);
     });
 
-    if (filas === 0) {
+    if (cerrados.length === 0) {
         cierresHistorialEmpty.style.display = 'block';
         cierresHistorialWrap.style.display = 'none';
     } else {
@@ -4180,6 +4298,165 @@ function renderHistorialCierres(cerrados) {
         cierresHistorialWrap.style.display = 'block';
     }
 }
+
+// ============================================
+// ARQUEO DE CAJA — PDF (jsPDF) y Excel (SheetJS)
+// Genera el documento de un cierre puntual, con desglose por banco/cuenta.
+// ============================================
+function construirArqueoPDF(doc, data, startY) {
+    const monedas = detalleMonedasCierre(data);
+    let y = startY;
+
+    doc.setFontSize(10);
+    doc.setTextColor(60);
+    const abiertoEnFecha = data.abiertoEn && data.abiertoEn.toDate ? data.abiertoEn.toDate() : null;
+    const cerradoEnFecha = data.cerradoEn && data.cerradoEn.toDate ? data.cerradoEn.toDate() : null;
+    doc.text(`Abierto: ${abiertoEnFecha ? abiertoEnFecha.toLocaleString('es-CL') : '—'} por ${data.abiertoPorEmail || '—'}`, 14, y);
+    y += 5;
+    doc.text(`Cerrado: ${cerradoEnFecha ? cerradoEnFecha.toLocaleString('es-CL') : '—'} por ${data.cerradoPorEmail || '—'}`, 14, y);
+    y += 7;
+
+    monedas.forEach(m => {
+        doc.setFontSize(11);
+        doc.setTextColor(30);
+        doc.text(`Moneda: ${m.moneda}`, 14, y);
+        y += 2;
+        const filasBanco = m.bancosContados.length > 0
+            ? m.bancosContados.map(b => [b.banco, formatMoney(b.monto, '')])
+            : [['—', formatMoney(m.contado, '')]];
+
+        doc.autoTable({
+            startY: y + 3,
+            head: [['Inicial', 'Esperado', 'Contado', 'Diferencia']],
+            body: [[formatMoney(m.inicial, ''), formatMoney(m.esperado, ''), formatMoney(m.contado, ''), formatMoney(m.diferencia, '')]],
+            styles: { fontSize: 8.5, cellPadding: 3 },
+            headStyles: { fillColor: [30, 41, 59] },
+            margin: { left: 14 }
+        });
+        y = doc.lastAutoTable.finalY + 3;
+
+        doc.autoTable({
+            startY: y,
+            head: [['Banco / cuenta', 'Contado']],
+            body: filasBanco,
+            styles: { fontSize: 8.5, cellPadding: 3 },
+            headStyles: { fillColor: [90, 100, 115] },
+            margin: { left: 14, right: 120 }
+        });
+        y = doc.lastAutoTable.finalY + 8;
+    });
+
+    if (data.notas) {
+        doc.setFontSize(9);
+        doc.setTextColor(90);
+        doc.text(`Notas: ${data.notas}`, 14, y);
+        y += 8;
+    }
+    return y;
+}
+
+window.descargarArqueoPDF = (cierreId) => {
+    const data = cierresCerradosCache[cierreId];
+    if (!data) { alert('No se encontró el cierre para exportar.'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text('Arqueo de caja', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Fecha del cierre: ${formatDate(data.cerradoEn || data.abiertoEn)}`, 14, 21);
+    construirArqueoPDF(doc, data, 30);
+    doc.save(`arqueo-caja-${data.fecha || fechaArchivo()}.pdf`);
+};
+
+window.descargarArqueoExcel = (cierreId) => {
+    const data = cierresCerradosCache[cierreId];
+    if (!data) { alert('No se encontró el cierre para exportar.'); return; }
+    const monedas = detalleMonedasCierre(data);
+    const filas = [];
+    monedas.forEach(m => {
+        const bancos = m.bancosContados.length > 0 ? m.bancosContados : [{ banco: '—', monto: m.contado }];
+        bancos.forEach((b, i) => {
+            filas.push({
+                Moneda: i === 0 ? m.moneda : '',
+                Inicial: i === 0 ? moneyTexto(m.inicial, '') : '',
+                Esperado: i === 0 ? moneyTexto(m.esperado, '') : '',
+                'Total contado': i === 0 ? moneyTexto(m.contado, '') : '',
+                Diferencia: i === 0 ? moneyTexto(m.diferencia, '') : '',
+                'Banco / cuenta': b.banco,
+                'Contado (banco)': moneyTexto(b.monto, '')
+            });
+        });
+    });
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [{ wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 22 }, { wch: 16 }];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Arqueo');
+    XLSX.writeFile(libro, `arqueo-caja-${data.fecha || fechaArchivo()}.xlsx`);
+};
+
+// --- Exportar TODO el historial de cierres (todos los días) ---
+const cierresExportarPdfBtn = document.getElementById('cierresExportarPdfBtn');
+const cierresExportarExcelBtn = document.getElementById('cierresExportarExcelBtn');
+
+cierresExportarPdfBtn.addEventListener('click', () => {
+    const ids = Object.keys(cierresCerradosCache);
+    if (ids.length === 0) { alert('Todavía no hay cierres de caja para exportar.'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text('Historial de arqueos de caja', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} · ${ids.length} cierre(s)`, 14, 21);
+
+    let y = 30;
+    ids.forEach((id, idx) => {
+        const data = cierresCerradosCache[id];
+        if (idx > 0) {
+            doc.addPage();
+            y = 20;
+        }
+        doc.setFontSize(12);
+        doc.setTextColor(30);
+        doc.text(`Cierre del ${formatDate(data.cerradoEn || data.abiertoEn)}`, 14, y);
+        y += 6;
+        construirArqueoPDF(doc, data, y);
+    });
+
+    doc.save(`historial-arqueos-caja-${fechaArchivo()}.pdf`);
+});
+
+cierresExportarExcelBtn.addEventListener('click', () => {
+    const ids = Object.keys(cierresCerradosCache);
+    if (ids.length === 0) { alert('Todavía no hay cierres de caja para exportar.'); return; }
+    const filas = [];
+    ids.forEach(id => {
+        const data = cierresCerradosCache[id];
+        const monedas = detalleMonedasCierre(data);
+        monedas.forEach(m => {
+            const bancos = m.bancosContados.length > 0 ? m.bancosContados : [{ banco: '—', monto: m.contado }];
+            bancos.forEach((b, i) => {
+                filas.push({
+                    Fecha: formatDate(data.cerradoEn || data.abiertoEn),
+                    Moneda: i === 0 ? m.moneda : '',
+                    Inicial: i === 0 ? moneyTexto(m.inicial, '') : '',
+                    Esperado: i === 0 ? moneyTexto(m.esperado, '') : '',
+                    'Total contado': i === 0 ? moneyTexto(m.contado, '') : '',
+                    Diferencia: i === 0 ? moneyTexto(m.diferencia, '') : '',
+                    'Banco / cuenta': b.banco,
+                    'Contado (banco)': moneyTexto(b.monto, ''),
+                    'Cerrado por': i === 0 ? (data.cerradoPorEmail || '—') : ''
+                });
+            });
+        });
+    });
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 22 }, { wch: 16 }, { wch: 22 }];
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Historial arqueos');
+    XLSX.writeFile(libro, `historial-arqueos-caja-${fechaArchivo()}.xlsx`);
+});
 
 cierresColeccion.orderBy('abiertoEn', 'desc').onSnapshot(snapshot => {
     let abierto = null;
