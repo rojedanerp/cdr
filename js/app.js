@@ -4010,6 +4010,8 @@ const aperturaFilas = document.getElementById('aperturaFilas');
 const aperturaAgregarFilaBtn = document.getElementById('aperturaAgregarFilaBtn');
 const aperturaSubmitBtn = document.getElementById('aperturaSubmitBtn');
 const aperturaMessage = document.getElementById('aperturaMessage');
+const aperturaUsarUltimoCierreWrap = document.getElementById('aperturaUsarUltimoCierreWrap');
+const aperturaUsarUltimoCierreBtn = document.getElementById('aperturaUsarUltimoCierreBtn');
 
 function agregarFilaApertura() {
     const fila = document.createElement('div');
@@ -4027,6 +4029,36 @@ function agregarFilaApertura() {
 }
 agregarFilaApertura();
 aperturaAgregarFilaBtn.addEventListener('click', agregarFilaApertura);
+
+// Precarga el formulario de apertura con los saldos CONTADOS del último
+// cierre (uno por cada moneda/banco), para no tener que volver a tipearlos
+// cuando se abre la caja del día siguiente con lo mismo con lo que se cerró.
+function usarSaldosUltimoCierre() {
+    if (!ultimoCierreCerrado) return;
+    const { data } = ultimoCierreCerrado;
+    const saldosContados = data.saldosContados || {};
+    const monedas = Object.keys(saldosContados);
+    if (monedas.length === 0) return;
+
+    aperturaFilas.innerHTML = '';
+    monedas.sort().forEach(moneda => {
+        const detalle = (data.saldosContadosDetalle && data.saldosContadosDetalle[moneda]) || [];
+        const filasBanco = detalle.length > 0 ? detalle : [{ banco: '', monto: saldosContados[moneda] }];
+        filasBanco.forEach(b => {
+            agregarFilaApertura();
+            const fila = aperturaFilas.lastElementChild;
+            fila.querySelector('.apertura-moneda').value = moneda;
+            fila.querySelector('.apertura-monto').value = b.monto;
+            fila.querySelector('.apertura-concepto').value = (b.banco && b.banco !== 'Efectivo / Sin banco') ? b.banco : '';
+        });
+    });
+
+    aperturaMessage.textContent = 'Datos cargados desde el último cierre. Revisa los montos antes de confirmar la apertura.';
+    aperturaMessage.className = 'form-message form-message-success';
+}
+if (aperturaUsarUltimoCierreBtn) {
+    aperturaUsarUltimoCierreBtn.addEventListener('click', usarSaldosUltimoCierre);
+}
 
 aperturaSubmitBtn.addEventListener('click', async () => {
     const saldosIniciales = {};
@@ -4109,6 +4141,11 @@ function actualizarVistaCierre() {
         cierreFormWrap.classList.add('hidden');
         cierreEstadoBadge.textContent = 'Sin abrir';
         cierreEstadoBadge.className = 'badge badge-neutral';
+        if (aperturaUsarUltimoCierreWrap) {
+            const hayDatosPrevios = !!(ultimoCierreCerrado && ultimoCierreCerrado.data.saldosContados
+                && Object.keys(ultimoCierreCerrado.data.saldosContados).length > 0);
+            aperturaUsarUltimoCierreWrap.classList.toggle('hidden', !hayDatosPrevios);
+        }
         return;
     }
 
