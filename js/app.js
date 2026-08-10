@@ -1407,7 +1407,40 @@ function actualizarDashboardEjecutivo() {
     }
 }
 
-db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+const VENTANA_HISTORIAL_MESES = 12; // ventana por defecto para Historial/Reportes (remesas)
+let verTodoHistorialRemesas = false;
+let unsubscribeRemesas = null;
+
+function fechaLimiteVentana(meses) {
+    const fecha = new Date();
+    fecha.setMonth(fecha.getMonth() - meses);
+    fecha.setHours(0, 0, 0, 0);
+    return fecha;
+}
+
+function actualizarAvisoRangoHistorial() {
+    const aviso = document.getElementById('historialRangoAvisoTexto');
+    const checkbox = document.getElementById('historialVerTodoCheckbox');
+    if (checkbox) checkbox.checked = verTodoHistorialRemesas;
+    if (aviso) {
+        aviso.innerHTML = verTodoHistorialRemesas
+            ? '<i class="ti ti-clock-hour-4" aria-hidden="true"></i> Mostrando todo el historial.'
+            : `<i class="ti ti-clock-hour-4" aria-hidden="true"></i> Mostrando los últimos ${VENTANA_HISTORIAL_MESES} meses (afecta también a Reportes).`;
+    }
+}
+
+function suscribirRemesas() {
+    if (unsubscribeRemesas) unsubscribeRemesas();
+    actualizarAvisoRangoHistorial();
+
+    let query = db.collection('remesas').orderBy('createdAt', 'desc');
+    if (!verTodoHistorialRemesas) {
+        query = db.collection('remesas')
+            .where('createdAt', '>=', fechaLimiteVentana(VENTANA_HISTORIAL_MESES))
+            .orderBy('createdAt', 'desc');
+    }
+
+    unsubscribeRemesas = query.onSnapshot(snapshot => {
     // --- Historial completo ---
     remesasPorId = {};
     historialCache = [];
@@ -1466,6 +1499,17 @@ db.collection('remesas').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
 }, error => {
     console.error('Error escuchando remesas:', error);
 });
+}
+
+suscribirRemesas();
+
+const historialVerTodoCheckbox = document.getElementById('historialVerTodoCheckbox');
+if (historialVerTodoCheckbox) {
+    historialVerTodoCheckbox.addEventListener('change', () => {
+        verTodoHistorialRemesas = historialVerTodoCheckbox.checked;
+        suscribirRemesas();
+    });
+}
 
 // ============================================
 // CALCULADORA — movida a js/calculadora.js (script independiente,
@@ -2985,7 +3029,33 @@ function equivalenteClpHTML(moneda, saldo) {
     return `<span class="cell-subtext">≈ ${formatMoney(equivalente, 'CLP')} (tasa vigente: 1 CLP = ${tasa} ${escapeHtml(moneda)})</span>`;
 }
 
-cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+const VENTANA_CAJA_MESES = 3; // ventana por defecto para la bitácora de caja (el saldo real no depende de esto)
+let verTodoHistorialCaja = false;
+let unsubscribeMovimientosCaja = null;
+
+function actualizarAvisoRangoCaja() {
+    const aviso = document.getElementById('cajaRangoAvisoTexto');
+    const checkbox = document.getElementById('cajaVerTodoCheckbox');
+    if (checkbox) checkbox.checked = verTodoHistorialCaja;
+    if (aviso) {
+        aviso.innerHTML = verTodoHistorialCaja
+            ? '<i class="ti ti-clock-hour-4" aria-hidden="true"></i> Mostrando todo el historial de movimientos.'
+            : `<i class="ti ti-clock-hour-4" aria-hidden="true"></i> Mostrando los últimos ${VENTANA_CAJA_MESES} meses de movimientos (el saldo actual siempre es exacto).`;
+    }
+}
+
+function suscribirMovimientosCaja() {
+    if (unsubscribeMovimientosCaja) unsubscribeMovimientosCaja();
+    actualizarAvisoRangoCaja();
+
+    let query = cajaColeccion.orderBy('createdAt', 'desc');
+    if (!verTodoHistorialCaja) {
+        query = cajaColeccion
+            .where('createdAt', '>=', fechaLimiteVentana(VENTANA_CAJA_MESES))
+            .orderBy('createdAt', 'desc');
+    }
+
+    unsubscribeMovimientosCaja = query.onSnapshot(snapshot => {
     const movimientos = [];
     snapshot.forEach(doc => movimientos.push({ id: doc.id, ...doc.data() }));
     renderCajaSaldos(movimientos);
@@ -3002,6 +3072,17 @@ cajaColeccion.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
 }, error => {
     console.error('Error al escuchar movimientos de caja:', error);
 });
+}
+
+suscribirMovimientosCaja();
+
+const cajaVerTodoCheckbox = document.getElementById('cajaVerTodoCheckbox');
+if (cajaVerTodoCheckbox) {
+    cajaVerTodoCheckbox.addEventListener('change', () => {
+        verTodoHistorialCaja = cajaVerTodoCheckbox.checked;
+        suscribirMovimientosCaja();
+    });
+}
 
 // Repuebla el <select> de moneda con las monedas que realmente aparecen en
 // los movimientos de caja, conservando la selección actual si sigue existiendo.
