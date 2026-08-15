@@ -12,7 +12,7 @@
 // solo si no hay conexión.
 // ============================================
 
-const CACHE_NAME = 'lagomarcambios-shell-v3';
+const CACHE_NAME = 'lagomarcambios-shell-v2';
 const APP_SHELL = [
     './',
     'index.html',
