@@ -138,7 +138,9 @@ calcGuardarBtn.addEventListener('click', () => {
         tasaMercadoValorInput.value = Number(calcTasaMercado.toFixed(6));
     }
 
-    document.querySelector('.nav-links li[data-section="config"]').click();
+    // Calculadora y "Tasas de cambio" ya están en la misma pantalla: basta
+    // con bajar hasta el formulario y darle foco, sin cambiar de sección.
+    tasaMonedaOrigenInput.closest('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
     tasaMonedaOrigenInput.focus();
 });
 
