@@ -286,7 +286,7 @@
                             <label for="formaPago">Forma de pago del cliente</label>
                             <select id="formaPago">
                                 <option value="efectivo">Efectivo</option>
-                                <option value="transferencia">Transferencia</option>
+                                <option value="transferencia" selected>Transferencia</option>
                                 <option value="caja_vecina">Caja Vecina</option>
                             </select>
                         </div>
@@ -298,9 +298,9 @@
                             <input type="number" id="comisionDestino" min="0" step="any" placeholder="0" value="0.3">
                             <span class="input-hint">Se descuenta de tu saldo ADEMÁS del monto recibido (el destinatario recibe el monto completo). Desmarca la casilla si esta remesa no tiene comisión (ej. pago en efectivo).</span>
                         </div>
-                        <div class="input-group hidden" id="bancoGroup">
+                        <div class="input-group" id="bancoGroup">
                             <label for="bancoOrigen">Banco de la transferencia</label>
-                            <input type="text" id="bancoOrigen" placeholder="Ej. BancoEstado" list="listaBancos">
+                            <input type="text" id="bancoOrigen" placeholder="Ej. BancoEstado" list="listaBancos" value="BancoEstado">
                             <datalist id="listaBancos">
                                 <option value="BancoEstado"></option>
                                 <option value="Banco de Chile"></option>
