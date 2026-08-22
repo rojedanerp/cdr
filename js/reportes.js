@@ -1,4 +1,4 @@
-import { formatMoney, formatDate, moneyTexto, fechaArchivo, escapeHtml } from './shared.js';
+import { formatMoney, formatDate, moneyTexto, fechaArchivo, escapeHtml, initFiltrosToggle, actualizarPanelFiltros } from './shared.js';
 import { remesasPorId } from './remesas.js';
 
 // ============================================
@@ -47,10 +47,6 @@ const reportesFiltroOrigen = document.getElementById('reportesFiltroOrigen');
 const reportesFiltroDestino = document.getElementById('reportesFiltroDestino');
 const reportesFiltroBuscar = document.getElementById('reportesFiltroBuscar');
 const reportesFiltroLimpiar = document.getElementById('reportesFiltroLimpiar');
-
-initFiltrosToggle('reportes');
-
-
 
 function claveDiaLocal(fecha) {
     const y = fecha.getFullYear();
@@ -581,6 +577,8 @@ const reportesExportarExcelBtn = document.getElementById('reportesExportarExcelB
 // Inicializa los filtros y la exportación de Reportes. Se llama una sola
 // vez desde app.js al arrancar.
 export function initReportes() {
+    initFiltrosToggle('reportes');
+
     [reportesFiltroEstado, reportesFiltroPago, reportesFiltroOrigen, reportesFiltroDestino].forEach(el => {
         el.addEventListener('change', renderizarReportes);
     });
