@@ -107,11 +107,6 @@
                     <span class="home-tile-title">Boletas</span>
                     <span class="home-tile-subtitle">Boletas pendientes y emitidas</span>
                 </div>
-                <div class="home-tile" data-section="calculadora" data-title="Calculadora de Tasas" data-subtitle="Conversión rápida entre monedas">
-                    <i class="ti ti-calculator" aria-hidden="true"></i>
-                    <span class="home-tile-title">Calculadora de Tasas</span>
-                    <span class="home-tile-subtitle">Conversión rápida entre monedas</span>
-                </div>
                 <div class="home-tile" data-section="historial" data-title="Historial" data-subtitle="Registro completo de operaciones">
                     <i class="ti ti-history" aria-hidden="true"></i>
                     <span class="home-tile-title">Historial</span>
@@ -127,10 +122,10 @@
                     <span class="home-tile-title">Reportes</span>
                     <span class="home-tile-subtitle">Indicadores y gráficos del negocio</span>
                 </div>
-                <div class="home-tile" data-section="config" data-title="Configuración" data-subtitle="Preferencias del sistema">
-                    <i class="ti ti-settings" aria-hidden="true"></i>
-                    <span class="home-tile-title">Configuración</span>
-                    <span class="home-tile-subtitle">Preferencias del sistema</span>
+                <div class="home-tile" data-section="config" data-title="Tasas y Calculadora" data-subtitle="Calcula y configura tus tasas de cambio">
+                    <i class="ti ti-calculator" aria-hidden="true"></i>
+                    <span class="home-tile-title">Tasas y Calculadora</span>
+                    <span class="home-tile-subtitle">Calcula y configura tus tasas de cambio</span>
                 </div>
                 <div class="home-tile" data-section="auditoria" data-title="Auditoría" data-subtitle="Historial de cambios importantes">
                     <i class="ti ti-shield-check" aria-hidden="true"></i>
@@ -1189,10 +1184,11 @@
         </section>
 
         <!-- CALCULADORA DE TASAS -->
-        <section id="calculadora" class="section">
+        <!-- TASAS Y CALCULADORA -->
+        <section id="config" class="section">
             <div class="section-header">
-                <h2>Calculadora de Tasas</h2>
-                <p class="section-subtitle">Tres calculadoras independientes. Toca el título de cada una para abrirla o minimizarla.</p>
+                <h2>Tasas y Calculadora</h2>
+                <p class="section-subtitle">Calcula la tasa con tu margen y guárdala aquí mismo para que se autocomplete en Nueva Remesa.</p>
             </div>
 
             <!-- 1. Tasa cruzada -->
@@ -1239,7 +1235,7 @@
                     </div>
 
                     <div class="tasa-form-actions">
-                        <button type="button" class="btn-primary btn-form" id="calcGuardarBtn" disabled>Usar tasa con margen en Configuración</button>
+                        <button type="button" class="btn-primary btn-form" id="calcGuardarBtn" disabled>Usar esta tasa abajo, en "Tasas de cambio"</button>
                     </div>
                 </div>
             </div>
@@ -1339,9 +1335,7 @@
                     </div>
                 </div>
             </div>
-        </section>
 
-        <!-- HISTORIAL -->
         <section id="historial" class="section">
             <div class="section-header section-header-row">
                 <div>
@@ -1727,13 +1721,6 @@
             </div>
         </section>
 
-        <!-- CONFIGURACIÓN -->
-        <section id="config" class="section">
-            <div class="section-header">
-                <h2>Configuración</h2>
-                <p class="section-subtitle">Preferencias del sistema</p>
-            </div>
-
             <div class="panel">
                 <div class="panel-header">
                     <h3>Tasas de cambio</h3>
@@ -1760,7 +1747,7 @@
                         </div>
                         <div class="input-group">
                             <label for="tasaMercadoValor">Tasa de mercado (opcional, sin margen)</label>
-                            <input type="number" id="tasaMercadoValor" min="0" step="any" placeholder="Se llena sola desde la Calculadora">
+                            <input type="number" id="tasaMercadoValor" min="0" step="any" placeholder="Se llena sola desde la calculadora de arriba">
                         </div>
                     </div>
                     <p class="tasa-intro" style="margin-top:-8px;">
