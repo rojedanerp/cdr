@@ -565,14 +565,22 @@ button {
   box-shadow: var(--shadow-md);
   padding: 8px;
   display: none;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
   max-height: min(70vh, 420px);
   overflow-y: auto;
 }
 
 .panel-switcher-menu.open {
+  display: block;
+}
+
+.panel-switcher-menu-header {
+  display: none;
+}
+
+.panel-switcher-items {
   display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
 }
 
 .panel-switcher-item {
@@ -614,6 +622,26 @@ button {
 
 .panel-switcher-item.active i {
   color: var(--route-blue);
+}
+
+/* Fondo oscuro detrás de la hoja inferior en móvil (sin efecto en desktop) */
+.panel-switcher-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 25, 0.55);
+  z-index: 199;
+}
+
+.panel-switcher-backdrop.open {
+  display: block;
+}
+
+/* Evita que el fondo se desplace mientras la hoja inferior está abierta en móvil */
+@media (max-width: 560px) {
+  body.panel-switcher-locked {
+    overflow: hidden;
+  }
 }
 
 .page-context > i {
@@ -1872,12 +1900,82 @@ button {
 
   .panel-switcher {
     right: 16px;
-    bottom: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
 
+  .panel-switcher-btn {
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
+  }
+
+  /* En móvil el selector de paneles se convierte en una hoja inferior
+     a pantalla completa: más fácil de tocar que un menú angosto pegado
+     al botón, y con un fondo oscuro para cerrar tocando afuera. */
   .panel-switcher-menu {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    max-width: none;
+    max-height: 75vh;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    padding: 0 0 max(12px, env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 30px rgba(10, 15, 25, 0.25);
+    z-index: 201;
+  }
+
+  .panel-switcher-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 12px;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-switcher-menu-header span {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .panel-switcher-close {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--canvas);
+    border: none;
+    border-radius: 50%;
+    color: var(--slate);
+    font-size: 15px;
+  }
+
+  .panel-switcher-items {
     grid-template-columns: 1fr;
-    right: -4px;
+    gap: 2px;
+    padding: 8px 10px;
+  }
+
+  .panel-switcher-item {
+    padding: 14px 12px;
+    font-size: 14.5px;
+    gap: 12px;
+    white-space: normal;
+  }
+
+  .panel-switcher-item i {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
   }
 }
 
