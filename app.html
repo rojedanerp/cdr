@@ -62,11 +62,21 @@
         <button class="back-home-btn" id="backHomeBtn" aria-label="Volver al inicio">
             <i class="ti ti-arrow-left" aria-hidden="true"></i> Volver al inicio
         </button>
-        <div class="page-context hidden" id="pageContext">
-            <i class="ti ti-layout-dashboard" id="topbarIcon" aria-hidden="true"></i>
-            <div>
-                <h1 id="topbarTitle">Panel de Control</h1>
-                <span id="topbarSubtitle">Resumen de operaciones de hoy</span>
+        <div class="panel-nav-row">
+            <div class="page-context hidden" id="pageContext">
+                <i class="ti ti-layout-dashboard" id="topbarIcon" aria-hidden="true"></i>
+                <div>
+                    <h1 id="topbarTitle">Panel de Control</h1>
+                    <span id="topbarSubtitle">Resumen de operaciones de hoy</span>
+                </div>
+            </div>
+            <div class="panel-switcher" id="panelSwitcher">
+                <button class="panel-switcher-btn" id="panelSwitcherBtn" aria-haspopup="true" aria-expanded="false" aria-label="Cambiar de panel">
+                    <i class="ti ti-layout-grid" aria-hidden="true"></i>
+                    <span>Cambiar panel</span>
+                    <i class="ti ti-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="panel-switcher-menu" id="panelSwitcherMenu"></div>
             </div>
         </div>
 
