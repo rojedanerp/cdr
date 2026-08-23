@@ -27,15 +27,24 @@
         <div class="login-box">
             <div class="logo">
                 <svg width="72" height="72" viewBox="0 0 320 320" role="img" aria-label="Logo Lagomarcambios">
-                    <rect width="320" height="320" rx="40" fill="#0f2a4a"/>
-                    <g fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="square" stroke-linejoin="miter">
-                        <path d="M68 96 L68 208 L100 208"/>
-                        <path d="M116 208 L116 96 L153 152 L190 96 L190 208"/>
-                    </g>
-                    <path d="M266 118 A48 48 0 1 0 266 186" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
-                    <line x1="68" y1="238" x2="238" y2="238" stroke="#c9971f" stroke-width="4"/>
-                    <path d="M238 238 L262 214" stroke="#c9971f" stroke-width="4" stroke-linecap="round"/>
-                    <path d="M246 214 L262 214 L262 230" fill="none" stroke="#c9971f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <defs>
+                        <linearGradient id="navyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#5b7fa6"/>
+                            <stop offset="28%" stop-color="#1c3a5c"/>
+                            <stop offset="60%" stop-color="#0d2138"/>
+                            <stop offset="100%" stop-color="#060f1c"/>
+                        </linearGradient>
+                        <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#fdf1c8"/>
+                            <stop offset="25%" stop-color="#e8c766"/>
+                            <stop offset="55%" stop-color="#b8860b"/>
+                            <stop offset="80%" stop-color="#8a6414"/>
+                            <stop offset="100%" stop-color="#5c4109"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="320" height="320" rx="72" fill="#f7f5f0"/>
+                    <path d="M 200.87 196.62 A 78.00 78.00 0 1 1 200.87 123.38" fill="none" stroke="url(#navyGrad)" stroke-width="40" stroke-linecap="butt"/>
+                    <path d="M 258.87 212.62 A 78.00 78.00 0 1 1 258.87 139.38" fill="none" stroke="url(#goldGrad)" stroke-width="40" stroke-linecap="butt"/>
                 </svg>
                 <h1>Lagomarcambios</h1>
                 <p>Sistema de Gestión Interna</p>
