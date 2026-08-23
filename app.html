@@ -1848,9 +1848,19 @@
     <!-- Selector rápido de paneles: botón flotante para saltar de una
          sección a otra sin volver primero a Inicio. Vive fuera de <main>
          para poder posicionarse fijo en la pantalla sin depender del
-         contenedor ni del scroll. -->
+         contenedor ni del scroll. En móvil, el menú se convierte en una
+         hoja inferior a pantalla completa (más fácil de tocar). -->
+    <div class="panel-switcher-backdrop" id="panelSwitcherBackdrop"></div>
     <div class="panel-switcher" id="panelSwitcher">
-        <div class="panel-switcher-menu" id="panelSwitcherMenu"></div>
+        <div class="panel-switcher-menu" id="panelSwitcherMenu">
+            <div class="panel-switcher-menu-header">
+                <span>Ir a...</span>
+                <button type="button" class="panel-switcher-close" id="panelSwitcherClose" aria-label="Cerrar">
+                    <i class="ti ti-x" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="panel-switcher-items" id="panelSwitcherItems"></div>
+        </div>
         <button class="panel-switcher-btn" id="panelSwitcherBtn" aria-haspopup="true" aria-expanded="false" aria-label="Cambiar de panel">
             <i class="ti ti-layout-grid" aria-hidden="true"></i>
         </button>
