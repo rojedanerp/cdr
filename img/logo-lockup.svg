@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 150">
+  <defs><linearGradient id="navyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+  <stop offset="0%" stop-color="#5b7fa6"/>
+  <stop offset="28%" stop-color="#1c3a5c"/>
+  <stop offset="60%" stop-color="#0d2138"/>
+  <stop offset="100%" stop-color="#060f1c"/>
+</linearGradient><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+  <stop offset="0%" stop-color="#fdf1c8"/>
+  <stop offset="25%" stop-color="#e8c766"/>
+  <stop offset="55%" stop-color="#b8860b"/>
+  <stop offset="80%" stop-color="#8a6414"/>
+  <stop offset="100%" stop-color="#5c4109"/>
+</linearGradient></defs>
+  <rect width="620" height="150" fill="#ffffff"/>
+  <g transform="translate(-8.7,-24.2) scale(0.55)">
+    <path d="M 200.87 196.62 A 78.00 78.00 0 1 1 200.87 123.38" fill="none" stroke="url(#navyGrad)" stroke-width="40" stroke-linecap="butt"/>
+  <path d="M 258.87 212.62 A 78.00 78.00 0 1 1 258.87 139.38" fill="none" stroke="url(#goldGrad)" stroke-width="40" stroke-linecap="butt"/>
+  </g>
+  <text x="185" y="82" font-family="'Space Grotesk','Inter',sans-serif" font-size="40" font-weight="700" fill="#0d2138" textLength="360" lengthAdjust="spacingAndGlyphs">Lagomarcambios</text>
+  <text x="186" y="110" font-family="'Inter',sans-serif" font-size="15" letter-spacing="3" fill="#a9791a">CASA DE CAMBIO</text>
+  <line x1="410" y1="105" x2="548" y2="105" stroke="#c9a227" stroke-width="1.2"/>
+  <polygon points="563.00,100.00 557.73,101.73 556.00,107.00 554.27,101.73 549.00,100.00 554.27,98.27 556.00,93.00 557.73,98.27" fill="#b8860b"/>
+</svg>

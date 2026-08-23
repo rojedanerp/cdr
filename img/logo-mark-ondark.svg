@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140">
+  <defs>
+    <linearGradient id="silverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="45%" stop-color="#c7d3e0"/>
+      <stop offset="100%" stop-color="#7c93ad"/>
+    </linearGradient>
+    <linearGradient id="goldGradH" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fdf1c8"/>
+      <stop offset="25%" stop-color="#e8c766"/>
+      <stop offset="55%" stop-color="#d4a017"/>
+      <stop offset="100%" stop-color="#8a6414"/>
+    </linearGradient>
+  </defs>
+  <path d="M 90.02 83.96 A 34.00 34.00 0 1 1 90.02 52.04" fill="none" stroke="url(#silverGrad)" stroke-width="17" stroke-linecap="butt"/>
+  <path d="M 114.02 91.96 A 34.00 34.00 0 1 1 114.02 60.04" fill="none" stroke="url(#goldGradH)" stroke-width="17" stroke-linecap="butt"/>
+</svg>
