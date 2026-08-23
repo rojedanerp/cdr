@@ -30,11 +30,14 @@
     <header class="appbar">
         <div class="appbar-brand">
             <svg width="34" height="34" viewBox="0 0 320 320" role="img" aria-label="Logo Lagomarcambios">
-                <rect width="320" height="320" rx="60" fill="#133560"/>
-                <path d="M 118.0 87.3 A 84 84 0 0 1 238.9 188.7" fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round"/>
-                <path d="M 229.2 215.5 L 225.6 172.7 L 259.4 185.0 Z" fill="#ffffff"/>
-                <path d="M 202.0 232.7 A 84 84 0 0 1 81.1 131.3" fill="none" stroke="#c9971f" stroke-width="24" stroke-linecap="round"/>
-                <path d="M 90.8 104.5 L 94.4 147.3 L 60.6 135.0 Z" fill="#c9971f"/>
+                <g fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="square" stroke-linejoin="miter">
+                    <path d="M68 96 L68 208 L100 208"/>
+                    <path d="M116 208 L116 96 L153 152 L190 96 L190 208"/>
+                </g>
+                <path d="M266 118 A48 48 0 1 0 266 186" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
+                <line x1="68" y1="238" x2="238" y2="238" stroke="#ffffff" stroke-width="4"/>
+                <path d="M238 238 L262 214" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+                <path d="M246 214 L262 214 L262 230" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <span class="appbar-brand-name">Lagomarcambios</span>
         </div>
@@ -84,45 +87,45 @@
                     <span class="home-tile-title">Nueva Remesa</span>
                     <span class="home-tile-subtitle">Registrar un nuevo envío</span>
                 </div>
-                <div class="home-tile" data-section="billetera" data-title="Billetera" data-subtitle="Compra, venta y movimientos de divisas">
-                    <i class="ti ti-wallet" aria-hidden="true"></i>
-                    <span class="home-tile-title">Billetera</span>
-                    <span class="home-tile-subtitle">Compra, venta y movimientos de divisas</span>
+                <div class="home-tile" data-section="clientes" data-title="Clientes" data-subtitle="Administra tu cartera de clientes">
+                    <i class="ti ti-users" aria-hidden="true"></i>
+                    <span class="home-tile-title">Clientes</span>
+                    <span class="home-tile-subtitle">Administra tu cartera de clientes</span>
                 </div>
                 <div class="home-tile" data-section="caja" data-title="Caja" data-subtitle="Apertura, cierre y movimientos de caja">
                     <i class="ti ti-cash" aria-hidden="true"></i>
                     <span class="home-tile-title">Caja</span>
                     <span class="home-tile-subtitle">Apertura, cierre y movimientos de caja</span>
                 </div>
+                <div class="home-tile" data-section="billetera" data-title="Billetera" data-subtitle="Compra, venta y movimientos de divisas">
+                    <i class="ti ti-wallet" aria-hidden="true"></i>
+                    <span class="home-tile-title">Billetera</span>
+                    <span class="home-tile-subtitle">Compra, venta y movimientos de divisas</span>
+                </div>
                 <div class="home-tile" data-section="boletas" data-title="Boletas" data-subtitle="Boletas pendientes y emitidas">
                     <i class="ti ti-receipt" aria-hidden="true"></i>
                     <span class="home-tile-title">Boletas</span>
                     <span class="home-tile-subtitle">Boletas pendientes y emitidas</span>
-                </div>
-                <div class="home-tile" data-section="reportes" data-title="Reportes" data-subtitle="Indicadores y gráficos del negocio">
-                    <i class="ti ti-report" aria-hidden="true"></i>
-                    <span class="home-tile-title">Reportes</span>
-                    <span class="home-tile-subtitle">Indicadores y gráficos del negocio</span>
                 </div>
                 <div class="home-tile" data-section="historial" data-title="Historial" data-subtitle="Registro completo de operaciones">
                     <i class="ti ti-history" aria-hidden="true"></i>
                     <span class="home-tile-title">Historial</span>
                     <span class="home-tile-subtitle">Registro completo de operaciones</span>
                 </div>
-                <div class="home-tile" data-section="config" data-title="Tasas y Calculadora" data-subtitle="Calcula y configura tus tasas de cambio">
-                    <i class="ti ti-calculator" aria-hidden="true"></i>
-                    <span class="home-tile-title">Tasas y Calculadora</span>
-                    <span class="home-tile-subtitle">Calcula y configura tus tasas de cambio</span>
-                </div>
-                <div class="home-tile" data-section="clientes" data-title="Clientes" data-subtitle="Administra tu cartera de clientes">
-                    <i class="ti ti-users" aria-hidden="true"></i>
-                    <span class="home-tile-title">Clientes</span>
-                    <span class="home-tile-subtitle">Administra tu cartera de clientes</span>
-                </div>
                 <div class="home-tile" data-section="conciliacion" data-title="Conciliación SII" data-subtitle="Cruce entre remesas y boletas">
                     <i class="ti ti-clipboard-check" aria-hidden="true"></i>
                     <span class="home-tile-title">Conciliación SII</span>
                     <span class="home-tile-subtitle">Cruce entre remesas y boletas</span>
+                </div>
+                <div class="home-tile" data-section="reportes" data-title="Reportes" data-subtitle="Indicadores y gráficos del negocio">
+                    <i class="ti ti-report" aria-hidden="true"></i>
+                    <span class="home-tile-title">Reportes</span>
+                    <span class="home-tile-subtitle">Indicadores y gráficos del negocio</span>
+                </div>
+                <div class="home-tile" data-section="config" data-title="Tasas y Calculadora" data-subtitle="Calcula y configura tus tasas de cambio">
+                    <i class="ti ti-calculator" aria-hidden="true"></i>
+                    <span class="home-tile-title">Tasas y Calculadora</span>
+                    <span class="home-tile-subtitle">Calcula y configura tus tasas de cambio</span>
                 </div>
                 <div class="home-tile" data-section="auditoria" data-title="Auditoría" data-subtitle="Historial de cambios importantes">
                     <i class="ti ti-shield-check" aria-hidden="true"></i>
