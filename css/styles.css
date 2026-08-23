@@ -355,18 +355,8 @@ button {
   margin-right: auto;
 }
 
-.appbar-brand svg rect,
-.appbar-brand svg path {
-  fill: #fff;
-  stroke: #fff;
-}
-
-.appbar-brand svg path[stroke="#b8860b"] {
-  stroke: #e8b84b;
-}
-
-.appbar-brand svg path[stroke="#0e7c7b"] {
-  stroke: #2fb3a8;
+.appbar-brand svg {
+  display: block;
 }
 
 .appbar-brand-name {
