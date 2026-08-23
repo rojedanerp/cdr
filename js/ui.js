@@ -16,6 +16,9 @@ const backHomeBtn = document.getElementById('backHomeBtn');
 const panelSwitcher = document.getElementById('panelSwitcher');
 const panelSwitcherBtn = document.getElementById('panelSwitcherBtn');
 const panelSwitcherMenu = document.getElementById('panelSwitcherMenu');
+const panelSwitcherItems = document.getElementById('panelSwitcherItems');
+const panelSwitcherClose = document.getElementById('panelSwitcherClose');
+const panelSwitcherBackdrop = document.getElementById('panelSwitcherBackdrop');
 const HOME_ID = 'home';
 
 export function showSection(sectionId) {
@@ -50,20 +53,32 @@ export function showSection(sectionId) {
 }
 window.showSection = showSection;
 
+function openPanelSwitcher() {
+    if (!panelSwitcherMenu || !panelSwitcherBtn) return;
+    panelSwitcherMenu.classList.add('open');
+    panelSwitcherBackdrop?.classList.add('open');
+    panelSwitcherBtn.setAttribute('aria-expanded', 'true');
+    panelSwitcherBtn.querySelector('i').className = 'ti ti-x';
+    document.body.classList.add('panel-switcher-locked');
+}
+
 function closePanelSwitcher() {
     if (!panelSwitcherMenu || !panelSwitcherBtn) return;
     panelSwitcherMenu.classList.remove('open');
+    panelSwitcherBackdrop?.classList.remove('open');
     panelSwitcherBtn.setAttribute('aria-expanded', 'false');
     const icon = panelSwitcherBtn.querySelector('i');
     if (icon) icon.className = 'ti ti-layout-grid';
+    document.body.classList.remove('panel-switcher-locked');
 }
 
 // Construye el menú del selector rápido de paneles a partir de las mismas
 // tarjetas de inicio (data-section, data-title, ícono), para no duplicar
 // la lista de secciones en ningún otro lugar.
 function buildPanelSwitcherMenu() {
-    if (!panelSwitcherMenu) return;
-    panelSwitcherMenu.innerHTML = '';
+    const container = panelSwitcherItems || panelSwitcherMenu;
+    if (!container) return;
+    container.innerHTML = '';
     homeTiles.forEach(tile => {
         const sectionId = tile.dataset.section;
         const iconClass = tile.querySelector('i')?.className || 'ti ti-app-window';
@@ -75,7 +90,7 @@ function buildPanelSwitcherMenu() {
         item.dataset.section = sectionId;
         item.innerHTML = `<i class="${iconClass}" aria-hidden="true"></i><span>${title}</span>`;
         item.addEventListener('click', () => showSection(sectionId));
-        panelSwitcherMenu.appendChild(item);
+        container.appendChild(item);
     });
 }
 
@@ -99,10 +114,14 @@ export function initUI() {
     if (panelSwitcherBtn && panelSwitcherMenu) {
         panelSwitcherBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const open = panelSwitcherMenu.classList.toggle('open');
-            panelSwitcherBtn.setAttribute('aria-expanded', String(open));
-            panelSwitcherBtn.querySelector('i').className = open ? 'ti ti-x' : 'ti ti-layout-grid';
+            if (panelSwitcherMenu.classList.contains('open')) {
+                closePanelSwitcher();
+            } else {
+                openPanelSwitcher();
+            }
         });
+        panelSwitcherClose?.addEventListener('click', () => closePanelSwitcher());
+        panelSwitcherBackdrop?.addEventListener('click', () => closePanelSwitcher());
         document.addEventListener('click', (e) => {
             if (!panelSwitcherMenu.contains(e.target) && !panelSwitcherBtn.contains(e.target)) {
                 closePanelSwitcher();
