@@ -13,6 +13,9 @@ const topbarTitle = document.getElementById('topbarTitle');
 const topbarSubtitle = document.getElementById('topbarSubtitle');
 const pageContext = document.getElementById('pageContext');
 const backHomeBtn = document.getElementById('backHomeBtn');
+const panelSwitcher = document.getElementById('panelSwitcher');
+const panelSwitcherBtn = document.getElementById('panelSwitcherBtn');
+const panelSwitcherMenu = document.getElementById('panelSwitcherMenu');
 const HOME_ID = 'home';
 
 export function showSection(sectionId) {
@@ -26,6 +29,7 @@ export function showSection(sectionId) {
 
     if (backHomeBtn) backHomeBtn.classList.toggle('visible', !isHome);
     if (pageContext) pageContext.classList.toggle('hidden', isHome);
+    if (panelSwitcher) panelSwitcher.classList.toggle('visible', !isHome);
 
     if (!isHome && topbarTitle) {
         const tile = document.querySelector(`.home-tile[data-section="${sectionId}"]`);
@@ -35,9 +39,43 @@ export function showSection(sectionId) {
         topbarSubtitle.textContent = tile?.dataset.subtitle || '';
     }
 
+    if (panelSwitcherMenu) {
+        panelSwitcherMenu.querySelectorAll('.panel-switcher-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.section === sectionId);
+        });
+    }
+    closePanelSwitcher();
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 window.showSection = showSection;
+
+function closePanelSwitcher() {
+    if (!panelSwitcherMenu || !panelSwitcherBtn) return;
+    panelSwitcherMenu.classList.remove('open');
+    panelSwitcherBtn.setAttribute('aria-expanded', 'false');
+}
+
+// Construye el menú del selector rápido de paneles a partir de las mismas
+// tarjetas de inicio (data-section, data-title, ícono), para no duplicar
+// la lista de secciones en ningún otro lugar.
+function buildPanelSwitcherMenu() {
+    if (!panelSwitcherMenu) return;
+    panelSwitcherMenu.innerHTML = '';
+    homeTiles.forEach(tile => {
+        const sectionId = tile.dataset.section;
+        const iconClass = tile.querySelector('i')?.className || 'ti ti-app-window';
+        const title = tile.dataset.title || tile.querySelector('.home-tile-title')?.textContent || sectionId;
+
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'panel-switcher-item';
+        item.dataset.section = sectionId;
+        item.innerHTML = `<i class="${iconClass}" aria-hidden="true"></i><span>${title}</span>`;
+        item.addEventListener('click', () => showSection(sectionId));
+        panelSwitcherMenu.appendChild(item);
+    });
+}
 
 // Inicializa la navegación, el menú de usuario y el reloj del topbar.
 // Se llama una sola vez desde app.js al arrancar.
@@ -48,6 +86,28 @@ export function initUI() {
 
     if (backHomeBtn) {
         backHomeBtn.addEventListener('click', () => showSection(HOME_ID));
+    }
+
+    // ============================================
+    // SELECTOR RÁPIDO DE PANELES
+    // Permite saltar de una sección a otra directamente,
+    // sin pasar primero por Inicio.
+    // ============================================
+    buildPanelSwitcherMenu();
+    if (panelSwitcherBtn && panelSwitcherMenu) {
+        panelSwitcherBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const open = panelSwitcherMenu.classList.toggle('open');
+            panelSwitcherBtn.setAttribute('aria-expanded', String(open));
+        });
+        document.addEventListener('click', (e) => {
+            if (!panelSwitcherMenu.contains(e.target) && !panelSwitcherBtn.contains(e.target)) {
+                closePanelSwitcher();
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePanelSwitcher();
+        });
     }
 
     // ============================================
