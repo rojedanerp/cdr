@@ -1,19 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320">
-  <!-- Flat corporate navy background -->
-  <rect width="320" height="320" rx="40" fill="#0f2a4a"/>
-
-  <!-- Monogram: sharp geometric strokes, no gradients, no rounded/sketch feel -->
-  <g fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="square" stroke-linejoin="miter">
-    <!-- L -->
-    <path d="M68 96 L68 208 L100 208"/>
-    <!-- M -->
-    <path d="M116 208 L116 96 L153 152 L190 96 L190 208"/>
-  </g>
-  <!-- C, arc keeps a round cap for a clean curve -->
-  <path d="M266 118 A48 48 0 1 0 266 186" fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
-
-  <!-- Gold accent line with upward tick, signalling growth / exchange rate -->
-  <line x1="68" y1="238" x2="238" y2="238" stroke="#c9971f" stroke-width="4"/>
-  <path d="M238 238 L262 214" stroke="#c9971f" stroke-width="4" stroke-linecap="round"/>
-  <path d="M246 214 L262 214 L262 230" fill="none" stroke="#c9971f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="320" height="320" rx="60" fill="#133560"/>
+  <path d="M 118.0 87.3 A 84 84 0 0 1 238.9 188.7" fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round"/>
+  <path d="M 229.2 215.5 L 225.6 172.7 L 259.4 185.0 Z" fill="#ffffff"/>
+  <path d="M 202.0 232.7 A 84 84 0 0 1 81.1 131.3" fill="none" stroke="#c9971f" stroke-width="24" stroke-linecap="round"/>
+  <path d="M 90.8 104.5 L 94.4 147.3 L 60.6 135.0 Z" fill="#c9971f"/>
 </svg>
