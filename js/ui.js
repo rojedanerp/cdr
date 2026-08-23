@@ -54,6 +54,8 @@ function closePanelSwitcher() {
     if (!panelSwitcherMenu || !panelSwitcherBtn) return;
     panelSwitcherMenu.classList.remove('open');
     panelSwitcherBtn.setAttribute('aria-expanded', 'false');
+    const icon = panelSwitcherBtn.querySelector('i');
+    if (icon) icon.className = 'ti ti-layout-grid';
 }
 
 // Construye el menú del selector rápido de paneles a partir de las mismas
@@ -99,6 +101,7 @@ export function initUI() {
             e.stopPropagation();
             const open = panelSwitcherMenu.classList.toggle('open');
             panelSwitcherBtn.setAttribute('aria-expanded', String(open));
+            panelSwitcherBtn.querySelector('i').className = open ? 'ti ti-x' : 'ti ti-layout-grid';
         });
         document.addEventListener('click', (e) => {
             if (!panelSwitcherMenu.contains(e.target) && !panelSwitcherBtn.contains(e.target)) {
