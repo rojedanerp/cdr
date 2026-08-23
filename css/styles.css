@@ -506,33 +506,26 @@ button {
   font-size: 15px;
 }
 
-/* Fila que agrupa el encabezado de página y el selector rápido de paneles */
-.panel-nav-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 22px;
-}
-
 /* Encabezado de página, en línea sobre el contenido de cada sección */
 .page-context {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 0;
-  min-width: 0;
+  margin-bottom: 22px;
 }
 
 .page-context.hidden {
   display: none;
 }
 
-/* Selector rápido de paneles: permite saltar de una sección a otra
-   sin tener que volver primero a Inicio. */
+/* Selector rápido de paneles: botón flotante (FAB) que permite saltar de
+   una sección a otra sin volver primero a Inicio. Fijo en la pantalla,
+   así queda accesible incluso con scroll largo. */
 .panel-switcher {
-  position: relative;
-  flex-shrink: 0;
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 200;
   display: none;
 }
 
@@ -541,46 +534,31 @@ button {
 }
 
 .panel-switcher-btn {
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--ink);
-  font-size: 13.5px;
-  font-weight: 600;
-  font-family: inherit;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  justify-content: center;
+  background: var(--route-blue);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 21px;
+  box-shadow: 0 6px 18px rgba(29, 78, 137, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .panel-switcher-btn:hover {
-  border-color: var(--route-blue);
-  background: var(--route-blue-light);
-}
-
-.panel-switcher-btn i:first-child {
-  font-size: 15px;
-  color: var(--route-blue);
-}
-
-.panel-switcher-btn i:last-child {
-  font-size: 13px;
-  color: var(--slate);
-  transition: transform 0.15s ease;
-}
-
-.panel-switcher-btn[aria-expanded="true"] i:last-child {
-  transform: rotate(180deg);
+  background: var(--route-blue-dark);
+  box-shadow: 0 8px 22px rgba(29, 78, 137, 0.45);
 }
 
 .panel-switcher-menu {
   position: absolute;
-  top: calc(100% + 8px);
   right: 0;
+  bottom: calc(100% + 12px);
   width: 320px;
-  max-width: 80vw;
+  max-width: min(80vw, 340px);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -589,8 +567,7 @@ button {
   display: none;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
-  z-index: 105;
-  max-height: 70vh;
+  max-height: min(70vh, 420px);
   overflow-y: auto;
 }
 
@@ -1893,12 +1870,9 @@ button {
     grid-template-columns: 1fr 1fr;
   }
 
-  .panel-switcher-btn span {
-    display: none;
-  }
-
-  .panel-switcher-btn {
-    padding: 9px 11px;
+  .panel-switcher {
+    right: 16px;
+    bottom: 16px;
   }
 
   .panel-switcher-menu {
