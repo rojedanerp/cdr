@@ -673,11 +673,18 @@ export function initRemesas() {
                 });
             }
 
-            // Crear/actualizar/quitar el movimiento de caja automático ligado a esta remesa
-            // (no bloqueante: si falla, la remesa igual queda guardada)
-            sincronizarCajaDeRemesa(remesaIdGuardada, data).catch(err =>
-                console.warn('No se pudo sincronizar la caja con la remesa:', err)
-            );
+            // Crear/actualizar/quitar el movimiento de caja automático ligado a esta remesa.
+            // La remesa (documento en /remesas) ya quedó guardada arriba; esto es aparte.
+            // Se espera el resultado (ya no es fire-and-forget) porque, si falla, es crítico
+            // avisarte de inmediato: de lo contrario la caja queda descuadrada en silencio
+            // (ver comentario en caja.js sobre por qué antes esto pasaba desapercibido).
+            let errorSincronizandoCaja = null;
+            try {
+                await sincronizarCajaDeRemesa(remesaIdGuardada, data);
+            } catch (err) {
+                console.error('No se pudo sincronizar la caja con la remesa:', err);
+                errorSincronizandoCaja = err;
+            }
 
             // Marcar la fecha de última remesa en el cliente (no bloqueante para el flujo principal)
             db.collection('clientes').doc(clienteId).update({
@@ -686,8 +693,17 @@ export function initRemesas() {
 
             const fueEdicion = !!remesaDocId;
             resetRemesaForm();
-            remesaMessage.textContent = fueEdicion ? 'Remesa actualizada correctamente.' : 'Remesa registrada correctamente.';
-            remesaMessage.className = 'form-message form-message-success';
+            if (errorSincronizandoCaja) {
+                // La remesa SÍ se guardó; lo que falló es el movimiento de caja asociado.
+                // Se avisa explícitamente en pantalla (no solo en consola) para que se
+                // revise y corrija en la sección Caja, en vez de descubrirlo días después
+                // al cuadrar el arqueo.
+                remesaMessage.textContent = `Remesa ${fueEdicion ? 'actualizada' : 'registrada'}, pero no se pudo sincronizar el movimiento de caja. Revisa la sección Caja para esta remesa y vuelve a intentar (editar y guardar de nuevo la remesa reintenta la sincronización).`;
+                remesaMessage.className = 'form-message form-message-error';
+            } else {
+                remesaMessage.textContent = fueEdicion ? 'Remesa actualizada correctamente.' : 'Remesa registrada correctamente.';
+                remesaMessage.className = 'form-message form-message-success';
+            }
         } catch (error) {
             console.error('Error al guardar remesa:', error);
             remesaMessage.textContent = 'No se pudo guardar la remesa. Intenta de nuevo.';

@@ -1,5 +1,5 @@
 import { auth, db } from './firebase-config.js';
-import { escapeHtml, formatMoney, formatDate, moneyTexto, fechaArchivo, initFiltrosToggle, actualizarPanelFiltros } from './shared.js';
+import { escapeHtml, formatMoney, formatDate, moneyTexto, fechaArchivo, initFiltrosToggle, actualizarPanelFiltros, initPanelCollapseToggle } from './shared.js';
 import { registrarAuditoria } from './auditoria.js';
 import { claveTasa, tasasCache } from './tasas.js';
 import { renderBilletera } from './billetera.js';
@@ -27,13 +27,24 @@ export const cajaColeccion = db.collection('movimientosCaja');
 //      monto completo; esta comisión sale aparte de tu saldo.
 // Si la remesa se edita (cambia forma de pago, monto, moneda, comisión o se
 // cancela) o se elimina, los tres movimientos se actualizan/borran solos. ---
+// IMPORTANTE: los hasta 3 movimientos de una remesa (ingreso_cliente,
+// salida_destino, comision_destino) se preparan sobre un mismo batch de
+// Firestore y se confirman con un solo commit() al final. Esto los hace
+// ATÓMICOS: o se guardan los tres juntos, o no se guarda ninguno. Antes cada
+// movimiento se escribía por separado (await independiente), así que si el
+// primero (ingreso en la moneda que paga el cliente) se guardaba bien pero el
+// segundo (salida en la moneda de destino) fallaba a mitad de camino —por un
+// corte de conexión, cerrar la pestaña antes de tiempo, etc.—, quedaba el
+// ingreso registrado sin su salida correspondiente, descuadrando la caja sin
+// ningún aviso visible (solo un console.warn). El batch evita ese escenario.
 export async function sincronizarCajaDeRemesa(remesaId, data) {
     if (!remesaId) return;
 
     const activa = data.estado !== 'cancelado';
     const montoComision = (data.montoRecibido || 0) * ((data.comisionDestino || 0) / 100);
+    const batch = db.batch();
 
-    await sincronizarMovimientoCajaDeRemesa(remesaId, 'ingreso_cliente', {
+    await prepararMovimientoCajaDeRemesa(batch, remesaId, 'ingreso_cliente', {
         debeExistir: activa && data.montoEnviado > 0 && !!data.monedaEnviado,
         tipo: 'entrada',
         moneda: data.monedaEnviado,
@@ -45,7 +56,7 @@ export async function sincronizarCajaDeRemesa(remesaId, data) {
         })()
     });
 
-    await sincronizarMovimientoCajaDeRemesa(remesaId, 'salida_destino', {
+    await prepararMovimientoCajaDeRemesa(batch, remesaId, 'salida_destino', {
         debeExistir: activa && data.montoRecibido > 0 && !!data.monedaRecibido,
         tipo: 'salida',
         moneda: data.monedaRecibido,
@@ -53,16 +64,23 @@ export async function sincronizarCajaDeRemesa(remesaId, data) {
         concepto: `Envío a destino — ${data.clienteNombre}`
     });
 
-    await sincronizarMovimientoCajaDeRemesa(remesaId, 'comision_destino', {
+    await prepararMovimientoCajaDeRemesa(batch, remesaId, 'comision_destino', {
         debeExistir: activa && montoComision > 0 && !!data.monedaRecibido,
         tipo: 'salida',
         moneda: data.monedaRecibido,
         monto: montoComision,
         concepto: `Comisión bancaria (${data.comisionDestino}%) — ${data.clienteNombre}`
     });
+
+    // Un solo commit: si algo falla acá, NINGÚN movimiento quedó a medias
+    // (a diferencia de antes, donde cada movimiento se confirmaba por su cuenta).
+    await batch.commit();
 }
 
-async function sincronizarMovimientoCajaDeRemesa(remesaId, rol, { debeExistir, tipo, moneda, monto, concepto }) {
+// Agrega al batch la operación (set/update/delete) necesaria para un
+// movimiento de caja de una remesa, sin confirmar nada todavía — el
+// commit() lo hace sincronizarCajaDeRemesa() una sola vez por remesa.
+async function prepararMovimientoCajaDeRemesa(batch, remesaId, rol, { debeExistir, tipo, moneda, monto, concepto }) {
     const existentes = await cajaColeccion
         .where('remesaId', '==', remesaId)
         .where('rol', '==', rol)
@@ -71,7 +89,7 @@ async function sincronizarMovimientoCajaDeRemesa(remesaId, rol, { debeExistir, t
 
     if (!debeExistir) {
         if (!existentes.empty) {
-            await Promise.all(existentes.docs.map(doc => doc.ref.delete()));
+            existentes.docs.forEach(doc => batch.delete(doc.ref));
         }
         return;
     }
@@ -89,9 +107,10 @@ async function sincronizarMovimientoCajaDeRemesa(remesaId, rol, { debeExistir, t
 
     if (existentes.empty) {
         payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        await cajaColeccion.add(payload);
+        const nuevaRef = cajaColeccion.doc();
+        batch.set(nuevaRef, payload);
     } else {
-        await existentes.docs[0].ref.update(payload);
+        batch.update(existentes.docs[0].ref, payload);
     }
 }
 
@@ -907,6 +926,7 @@ export function initCaja() {
         aplicarFiltroCaja();
     });
     initFiltrosToggle('caja');
+    initPanelCollapseToggle('cierresHistorialPanel', 'cierresHistorialCollapseToggle', false);
 
     cajaExportarPdfBtn.addEventListener('click', () => {
         if (cajaFiltrado.length === 0) {
