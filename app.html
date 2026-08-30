@@ -522,14 +522,18 @@
                 </div>
             </div>
 
-            <div class="panel">
+            <div class="panel" id="cierresHistorialPanel">
                 <div class="panel-header">
-                    <h3><i class="ti ti-receipt" aria-hidden="true"></i> Historial de cierres</h3>
+                    <button type="button" class="panel-collapse-toggle" id="cierresHistorialCollapseToggle" aria-expanded="false" aria-controls="cierresHistorialCollapseBody">
+                        <h3><i class="ti ti-receipt" aria-hidden="true"></i> Historial de cierres</h3>
+                        <span class="panel-collapse-chevron">▾</span>
+                    </button>
                     <div class="section-header-actions">
                         <button type="button" class="btn-secondary" id="cierresExportarPdfBtn"><i class="ti ti-file-text" aria-hidden="true"></i> Exportar historial PDF</button>
                         <button type="button" class="btn-secondary" id="cierresExportarExcelBtn"><i class="ti ti-table" aria-hidden="true"></i> Exportar historial Excel</button>
                     </div>
                 </div>
+                <div class="panel-collapsible-body" id="cierresHistorialCollapseBody">
                 <div class="table-wrap" id="cierresHistorialWrap">
                     <table class="data-table">
                         <thead>
@@ -541,6 +545,7 @@
                 <div class="empty-state" id="cierresHistorialEmpty">
                     <i class="ti ti-receipt empty-state-icon" aria-hidden="true"></i>
                     <p>Todavía no hay cierres de caja registrados.</p>
+                </div>
                 </div>
             </div>
 
