@@ -1719,6 +1719,17 @@ button {
   color: var(--route-blue);
 }
 
+.badge-toggle {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.15s ease;
+}
+
+.badge-toggle:hover {
+  filter: brightness(0.92);
+}
+
 .stat-value-negative {
   color: var(--danger);
 }
