@@ -72,16 +72,29 @@ function recalcularMontos() {
 const formaPagoSelect = document.getElementById('formaPago');
 const bancoGroup = document.getElementById('bancoGroup');
 const bancoOrigenInput = document.getElementById('bancoOrigen');
+const bancoOrigenToggle = document.getElementById('bancoOrigenToggle');
 const comisionDestinoInput = document.getElementById('comisionDestino');
 const comisionDestinoActivaInput = document.getElementById('comisionDestinoActiva');
+
+function seleccionarBancoOrigen(banco) {
+    bancoOrigenInput.value = banco;
+    bancoOrigenToggle.querySelectorAll('.modo-calculo-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.banco === banco);
+    });
+}
+
+bancoOrigenToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('.modo-calculo-btn');
+    if (!btn) return;
+    seleccionarBancoOrigen(btn.dataset.banco);
+});
 
 function actualizarVisibilidadBanco() {
     if (formaPagoSelect.value === 'transferencia') {
         bancoGroup.classList.remove('hidden');
-        bancoOrigenInput.required = true;
+        seleccionarBancoOrigen(bancoOrigenInput.value === 'Santander' ? 'Santander' : 'BancoEstado');
     } else {
         bancoGroup.classList.add('hidden');
-        bancoOrigenInput.required = false;
         bancoOrigenInput.value = '';
     }
 }
@@ -240,7 +253,10 @@ window.editarRemesa = (docId) => {
     document.getElementById('estado').value = r.estado || 'pendiente';
     formaPagoSelect.value = r.formaPago || 'efectivo';
     actualizarVisibilidadBanco();
-    bancoOrigenInput.value = r.bancoOrigen || '';
+    if (formaPagoSelect.value === 'transferencia') {
+        const bancoGuardado = r.bancoOrigen === 'Santander' ? 'Santander' : 'BancoEstado';
+        seleccionarBancoOrigen(bancoGuardado);
+    }
     comisionDestinoActivaInput.checked = !!(r.comisionDestino && r.comisionDestino > 0);
     comisionDestinoInput.value = r.comisionDestino != null && r.comisionDestino > 0 ? r.comisionDestino : 0.3;
     comisionDestinoInput.disabled = !comisionDestinoActivaInput.checked;

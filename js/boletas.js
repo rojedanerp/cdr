@@ -53,9 +53,13 @@ function requiereBoleta(r) {
 // A partir de este monto en CLP, corresponde emitir factura en vez de boleta.
 const UMBRAL_FACTURA_CLP = 500000;
 
-// Devuelve 'factura' o 'boleta' según el monto enviado en CLP. Solo tiene
-// sentido llamarla cuando requiereBoleta(r) es true.
+// Devuelve 'factura' o 'boleta'. Por defecto se calcula según el monto, pero
+// el campo r.facturaManual (marcado a mano desde el listado de Pendientes)
+// permite forzar factura u boleta en casos puntuales (ej. cliente empresa
+// que siempre pide factura aunque el monto no supere el umbral).
 function tipoDocumento(r) {
+    if (r.facturaManual === true) return 'factura';
+    if (r.facturaManual === false) return 'boleta';
     return (r.montoEnviado || 0) > UMBRAL_FACTURA_CLP ? 'factura' : 'boleta';
 }
 
@@ -65,7 +69,29 @@ function tipoDocumentoLabel(r) {
 
 function tipoDocumentoBadgeHtml(r) {
     const esFactura = tipoDocumento(r) === 'factura';
+    const esManual = r.facturaManual === true || r.facturaManual === false;
+    return `<button type="button" class="badge badge-toggle ${esFactura ? 'badge-danger' : 'badge-neutral'}" data-toggle-doc-id="${r.id}" title="Clic para cambiar a ${esFactura ? 'boleta' : 'factura'}${esManual ? ' (marcado a mano)' : ''}">${esFactura ? 'Factura' : 'Boleta'}${esManual ? ' ✎' : ''}</button>`;
+}
+
+// Versión no interactiva del badge, para el listado de Emitidas (ya no
+// tiene sentido cambiar el tipo de documento una vez emitido).
+function tipoDocumentoBadgeHtmlEstatico(r) {
+    const esFactura = tipoDocumento(r) === 'factura';
     return `<span class="badge ${esFactura ? 'badge-danger' : 'badge-neutral'}">${esFactura ? 'Factura' : 'Boleta'}</span>`;
+}
+
+async function alternarTipoDocumento(remesaId) {
+    const r = pendientesPorId[remesaId];
+    if (!r) return;
+    const esFacturaAhora = tipoDocumento(r) === 'factura';
+    try {
+        await db.collection('remesas').doc(remesaId).update({
+            facturaManual: !esFacturaAhora
+        });
+    } catch (error) {
+        console.error('Error al cambiar tipo de documento:', error);
+        alert('No se pudo cambiar el tipo de documento. Intenta de nuevo.');
+    }
 }
 
 export function renderBoletas(remesas) {
@@ -153,7 +179,8 @@ function aplicarFiltroBoletasPendientes() {
             else boletasSeleccionadas.delete(r.id);
             actualizarBotonGrupoBoleta();
         });
-        tr.querySelector('button').addEventListener('click', () => marcarBoletaEmitida(r.id));
+        tr.querySelector('[data-toggle-doc-id]').addEventListener('click', () => alternarTipoDocumento(r.id));
+        tr.querySelector('button.btn-icon-action').addEventListener('click', () => marcarBoletaEmitida(r.id));
         boletasPendientesBody.appendChild(tr);
     });
 }
@@ -225,7 +252,7 @@ function aplicarFiltroBoletasEmitidas() {
             <td>${formatDate(r.createdAt)}</td>
             <td>${escapeHtml(r.clienteNombre) || '—'}</td>
             <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}${grupoInfo}</td>
-            <td>${tipoDocumentoBadgeHtml(r)}</td>
+            <td>${tipoDocumentoBadgeHtmlEstatico(r)}</td>
             <td>${escapeHtml(r.folioBoleta) || '—'}</td>
             <td><button type="button" class="btn-icon-action danger" data-id="${r.id}">Quitar marca</button></td>
         `;
