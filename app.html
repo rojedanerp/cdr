@@ -301,20 +301,16 @@
                             <span class="input-hint">Se descuenta de tu saldo ADEMÁS del monto recibido (el destinatario recibe el monto completo). Desmarca la casilla si esta remesa no tiene comisión (ej. pago en efectivo).</span>
                         </div>
                         <div class="input-group" id="bancoGroup">
-                            <label for="bancoOrigen">Banco de la transferencia</label>
-                            <input type="text" id="bancoOrigen" placeholder="Ej. BancoEstado" list="listaBancos" value="BancoEstado">
-                            <datalist id="listaBancos">
-                                <option value="BancoEstado"></option>
-                                <option value="Banco de Chile"></option>
-                                <option value="Santander"></option>
-                                <option value="BCI"></option>
-                                <option value="Scotiabank"></option>
-                                <option value="Itaú"></option>
-                                <option value="Banco Falabella"></option>
-                                <option value="Banco Security"></option>
-                                <option value="Banco Ripley"></option>
-                                <option value="Coopeuch"></option>
-                            </datalist>
+                            <label>Banco de la transferencia</label>
+                            <div class="modo-calculo-toggle" role="radiogroup" aria-label="Banco de la transferencia" id="bancoOrigenToggle">
+                                <button type="button" class="modo-calculo-btn active" data-banco="BancoEstado">
+                                    BancoEstado
+                                </button>
+                                <button type="button" class="modo-calculo-btn" data-banco="Santander">
+                                    Santander
+                                </button>
+                            </div>
+                            <input type="hidden" id="bancoOrigen" value="BancoEstado">
                         </div>
                     </div>
 
@@ -1066,7 +1062,9 @@
                     CLP) y todavía no les has hecho el documento en e-Boleta del SII. Los cambios donde el
                     CLP sale (por ejemplo, VES a CLP) no requieren boleta ni factura y no aparecen aquí.
                     Hasta $500.000 CLP corresponde boleta; sobre ese monto corresponde factura — cada fila
-                    muestra qué tipo de documento le toca. Cuando lo emitas en el SII, marca aquí
+                    muestra qué tipo de documento le toca. Si necesitas hacer factura en un caso puntual
+                    (aunque no supere el monto) o al revés, toca la etiqueta "Boleta"/"Factura" de la fila
+                    para cambiarla a mano; queda marcada con ✎. Cuando lo emitas en el SII, marca aquí
                     "emitida/o" y pega el folio para llevar el control — esto no genera ni envía nada
                     al SII, es solo tu checklist. Si un mismo pago del cliente cubrió varias remesas del
                     mismo tipo de documento, marca esas filas y usa "Marcar seleccionadas como un solo
