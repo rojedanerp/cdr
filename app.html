@@ -794,6 +794,51 @@
                 </form>
             </div>
 
+            <div class="panel" id="billeteraVentasCsvPanel">
+                <div class="panel-header">
+                    <h3><i class="ti ti-file-upload" aria-hidden="true"></i> Importar ventas desde CSV (Binance P2P)</h3>
+                </div>
+                <p class="tasa-intro">
+                    Sube el CSV del "Historial de órdenes C2C" exportado desde Binance. Detectamos automáticamente
+                    las ventas de USDT por VES, calculamos el USDT total vendido (cantidad + comisión del maker)
+                    y el VES neto recibido, y dejamos sin marcar las órdenes canceladas/pendientes o que ya
+                    habías importado antes (para que no se dupliquen en Caja).
+                </p>
+                <div class="tasa-form">
+                    <div class="input-group">
+                        <label for="billeteraVentasCsvInput">Subir CSV de Binance C2C</label>
+                        <input type="file" id="billeteraVentasCsvInput" accept=".csv,.txt">
+                        <span class="input-hint" id="billeteraVentasCsvHint"></span>
+                    </div>
+                    <div id="billeteraVentasCsvMessage" class="form-message"></div>
+                </div>
+
+                <div class="hidden" id="billeteraVentasCsvPreviewPanel">
+                    <p class="input-hint input-hint-active" id="billeteraVentasCsvResumen"></p>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th><input type="checkbox" id="billeteraVentasCsvSeleccionarTodo" checked></th>
+                                    <th>Fecha</th>
+                                    <th>USDT vendido</th>
+                                    <th>VES recibido</th>
+                                    <th>Tasa</th>
+                                    <th>Comisión</th>
+                                    <th>Contraparte</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="billeteraVentasCsvBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="tasa-form-actions">
+                        <button type="button" class="btn-primary btn-form" id="billeteraVentasCsvImportarBtn">Importar seleccionadas</button>
+                        <button type="button" class="btn-secondary" id="billeteraVentasCsvCancelarBtn">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="panel" id="billeteraVentasPanel">
                 <div class="panel-header">
                     <button type="button" class="panel-collapse-toggle" id="billeteraVentasCollapseToggle" aria-expanded="false" aria-controls="billeteraVentasCollapseBody">
