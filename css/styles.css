@@ -1719,6 +1719,12 @@ button {
   color: var(--route-blue);
 }
 
+/* Fila de la vista previa de importación CSV (billetera) que no se puede
+   importar: orden cancelada/pendiente o ya importada antes. */
+.csv-row-omitida {
+  opacity: 0.5;
+}
+
 .badge-toggle {
   border: none;
   cursor: pointer;
