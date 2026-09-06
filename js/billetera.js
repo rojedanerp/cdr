@@ -69,6 +69,24 @@ let billeteraVentasCache = [];
 // Subconjunto actualmente visible según los filtros de Historial de ventas, usado para exportar.
 let billeteraVentasFiltrado = [];
 
+// ============================================
+// IMPORTAR VENTAS DESDE CSV (Binance P2P) — lee el "Historial de órdenes C2C"
+// exportado desde Binance, filtra las ventas de USDT por VES y arma una vista
+// previa seleccionable antes de escribirlas en Caja (mismo esquema que el
+// formulario manual de venta, dos movimientos ligados por ventaId).
+// ============================================
+const billeteraVentasCsvInput = document.getElementById('billeteraVentasCsvInput');
+const billeteraVentasCsvHint = document.getElementById('billeteraVentasCsvHint');
+const billeteraVentasCsvMessage = document.getElementById('billeteraVentasCsvMessage');
+const billeteraVentasCsvPreviewPanel = document.getElementById('billeteraVentasCsvPreviewPanel');
+const billeteraVentasCsvResumen = document.getElementById('billeteraVentasCsvResumen');
+const billeteraVentasCsvBody = document.getElementById('billeteraVentasCsvBody');
+const billeteraVentasCsvSeleccionarTodo = document.getElementById('billeteraVentasCsvSeleccionarTodo');
+const billeteraVentasCsvImportarBtn = document.getElementById('billeteraVentasCsvImportarBtn');
+const billeteraVentasCsvCancelarBtn = document.getElementById('billeteraVentasCsvCancelarBtn');
+// Filas parseadas del último CSV subido, con su estado de selección para importar.
+let billeteraCsvFilasPreview = [];
+
 function recalcularTasaCompraBilletera() {
     const clp = parseFloat(billeteraClpGastadoInput.value);
     const usdt = parseFloat(billeteraUsdtCompradoInput.value);
@@ -429,6 +447,243 @@ async function eliminarVentaUsdt(ventaId) {
     }
 }
 
+// --- Normaliza texto para reconocer encabezados/valores sin tildes ni mayúsculas ---
+function normalizarTextoCsvVentas(str) {
+    return (str || '')
+        .toString()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+}
+
+// --- Parsea una línea de CSV (delimitador coma) respetando comillas ---
+function parsearLineaCsvVentas(linea) {
+    const celdas = [];
+    let actual = '';
+    let dentroComillas = false;
+    for (let i = 0; i < linea.length; i++) {
+        const ch = linea[i];
+        if (ch === '"') { dentroComillas = !dentroComillas; continue; }
+        if (ch === ',' && !dentroComillas) { celdas.push(actual.trim()); actual = ''; continue; }
+        actual += ch;
+    }
+    celdas.push(actual.trim());
+    return celdas;
+}
+
+// --- Convierte "2026-09-05 14:23:24" (hora local del archivo exportado) a Date ---
+function parsearFechaCsvVentas(valor) {
+    if (!valor) return null;
+    const m = String(valor).trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2}):(\d{1,2})/);
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6]));
+}
+
+// --- Formatea una fecha JS (aún no guardada, sin Timestamp de Firestore) ---
+function formatDatePlanoCsvVentas(date) {
+    if (!date) return '—';
+    return date.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+// --- Parsea el CSV de "Historial de órdenes C2C" de Binance y devuelve las
+// filas de venta de USDT por VES (compras y otros pares quedan fuera). ---
+function parsearCsvVentasBinance(texto) {
+    const limpio = (texto || '').replace(/^\uFEFF/, ''); // quita BOM si viene incluido
+    const lineas = limpio.split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (lineas.length < 2) {
+        return { filas: [], error: 'El archivo está vacío o no tiene filas de datos.' };
+    }
+
+    const encabezados = parsearLineaCsvVentas(lineas[0]).map(normalizarTextoCsvVentas);
+    const buscarColumna = (...claves) => {
+        for (const clave of claves) {
+            const idx = encabezados.findIndex(h => h.includes(clave));
+            if (idx !== -1) return idx;
+        }
+        return -1;
+    };
+
+    const idxPedido = buscarColumna('numero de pedido', 'order number');
+    const idxTipoOrden = buscarColumna('tipo de orden', 'order type');
+    const idxActivo = buscarColumna('activo', 'asset');
+    const idxFiat = buscarColumna('tipo de fiat', 'fiat type');
+    const idxPrecioTotal = buscarColumna('precio total', 'total price');
+    const idxCantidad = buscarColumna('cantidad', 'quantity');
+    const idxTarifaCreador = buscarColumna('tarifa de creador', 'maker fee');
+    const idxComisionTomador = buscarColumna('comision de tomador', 'taker fee');
+    const idxContraparte = buscarColumna('contraparte', 'counterparty');
+    const idxEstado = buscarColumna('estado', 'status');
+    const idxFecha = buscarColumna('hora de creacion', 'created time');
+
+    if (idxCantidad === -1 || idxPrecioTotal === -1 || idxEstado === -1) {
+        return { filas: [], error: 'No se reconoce el formato del archivo. Debe ser el CSV exportado desde "Historial de órdenes C2C" de Binance.' };
+    }
+
+    const filas = [];
+    for (let i = 1; i < lineas.length; i++) {
+        const celdas = parsearLineaCsvVentas(lineas[i]);
+        if (celdas.length < 3) continue;
+
+        const tipoOrden = idxTipoOrden !== -1 ? normalizarTextoCsvVentas(celdas[idxTipoOrden]) : '';
+        if (idxTipoOrden !== -1 && tipoOrden !== 'sell' && tipoOrden !== 'venta') continue; // solo ventas
+        if (idxActivo !== -1 && normalizarTextoCsvVentas(celdas[idxActivo]) !== 'usdt') continue;
+        if (idxFiat !== -1 && normalizarTextoCsvVentas(celdas[idxFiat]) !== 'ves') continue;
+
+        const cantidad = parseFloat(celdas[idxCantidad]);
+        const precioTotal = parseFloat(celdas[idxPrecioTotal]);
+        if (isNaN(cantidad) || cantidad <= 0 || isNaN(precioTotal) || precioTotal <= 0) continue;
+
+        const tarifaCreador = idxTarifaCreador !== -1 ? (parseFloat(celdas[idxTarifaCreador]) || 0) : 0;
+        const comisionTomador = idxComisionTomador !== -1 ? (parseFloat(celdas[idxComisionTomador]) || 0) : 0;
+        const comisionUsdt = tarifaCreador || comisionTomador || 0;
+        const estadoTexto = idxEstado !== -1 ? celdas[idxEstado] : '';
+        const estado = normalizarTextoCsvVentas(estadoTexto);
+
+        filas.push({
+            orderId: idxPedido !== -1 ? celdas[idxPedido] : `fila-${i + 1}`,
+            estadoTexto: estadoTexto || '—',
+            completada: estado.includes('completed') || estado.includes('completad'),
+            usdtVendido: cantidad + comisionUsdt,
+            vesRecibido: precioTotal,
+            comisionUsdt,
+            contraparte: idxContraparte !== -1 ? celdas[idxContraparte] : '',
+            fecha: idxFecha !== -1 ? parsearFechaCsvVentas(celdas[idxFecha]) : null
+        });
+    }
+
+    return { filas, error: null };
+}
+
+// --- Pinta la tabla de vista previa a partir de las filas parseadas,
+// marcando como no seleccionables las canceladas/pendientes y las que
+// coinciden con un binanceOrderId ya presente en billeteraVentasCache. ---
+function renderBilleteraVentasCsvPreview(filas, existentesSet) {
+    billeteraCsvFilasPreview = filas.map(f => {
+        const yaImportada = existentesSet.has(String(f.orderId));
+        return { ...f, yaImportada, seleccionada: f.completada && !yaImportada };
+    });
+
+    if (billeteraCsvFilasPreview.length === 0) {
+        billeteraVentasCsvPreviewPanel.classList.add('hidden');
+        billeteraVentasCsvMessage.textContent = 'No se encontraron ventas de USDT por VES en el archivo.';
+        billeteraVentasCsvMessage.className = 'form-message form-message-error';
+        return;
+    }
+
+    const yaImportadas = billeteraCsvFilasPreview.filter(f => f.yaImportada).length;
+    const noCompletadas = billeteraCsvFilasPreview.filter(f => !f.completada).length;
+    const seleccionables = billeteraCsvFilasPreview.filter(f => f.completada && !f.yaImportada).length;
+
+    billeteraVentasCsvResumen.textContent =
+        `${billeteraCsvFilasPreview.length} orden(es) de venta encontradas · ${seleccionables} lista(s) para importar` +
+        (yaImportadas ? ` · ${yaImportadas} ya importada(s)` : '') +
+        (noCompletadas ? ` · ${noCompletadas} no completada(s)/omitida(s)` : '') + '.';
+
+    billeteraVentasCsvBody.innerHTML = '';
+    billeteraCsvFilasPreview.forEach((f, idx) => {
+        const noImportable = !f.completada || f.yaImportada;
+        const tasa = f.usdtVendido > 0 ? f.vesRecibido / f.usdtVendido : 0;
+        const tr = document.createElement('tr');
+        if (noImportable) tr.classList.add('csv-row-omitida');
+        tr.innerHTML = `
+            <td><input type="checkbox" data-idx="${idx}" ${f.seleccionada ? 'checked' : ''} ${noImportable ? 'disabled' : ''}></td>
+            <td>${formatDatePlanoCsvVentas(f.fecha)}</td>
+            <td class="mono-cell">${formatMoney(f.usdtVendido, 'USDT')}</td>
+            <td class="mono-cell">${formatMoney(f.vesRecibido, 'VES')}</td>
+            <td class="mono-cell">${formatMoney(tasa, 'VES')}</td>
+            <td class="mono-cell">${f.comisionUsdt ? formatMoney(f.comisionUsdt, 'USDT') : '—'}</td>
+            <td>${escapeHtml(f.contraparte) || '—'}</td>
+            <td>${f.yaImportada ? 'Ya importada' : escapeHtml(f.estadoTexto)}</td>
+        `;
+        const checkbox = tr.querySelector('input[type="checkbox"]');
+        checkbox.addEventListener('change', (e) => {
+            billeteraCsvFilasPreview[idx].seleccionada = e.target.checked;
+        });
+        billeteraVentasCsvBody.appendChild(tr);
+    });
+
+    billeteraVentasCsvSeleccionarTodo.checked = seleccionables > 0;
+    billeteraVentasCsvSeleccionarTodo.disabled = seleccionables === 0;
+    billeteraVentasCsvPreviewPanel.classList.remove('hidden');
+    billeteraVentasCsvMessage.textContent = '';
+    billeteraVentasCsvMessage.className = 'form-message';
+}
+
+// --- Escribe en Caja (batch) las filas seleccionadas de la vista previa,
+// con el mismo esquema de dos movimientos ligados que usa el formulario
+// manual, respetando la fecha real de cada orden y guardando binanceOrderId
+// para poder detectar duplicados si el mismo CSV (o uno solapado) se vuelve
+// a subir más adelante. ---
+async function importarVentasCsvSeleccionadas() {
+    const seleccionadas = billeteraCsvFilasPreview.filter(f => f.seleccionada && f.completada && !f.yaImportada);
+    if (seleccionadas.length === 0) {
+        billeteraVentasCsvMessage.textContent = 'Selecciona al menos una venta para importar.';
+        billeteraVentasCsvMessage.className = 'form-message form-message-error';
+        return;
+    }
+
+    billeteraVentasCsvImportarBtn.disabled = true;
+    billeteraVentasCsvCancelarBtn.disabled = true;
+    billeteraVentasCsvMessage.textContent = `Importando ${seleccionadas.length} venta(s)...`;
+    billeteraVentasCsvMessage.className = 'form-message';
+
+    try {
+        const LOTE = 200; // Firestore permite máx. 500 escrituras por batch; cada venta usa 2.
+        for (let i = 0; i < seleccionadas.length; i += LOTE) {
+            const grupo = seleccionadas.slice(i, i + LOTE);
+            const batch = db.batch();
+            grupo.forEach(f => {
+                const ventaId = `venta_csv_${f.orderId}`;
+                const createdAt = f.fecha
+                    ? firebase.firestore.Timestamp.fromDate(f.fecha)
+                    : firebase.firestore.FieldValue.serverTimestamp();
+                const concepto = `Venta Binance P2P${f.contraparte ? ' — ' + f.contraparte : ''} (pedido ${f.orderId})`;
+
+                const salidaRef = cajaColeccion.doc();
+                batch.set(salidaRef, {
+                    tipo: 'salida',
+                    moneda: 'USDT',
+                    monto: f.usdtVendido,
+                    vesRecibido: f.vesRecibido,
+                    comisionUsdt: f.comisionUsdt,
+                    concepto,
+                    origen: 'venta_usdt',
+                    ventaId,
+                    binanceOrderId: String(f.orderId),
+                    createdAt
+                });
+
+                const entradaRef = cajaColeccion.doc();
+                batch.set(entradaRef, {
+                    tipo: 'entrada',
+                    moneda: 'VES',
+                    monto: f.vesRecibido,
+                    concepto,
+                    origen: 'venta_usdt',
+                    ventaId,
+                    binanceOrderId: String(f.orderId),
+                    createdAt
+                });
+            });
+            await batch.commit();
+        }
+
+        billeteraVentasCsvMessage.textContent = `${seleccionadas.length} venta(s) importada(s). Caja se actualizó sola (USDT −, VES +).`;
+        billeteraVentasCsvMessage.className = 'form-message form-message-success';
+        billeteraVentasCsvPreviewPanel.classList.add('hidden');
+        billeteraCsvFilasPreview = [];
+        billeteraVentasCsvInput.value = '';
+        billeteraVentasCsvHint.textContent = '';
+    } catch (error) {
+        console.error('Error al importar ventas desde CSV:', error);
+        billeteraVentasCsvMessage.textContent = 'Ocurrió un error al importar. Revisa la consola e intenta de nuevo.';
+        billeteraVentasCsvMessage.className = 'form-message form-message-error';
+    } finally {
+        billeteraVentasCsvImportarBtn.disabled = false;
+        billeteraVentasCsvCancelarBtn.disabled = false;
+    }
+}
+
 // Inicializa los formularios de compra/venta, los filtros y exportación de
 // Billetera, y los paneles minimizables. Se llama una sola vez desde app.js
 // al arrancar (renderBilletera() la invoca caja.js con cada actualización
@@ -719,6 +974,59 @@ export function initBilletera() {
             billeteraVentaSubmitBtn.querySelector('.btn-text').classList.remove('hidden');
             billeteraVentaSubmitBtn.querySelector('.spinner').classList.add('hidden');
         }
+    });
+
+    billeteraVentasCsvInput.addEventListener('change', () => {
+        const file = billeteraVentasCsvInput.files[0];
+        if (!file) return;
+
+        billeteraVentasCsvPreviewPanel.classList.add('hidden');
+        billeteraCsvFilasPreview = [];
+        billeteraVentasCsvHint.textContent = 'Leyendo archivo...';
+        billeteraVentasCsvMessage.textContent = '';
+        billeteraVentasCsvMessage.className = 'form-message';
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const { filas, error } = parsearCsvVentasBinance(reader.result);
+            if (error) {
+                billeteraVentasCsvHint.textContent = '';
+                billeteraVentasCsvMessage.textContent = error;
+                billeteraVentasCsvMessage.className = 'form-message form-message-error';
+                return;
+            }
+            const existentesSet = new Set(
+                billeteraVentasCache
+                    .filter(mov => mov.binanceOrderId)
+                    .map(mov => String(mov.binanceOrderId))
+            );
+            billeteraVentasCsvHint.textContent = `Archivo "${file.name}" leído.`;
+            renderBilleteraVentasCsvPreview(filas, existentesSet);
+        };
+        reader.onerror = () => {
+            billeteraVentasCsvHint.textContent = 'No se pudo leer el archivo. Intenta de nuevo.';
+        };
+        reader.readAsText(file, 'UTF-8');
+    });
+
+    billeteraVentasCsvSeleccionarTodo.addEventListener('change', (e) => {
+        const marcado = e.target.checked;
+        billeteraVentasCsvBody.querySelectorAll('input[type="checkbox"][data-idx]').forEach(checkbox => {
+            if (checkbox.disabled) return;
+            checkbox.checked = marcado;
+            billeteraCsvFilasPreview[Number(checkbox.dataset.idx)].seleccionada = marcado;
+        });
+    });
+
+    billeteraVentasCsvImportarBtn.addEventListener('click', importarVentasCsvSeleccionadas);
+
+    billeteraVentasCsvCancelarBtn.addEventListener('click', () => {
+        billeteraVentasCsvPreviewPanel.classList.add('hidden');
+        billeteraCsvFilasPreview = [];
+        billeteraVentasCsvInput.value = '';
+        billeteraVentasCsvHint.textContent = '';
+        billeteraVentasCsvMessage.textContent = '';
+        billeteraVentasCsvMessage.className = 'form-message';
     });
 
     // Los tres empiezan minimizados para ahorrar espacio en Billetera.
