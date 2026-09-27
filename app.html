@@ -290,7 +290,15 @@
                                 <option value="efectivo">Efectivo</option>
                                 <option value="transferencia" selected>Transferencia</option>
                                 <option value="caja_vecina">Caja Vecina</option>
+                                <option value="credito">Crédito (aún no me paga)</option>
                             </select>
+                        </div>
+                        <div class="input-group hidden" id="creditoGroup">
+                            <label class="checkbox-label" for="creditoPagado">
+                                <input type="checkbox" id="creditoPagado">
+                                El cliente ya me pagó
+                            </label>
+                            <span class="input-hint">Desmarcada: la remesa se envía igual, pero no se registra el ingreso en Caja hasta que marques la remesa como pagada desde el Historial.</span>
                         </div>
                         <div class="input-group">
                             <label class="checkbox-label" for="comisionDestinoActiva">
@@ -440,7 +448,7 @@
             <div class="empty-state" id="cajaSaldosEmpty">
                 <i class="ti ti-cash empty-state-icon" aria-hidden="true"></i>
                 <p>Todavía no hay movimientos de caja.</p>
-                <span class="empty-state-hint">Se generan solos con las remesas pagadas en efectivo, o regístralos manualmente abajo.</span>
+                <span class="empty-state-hint">Se generan solos con cada remesa (en las de crédito, el ingreso queda pendiente hasta marcarlas como pagadas), o regístralos manualmente abajo.</span>
             </div>
 
             <div class="panel" id="cierreCajaPanel">
@@ -592,9 +600,10 @@
                     </div>
                 </div>
                 <p class="tasa-intro">
-                    Las remesas pagadas en efectivo generan aquí una entrada automática. Si editas o eliminas
-                    esa remesa, el movimiento se actualiza solo. Los movimientos manuales (aportes, retiros,
-                    pagos de gastos, etc.) se pueden eliminar directamente.
+                    Cada remesa genera aquí sus movimientos automáticos. Si editas o eliminas esa remesa, se
+                    actualizan solos. Las remesas a crédito no generan la entrada del cliente hasta marcarlas
+                    como pagadas desde el Historial. Los movimientos manuales (aportes, retiros, pagos de
+                    gastos, etc.) se pueden eliminar directamente.
                 </p>
                 <div class="filtros-panel" id="cajaFiltrosPanel">
                     <button type="button" class="filtros-toggle" id="cajaFiltrosToggle" aria-expanded="false" aria-controls="cajaFiltrosBody">
@@ -1509,6 +1518,7 @@
                                     <option value="efectivo">Efectivo</option>
                                     <option value="transferencia">Transferencia</option>
                                     <option value="caja_vecina">Caja Vecina</option>
+                                    <option value="credito">Crédito</option>
                                 </select>
                             </div>
                             <div class="input-group">
@@ -1736,6 +1746,7 @@
                                 <option value="efectivo">Efectivo</option>
                                 <option value="transferencia">Transferencia</option>
                                 <option value="caja_vecina">Caja Vecina</option>
+                                <option value="credito">Crédito</option>
                             </select>
                         </div>
                         <div class="input-group">
