@@ -162,14 +162,26 @@ function aplicarFiltroBoletasPendientes() {
     }
     boletasPendientesEmpty.style.display = 'none';
     boletasPendientesTableWrap.style.display = 'block';
+
+    // Para las boletas ya agrupadas (pero aún pendientes de emitir), se
+    // calcula el total real del grupo sobre todo el caché, no solo lo filtrado.
+    const totalesPorGrupoPendiente = {};
+    boletasPendientesCache.forEach(r => {
+        if (!r.grupoBoletaId) return;
+        totalesPorGrupoPendiente[r.grupoBoletaId] = (totalesPorGrupoPendiente[r.grupoBoletaId] || 0) + (r.montoEnviado || 0);
+    });
+
     filtrados.forEach(r => {
         const tr = document.createElement('tr');
         const esFactura = tipoDocumento(r) === 'factura';
+        const grupoInfo = r.grupoBoletaId
+            ? `<div class="cell-subtext">${esFactura ? 'Factura' : 'Boleta'} agrupada · total ${formatMoney(totalesPorGrupoPendiente[r.grupoBoletaId], r.monedaEnviado)}</div>`
+            : '';
         tr.innerHTML = `
             <td><input type="checkbox" class="boleta-checkbox" data-id="${r.id}" ${boletasSeleccionadas.has(r.id) ? 'checked' : ''}></td>
             <td>${formatDate(r.createdAt)}</td>
             <td>${escapeHtml(r.clienteNombre) || '—'}</td>
-            <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
+            <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}${grupoInfo}</td>
             <td>${tipoDocumentoBadgeHtml(r)}</td>
             <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
             <td><button type="button" class="btn-icon-action" data-id="${r.id}"><i class="ti ti-receipt" aria-hidden="true"></i> Marcar ${esFactura ? 'factura' : 'boleta'} emitida</button></td>
@@ -432,22 +444,18 @@ export function initBoletas() {
 
         const moneda = seleccionadas[0].monedaEnviado;
         const total = seleccionadas.reduce((sum, r) => sum + (r.montoEnviado || 0), 0);
-        const folio = prompt(
-            `Vas a agrupar ${seleccionadas.length} remesas en una sola ${esFactura ? 'factura' : 'boleta'} por ${formatMoney(total, moneda)}.\n\nNúmero de folio de la ${esFactura ? 'factura' : 'boleta'} en e-Boleta (opcional):`,
-            ''
+        const confirmado = confirm(
+            `Vas a juntar ${seleccionadas.length} remesas en una sola ${esFactura ? 'factura' : 'boleta'} por ${formatMoney(total, moneda)}.\n\n` +
+            `Quedan agrupadas como pendientes (no se marcan como emitidas todavía). Cuando tengas el folio de e-Boleta, marca ` +
+            `cualquiera de ellas como "emitida" y se aplicará a todo el grupo.`
         );
-        if (folio === null) return; // canceló
+        if (!confirmado) return;
 
         try {
             const grupoBoletaId = `grupo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
             const batch = db.batch();
             seleccionadas.forEach(r => {
-                batch.update(db.collection('remesas').doc(r.id), {
-                    boletaEmitida: true,
-                    folioBoleta: folio.trim(),
-                    grupoBoletaId,
-                    fechaBoleta: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                batch.update(db.collection('remesas').doc(r.id), { grupoBoletaId });
             });
             await batch.commit();
             boletasSeleccionadas.clear();
@@ -461,18 +469,33 @@ export function initBoletas() {
 
 async function marcarBoletaEmitida(remesaId) {
     const r = pendientesPorId[remesaId];
-    const esFactura = r && tipoDocumento(r) === 'factura';
+    if (!r) return;
+    const esFactura = tipoDocumento(r) === 'factura';
+
+    // Si la remesa está agrupada, la marca de "emitida" debe aplicar a todo
+    // el grupo (comparten un solo folio/documento), no solo a esta remesa.
+    const grupo = r.grupoBoletaId
+        ? Object.values(pendientesPorId).filter(p => p.grupoBoletaId === r.grupoBoletaId)
+        : [r];
+    const esGrupo = grupo.length > 1;
+
     const folio = prompt(
-        `Número de folio de la ${esFactura ? 'factura' : 'boleta'} en e-Boleta (opcional, puedes dejarlo en blanco):`,
+        esGrupo
+            ? `Número de folio de la ${esFactura ? 'factura' : 'boleta'} en e-Boleta para este grupo de ${grupo.length} remesas (opcional, puedes dejarlo en blanco):`
+            : `Número de folio de la ${esFactura ? 'factura' : 'boleta'} en e-Boleta (opcional, puedes dejarlo en blanco):`,
         ''
     );
     if (folio === null) return; // canceló el prompt
     try {
-        await db.collection('remesas').doc(remesaId).update({
-            boletaEmitida: true,
-            folioBoleta: folio.trim(),
-            fechaBoleta: firebase.firestore.FieldValue.serverTimestamp()
+        const batch = db.batch();
+        grupo.forEach(p => {
+            batch.update(db.collection('remesas').doc(p.id), {
+                boletaEmitida: true,
+                folioBoleta: folio.trim(),
+                fechaBoleta: firebase.firestore.FieldValue.serverTimestamp()
+            });
         });
+        await batch.commit();
     } catch (error) {
         console.error('Error al marcar boleta emitida:', error);
         alert(`No se pudo marcar la ${esFactura ? 'factura' : 'boleta'}. Intenta de nuevo.`);

@@ -75,6 +75,8 @@ const bancoOrigenInput = document.getElementById('bancoOrigen');
 const bancoOrigenToggle = document.getElementById('bancoOrigenToggle');
 const comisionDestinoInput = document.getElementById('comisionDestino');
 const comisionDestinoActivaInput = document.getElementById('comisionDestinoActiva');
+const creditoGroup = document.getElementById('creditoGroup');
+const creditoPagadoInput = document.getElementById('creditoPagado');
 
 function seleccionarBancoOrigen(banco) {
     bancoOrigenInput.value = banco;
@@ -97,11 +99,30 @@ function actualizarVisibilidadBanco() {
         bancoGroup.classList.add('hidden');
         bancoOrigenInput.value = '';
     }
+
+    // El checkbox "el cliente ya me pagó" solo aplica (y solo se muestra)
+    // cuando la forma de pago es "Crédito": en las demás formas de pago el
+    // ingreso siempre se considera recibido de inmediato.
+    if (formaPagoSelect.value === 'credito') {
+        creditoGroup.classList.remove('hidden');
+    } else {
+        creditoGroup.classList.add('hidden');
+        creditoPagadoInput.checked = false;
+    }
 }
 
-const badgePagoLabel = (formaPago, banco) => {
+// pagoRecibido indica si el ingreso del cliente ya está en tu poder: para
+// efectivo/transferencia/Caja Vecina siempre es así (se recibe al momento);
+// para crédito depende del checkbox "El cliente ya me pagó". De esto depende
+// si sincronizarCajaDeRemesa (caja.js) genera o no el movimiento de ingreso.
+function calcularPagoRecibido(formaPago) {
+    return formaPago !== 'credito' || creditoPagadoInput.checked;
+}
+
+const badgePagoLabel = (formaPago, banco, pagoRecibido) => {
     if (formaPago === 'transferencia') return `Transferencia${banco ? ' · ' + escapeHtml(banco) : ''}`;
     if (formaPago === 'caja_vecina') return 'Caja Vecina';
+    if (formaPago === 'credito') return pagoRecibido ? 'Crédito · pagado' : 'Crédito · pendiente';
     return 'Efectivo';
 };
 
@@ -261,6 +282,7 @@ window.editarRemesa = (docId) => {
     comisionDestinoInput.value = r.comisionDestino != null && r.comisionDestino > 0 ? r.comisionDestino : 0.3;
     comisionDestinoInput.disabled = !comisionDestinoActivaInput.checked;
     comisionDestinoInput.classList.toggle('input-readonly', !comisionDestinoActivaInput.checked);
+    creditoPagadoInput.checked = !!r.pagoRecibido;
 
     remesaSubmitBtn.querySelector('.btn-text').textContent = 'Actualizar remesa';
     remesaCancelBtn.classList.remove('hidden');
@@ -268,6 +290,33 @@ window.editarRemesa = (docId) => {
     remesaMessage.className = 'form-message';
 
     showSection('nueva');
+};
+
+// Marca una remesa a crédito como pagada por el cliente: no cambia la forma
+// de pago (sigue quedando registrado que fue "a crédito"), solo activa
+// pagoRecibido para que sincronizarCajaDeRemesa (caja.js) genere recién ahí
+// el movimiento de ingreso en Caja que había quedado pendiente.
+window.marcarRemesaPagada = async (docId) => {
+    const r = remesasPorId[docId];
+    if (!r) return;
+    if (r.formaPago !== 'credito' || r.pagoRecibido) return;
+    if (!confirm(`¿Confirmas que ${r.clienteNombre || 'el cliente'} ya pagó esta remesa?`)) return;
+    try {
+        await db.collection('remesas').doc(docId).update({
+            pagoRecibido: true,
+            pagoRecibidoEn: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await sincronizarCajaDeRemesa(docId, { ...r, pagoRecibido: true });
+        registrarAuditoria('remesa', 'marcar_pagado', {
+            remesaId: docId,
+            cliente: r.clienteNombre,
+            montoEnviado: r.montoEnviado,
+            monedaEnviado: r.monedaEnviado
+        });
+    } catch (error) {
+        console.error('Error al marcar la remesa como pagada:', error);
+        alert('No se pudo marcar la remesa como pagada. Intenta de nuevo.');
+    }
 };
 
 window.eliminarRemesa = async (docId) => {
@@ -327,6 +376,7 @@ function routeTagHTML(origen, destino) {
 }
 
 function renderHistorialRow(id, r) {
+    const esCreditoPendiente = r.formaPago === 'credito' && !r.pagoRecibido;
     const tr = document.createElement('tr');
     tr.innerHTML = `
         <td>${formatDate(r.createdAt)}</td>
@@ -334,9 +384,10 @@ function renderHistorialRow(id, r) {
         <td class="route-cell">${routeTagHTML(r.paisOrigen || '?', r.paisDestino || '?')}</td>
         <td class="mono-cell">${formatMoney(r.montoEnviado, r.monedaEnviado)}</td>
         <td class="mono-cell">${formatMoney(r.montoRecibido, r.monedaRecibido)}</td>
-        <td>${badgePagoLabel(r.formaPago, r.bancoOrigen)}</td>
+        <td>${esCreditoPendiente ? `<span class="badge badge-pending">${badgePagoLabel(r.formaPago, r.bancoOrigen, r.pagoRecibido)}</span>` : badgePagoLabel(r.formaPago, r.bancoOrigen, r.pagoRecibido)}</td>
         <td><span class="${badgeClass(r.estado)}">${badgeLabel(r.estado)}</span></td>
         <td>
+            ${esCreditoPendiente ? `<button type="button" class="btn-icon-action" onclick="marcarRemesaPagada('${id}')"><i class="ti ti-cash" aria-hidden="true"></i> Marcar pagado</button>` : ''}
             <button type="button" class="btn-icon-action" onclick="editarRemesa('${id}')"><i class="ti ti-pencil" aria-hidden="true"></i> Editar</button>
             <button type="button" class="btn-icon-action danger" onclick="eliminarRemesa('${id}')"><i class="ti ti-trash" aria-hidden="true"></i> Eliminar</button>
         </td>
@@ -442,9 +493,10 @@ const historialExportarExcelBtn = document.getElementById('historialExportarExce
 
 // Variante de texto plano (sin escapado HTML) del formateador de pago de la
 // tabla, para no arrastrar entidades como "&amp;" a un PDF o Excel.
-const pagoTexto = (formaPago, banco) => {
+const pagoTexto = (formaPago, banco, pagoRecibido) => {
     if (formaPago === 'transferencia') return `Transferencia${banco ? ' · ' + banco : ''}`;
     if (formaPago === 'caja_vecina') return 'Caja Vecina';
+    if (formaPago === 'credito') return pagoRecibido ? 'Crédito · pagado' : 'Crédito · pendiente';
     return 'Efectivo';
 };
 
@@ -456,7 +508,7 @@ function filasExportHistorial() {
         Destino: r.paisDestino || '—',
         Enviado: moneyTexto(r.montoEnviado, r.monedaEnviado),
         Recibido: moneyTexto(r.montoRecibido, r.monedaRecibido),
-        Pago: pagoTexto(r.formaPago, r.bancoOrigen),
+        Pago: pagoTexto(r.formaPago, r.bancoOrigen, r.pagoRecibido),
         Estado: badgeLabel(r.estado)
     }));
 }
@@ -605,6 +657,7 @@ export function initRemesas() {
         const formaPago = formaPagoSelect.value;
         const bancoOrigen = formaPago === 'transferencia' ? bancoOrigenInput.value.trim() : '';
         const comisionDestino = comisionDestinoActivaInput.checked ? (parseFloat(comisionDestinoInput.value) || 0) : 0;
+        const pagoRecibido = calcularPagoRecibido(formaPago);
 
         remesaSubmitBtn.disabled = true;
         remesaSubmitBtn.querySelector('.btn-text').textContent = 'Guardando...';
@@ -649,7 +702,8 @@ export function initRemesas() {
                 estado: document.getElementById('estado').value,
                 formaPago,
                 bancoOrigen,
-                comisionDestino
+                comisionDestino,
+                pagoRecibido
             };
 
             let remesaIdGuardada = remesaDocId;
@@ -669,7 +723,7 @@ export function initRemesas() {
             if (remesaAnterior) {
                 // Solo se registran los campos que realmente cambiaron
                 const cambios = {};
-                ['montoEnviado', 'monedaEnviado', 'tasaCambio', 'montoRecibido', 'monedaRecibido', 'estado', 'formaPago', 'comisionDestino'].forEach(campo => {
+                ['montoEnviado', 'monedaEnviado', 'tasaCambio', 'montoRecibido', 'monedaRecibido', 'estado', 'formaPago', 'comisionDestino', 'pagoRecibido'].forEach(campo => {
                     if (data[campo] !== undefined && data[campo] !== remesaAnterior[campo]) {
                         cambios[campo] = { antes: remesaAnterior[campo] ?? null, despues: data[campo] };
                     }

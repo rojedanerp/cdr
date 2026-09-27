@@ -41,17 +41,25 @@ export async function sincronizarCajaDeRemesa(remesaId, data) {
     if (!remesaId) return;
 
     const activa = data.estado !== 'cancelado';
+    // Forma de pago "crédito": el envío al destino se hace igual, pero el
+    // cliente todavía no entrega el dinero. pagoRecibido es false por defecto
+    // en ese caso (true para cualquier otra forma de pago, que se cobra al
+    // momento). Mientras pagoRecibido sea false, no se genera el ingreso en
+    // Caja — recién se crea cuando se marca la remesa como pagada
+    // (ver marcarRemesaPagada en remesas.js), sin tocar salida_destino/comisión.
+    const clientePago = data.formaPago !== 'credito' || data.pagoRecibido === true;
     const montoComision = (data.montoRecibido || 0) * ((data.comisionDestino || 0) / 100);
     const batch = db.batch();
 
     await prepararMovimientoCajaDeRemesa(batch, remesaId, 'ingreso_cliente', {
-        debeExistir: activa && data.montoEnviado > 0 && !!data.monedaEnviado,
+        debeExistir: activa && clientePago && data.montoEnviado > 0 && !!data.monedaEnviado,
         tipo: 'entrada',
         moneda: data.monedaEnviado,
         monto: data.montoEnviado,
         concepto: (() => {
             if (data.formaPago === 'efectivo') return `Remesa en efectivo — ${data.clienteNombre}`;
             if (data.formaPago === 'caja_vecina') return `Remesa por Caja Vecina — ${data.clienteNombre}`;
+            if (data.formaPago === 'credito') return `Remesa a crédito (cobrada) — ${data.clienteNombre}`;
             return `Remesa por transferencia — ${data.clienteNombre}`;
         })()
     });
