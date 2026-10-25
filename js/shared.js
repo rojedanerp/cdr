@@ -172,3 +172,53 @@ export function initPanelCollapseToggle(panelId, toggleId, abiertoPorDefecto) {
         guardarEstadoPanelColapsable(panelId, ahoraAbierto);
     });
 }
+
+
+// ============================================
+// Carga diferida de librerías de exportación (jsPDF, autotable, SheetJS).
+// Antes se descargaban en el <head> bloqueando el arranque; ahora se piden
+// solo cuando hacen falta (o en segundo plano, cuando el navegador está libre).
+// ============================================
+const LIBS_EXPORT = {
+    jspdf: { src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', integrity: 'sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk' },
+    autotable: { src: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js', integrity: 'sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3', after: 'jspdf' },
+    xlsx: { src: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', integrity: 'sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw' }
+};
+const libsPromesas = {};
+
+function cargarLib(nombre) {
+    if (libsPromesas[nombre]) return libsPromesas[nombre];
+    const lib = LIBS_EXPORT[nombre];
+    const previa = lib.after ? cargarLib(lib.after) : Promise.resolve();
+    libsPromesas[nombre] = previa.then(() => new Promise((resolve, reject) => {
+        const el = document.createElement('script');
+        el.src = lib.src;
+        el.integrity = lib.integrity;
+        el.crossOrigin = 'anonymous';
+        el.referrerPolicy = 'no-referrer';
+        el.onload = resolve;
+        el.onerror = () => { delete libsPromesas[nombre]; reject(new Error('No se pudo cargar ' + nombre)); };
+        document.head.appendChild(el);
+    }));
+    return libsPromesas[nombre];
+}
+
+// tipo: 'pdf' (jsPDF + autotable) o 'xlsx' (SheetJS)
+export function cargarLibsExport(tipo) {
+    const p = tipo === 'pdf' ? cargarLib('autotable') : cargarLib('xlsx');
+    return p.catch(err => {
+        alert('No se pudo cargar el módulo de exportación. Revisa tu conexión e inténtalo de nuevo.');
+        throw err;
+    });
+}
+
+// Precarga silenciosa cuando el navegador está desocupado, para que el
+// primer clic en "Exportar" sea inmediato.
+(function precargarLibsExport() {
+    const lanzar = () => { cargarLib('autotable').catch(() => {}); cargarLib('xlsx').catch(() => {}); };
+    const programar = () => ('requestIdleCallback' in window)
+        ? requestIdleCallback(lanzar, { timeout: 8000 })
+        : setTimeout(lanzar, 4000);
+    if (document.readyState === 'complete') programar();
+    else window.addEventListener('load', programar, { once: true });
+})();

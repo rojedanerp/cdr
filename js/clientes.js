@@ -1,5 +1,5 @@
 import { auth, db } from './firebase-config.js';
-import { escapeHtml, fechaArchivo, normalizarNombre, initFiltrosToggle, actualizarPanelFiltros } from './shared.js';
+import { escapeHtml, fechaArchivo, normalizarNombre, initFiltrosToggle, actualizarPanelFiltros , cargarLibsExport } from './shared.js';
 import { showSection } from './ui.js';
 
 // ============================================
@@ -229,7 +229,8 @@ export function initClientes() {
     });
     initFiltrosToggle('clientes');
 
-    clientesExportarPdfBtn.addEventListener('click', () => {
+    clientesExportarPdfBtn.addEventListener('click', async () => {
+        await cargarLibsExport('pdf');
         if (clientesFiltrado.length === 0) {
             alert('No hay clientes para exportar con los filtros actuales.');
             return;
@@ -256,7 +257,8 @@ export function initClientes() {
         doc.save(`clientes-${fechaArchivo()}.pdf`);
     });
 
-    clientesExportarExcelBtn.addEventListener('click', () => {
+    clientesExportarExcelBtn.addEventListener('click', async () => {
+        await cargarLibsExport('xlsx');
         if (clientesFiltrado.length === 0) {
             alert('No hay clientes para exportar con los filtros actuales.');
             return;

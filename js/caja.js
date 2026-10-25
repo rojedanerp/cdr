@@ -1,5 +1,5 @@
 import { auth, db } from './firebase-config.js';
-import { escapeHtml, formatMoney, formatDate, moneyTexto, fechaArchivo, initFiltrosToggle, actualizarPanelFiltros, initPanelCollapseToggle } from './shared.js';
+import { escapeHtml, formatMoney, formatDate, moneyTexto, fechaArchivo, initFiltrosToggle, actualizarPanelFiltros, initPanelCollapseToggle , cargarLibsExport } from './shared.js';
 import { registrarAuditoria } from './auditoria.js';
 import { claveTasa, tasasCache } from './tasas.js';
 import { renderBilletera } from './billetera.js';
@@ -936,7 +936,8 @@ export function initCaja() {
     initFiltrosToggle('caja');
     initPanelCollapseToggle('cierresHistorialPanel', 'cierresHistorialCollapseToggle', false);
 
-    cajaExportarPdfBtn.addEventListener('click', () => {
+    cajaExportarPdfBtn.addEventListener('click', async () => {
+        await cargarLibsExport('pdf');
         if (cajaFiltrado.length === 0) {
             alert('No hay movimientos para exportar con los filtros actuales.');
             return;
@@ -963,7 +964,8 @@ export function initCaja() {
         doc.save(`caja-movimientos-${fechaArchivo()}.pdf`);
     });
 
-    cajaExportarExcelBtn.addEventListener('click', () => {
+    cajaExportarExcelBtn.addEventListener('click', async () => {
+        await cargarLibsExport('xlsx');
         if (cajaFiltrado.length === 0) {
             alert('No hay movimientos para exportar con los filtros actuales.');
             return;
@@ -1177,7 +1179,8 @@ export function initCaja() {
         }
     });
 
-    cierresExportarPdfBtn.addEventListener('click', () => {
+    cierresExportarPdfBtn.addEventListener('click', async () => {
+        await cargarLibsExport('pdf');
         const ids = Object.keys(cierresCerradosCache);
         if (ids.length === 0) { alert('Todavía no hay cierres de caja para exportar.'); return; }
         const { jsPDF } = window.jspdf;
@@ -1205,7 +1208,8 @@ export function initCaja() {
         doc.save(`historial-arqueos-caja-${fechaArchivo()}.pdf`);
     });
 
-    cierresExportarExcelBtn.addEventListener('click', () => {
+    cierresExportarExcelBtn.addEventListener('click', async () => {
+        await cargarLibsExport('xlsx');
         const ids = Object.keys(cierresCerradosCache);
         if (ids.length === 0) { alert('Todavía no hay cierres de caja para exportar.'); return; }
         const filas = [];

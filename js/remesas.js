@@ -1,5 +1,5 @@
 import { auth, db } from './firebase-config.js';
-import { escapeHtml, formatMoney, formatDate, fechaEnRango, badgeClass, badgeLabel, moneyTexto, fechaArchivo, normalizarNombre, initFiltrosToggle, actualizarPanelFiltros } from './shared.js';
+import { escapeHtml, formatMoney, formatDate, fechaEnRango, badgeClass, badgeLabel, moneyTexto, fechaArchivo, normalizarNombre, initFiltrosToggle, actualizarPanelFiltros , cargarLibsExport } from './shared.js';
 import { showSection } from './ui.js';
 import { registrarAuditoria } from './auditoria.js';
 import { clientesCache } from './clientes.js';
@@ -817,7 +817,8 @@ export function initRemesas() {
     });
     initFiltrosToggle('historial');
 
-    historialExportarPdfBtn.addEventListener('click', () => {
+    historialExportarPdfBtn.addEventListener('click', async () => {
+        await cargarLibsExport('pdf');
         if (historialFiltrado.length === 0) {
             alert('No hay remesas para exportar con los filtros actuales.');
             return;
@@ -844,7 +845,8 @@ export function initRemesas() {
         doc.save(`historial-remesas-${fechaArchivo()}.pdf`);
     });
 
-    historialExportarExcelBtn.addEventListener('click', () => {
+    historialExportarExcelBtn.addEventListener('click', async () => {
+        await cargarLibsExport('xlsx');
         if (historialFiltrado.length === 0) {
             alert('No hay remesas para exportar con los filtros actuales.');
             return;

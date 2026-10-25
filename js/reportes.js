@@ -1,4 +1,4 @@
-import { formatMoney, formatDate, moneyTexto, fechaArchivo, escapeHtml, initFiltrosToggle, actualizarPanelFiltros } from './shared.js';
+import { formatMoney, formatDate, moneyTexto, fechaArchivo, escapeHtml, initFiltrosToggle, actualizarPanelFiltros , cargarLibsExport } from './shared.js';
 import { remesasPorId } from './remesas.js';
 
 // ============================================
@@ -612,7 +612,8 @@ export function initReportes() {
 
     reportesHastaInput.addEventListener('change', renderizarReportes);
 
-    reportesExportarPdfBtn.addEventListener('click', () => {
+    reportesExportarPdfBtn.addEventListener('click', async () => {
+        await cargarLibsExport('pdf');
         const { stats, volumen, ganancia, resumenMoneda, periodoLabel } = reportesExportState;
         if (Number(stats.cantidad) === 0 && volumen.length === 0 && ganancia.length === 0 && resumenMoneda.length === 0) {
             alert('No hay datos para exportar con los filtros actuales.');
@@ -686,7 +687,8 @@ export function initReportes() {
         doc.save(`reportes-${fechaArchivo()}.pdf`);
     });
 
-    reportesExportarExcelBtn.addEventListener('click', () => {
+    reportesExportarExcelBtn.addEventListener('click', async () => {
+        await cargarLibsExport('xlsx');
         const { stats, volumen, ganancia, resumenMoneda, periodoLabel } = reportesExportState;
         if (Number(stats.cantidad) === 0 && volumen.length === 0 && ganancia.length === 0 && resumenMoneda.length === 0) {
             alert('No hay datos para exportar con los filtros actuales.');

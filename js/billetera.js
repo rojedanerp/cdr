@@ -1,5 +1,5 @@
 import { db } from './firebase-config.js';
-import { escapeHtml, formatMoney, formatDate, moneyTexto, fechaArchivo, fechaEnRango, initFiltrosToggle, actualizarPanelFiltros, initPanelCollapseToggle } from './shared.js';
+import { escapeHtml, formatMoney, formatDate, moneyTexto, fechaArchivo, fechaEnRango, initFiltrosToggle, actualizarPanelFiltros, initPanelCollapseToggle , cargarLibsExport } from './shared.js';
 import { cajaColeccion, origenBadgeHTML, tipoBadgeHTML, origenTexto, tipoTexto } from './caja.js';
 
 // ============================================
@@ -710,7 +710,8 @@ export function initBilletera() {
     });
     initFiltrosToggle('billeteraMovs');
 
-    billeteraMovsExportarPdfBtn.addEventListener('click', () => {
+    billeteraMovsExportarPdfBtn.addEventListener('click', async () => {
+        await cargarLibsExport('pdf');
         if (billeteraMovsFiltrado.length === 0) {
             alert('No hay movimientos para exportar con los filtros actuales.');
             return;
@@ -737,7 +738,8 @@ export function initBilletera() {
         doc.save(`billetera-movimientos-${fechaArchivo()}.pdf`);
     });
 
-    billeteraMovsExportarExcelBtn.addEventListener('click', () => {
+    billeteraMovsExportarExcelBtn.addEventListener('click', async () => {
+        await cargarLibsExport('xlsx');
         if (billeteraMovsFiltrado.length === 0) {
             alert('No hay movimientos para exportar con los filtros actuales.');
             return;
@@ -762,7 +764,8 @@ export function initBilletera() {
     });
     initFiltrosToggle('billeteraCompras');
 
-    billeteraComprasExportarPdfBtn.addEventListener('click', () => {
+    billeteraComprasExportarPdfBtn.addEventListener('click', async () => {
+        await cargarLibsExport('pdf');
         if (billeteraComprasFiltrado.length === 0) {
             alert('No hay compras para exportar con los filtros actuales.');
             return;
@@ -789,7 +792,8 @@ export function initBilletera() {
         doc.save(`billetera-compras-${fechaArchivo()}.pdf`);
     });
 
-    billeteraComprasExportarExcelBtn.addEventListener('click', () => {
+    billeteraComprasExportarExcelBtn.addEventListener('click', async () => {
+        await cargarLibsExport('xlsx');
         if (billeteraComprasFiltrado.length === 0) {
             alert('No hay compras para exportar con los filtros actuales.');
             return;
@@ -874,7 +878,8 @@ export function initBilletera() {
     });
     initFiltrosToggle('billeteraVentas');
 
-    billeteraVentasExportarPdfBtn.addEventListener('click', () => {
+    billeteraVentasExportarPdfBtn.addEventListener('click', async () => {
+        await cargarLibsExport('pdf');
         if (billeteraVentasFiltrado.length === 0) {
             alert('No hay ventas para exportar con los filtros actuales.');
             return;
@@ -901,7 +906,8 @@ export function initBilletera() {
         doc.save(`billetera-ventas-${fechaArchivo()}.pdf`);
     });
 
-    billeteraVentasExportarExcelBtn.addEventListener('click', () => {
+    billeteraVentasExportarExcelBtn.addEventListener('click', async () => {
+        await cargarLibsExport('xlsx');
         if (billeteraVentasFiltrado.length === 0) {
             alert('No hay ventas para exportar con los filtros actuales.');
             return;

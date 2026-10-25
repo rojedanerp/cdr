@@ -1,5 +1,5 @@
 import { db } from './firebase-config.js';
-import { escapeHtml, formatMoney, formatDate, moneyTexto, fechaArchivo, fechaEnRango, badgeClass, badgeLabel, initFiltrosToggle, actualizarPanelFiltros } from './shared.js';
+import { escapeHtml, formatMoney, formatDate, moneyTexto, fechaArchivo, fechaEnRango, badgeClass, badgeLabel, initFiltrosToggle, actualizarPanelFiltros , cargarLibsExport } from './shared.js';
 
 // ============================================
 // BOLETAS SII — checklist manual (NO conectado al SII). renderBoletas se
@@ -332,7 +332,8 @@ export function initBoletas() {
     });
     initFiltrosToggle('boletasPendientes');
 
-    boletasPendientesExportarPdfBtn.addEventListener('click', () => {
+    boletasPendientesExportarPdfBtn.addEventListener('click', async () => {
+        await cargarLibsExport('pdf');
         if (boletasPendientesFiltrado.length === 0) {
             alert('No hay remesas pendientes para exportar con los filtros actuales.');
             return;
@@ -359,7 +360,8 @@ export function initBoletas() {
         doc.save(`boletas-pendientes-${fechaArchivo()}.pdf`);
     });
 
-    boletasPendientesExportarExcelBtn.addEventListener('click', () => {
+    boletasPendientesExportarExcelBtn.addEventListener('click', async () => {
+        await cargarLibsExport('xlsx');
         if (boletasPendientesFiltrado.length === 0) {
             alert('No hay remesas pendientes para exportar con los filtros actuales.');
             return;
@@ -384,7 +386,8 @@ export function initBoletas() {
     });
     initFiltrosToggle('boletasEmitidas');
 
-    boletasEmitidasExportarPdfBtn.addEventListener('click', () => {
+    boletasEmitidasExportarPdfBtn.addEventListener('click', async () => {
+        await cargarLibsExport('pdf');
         if (boletasEmitidasFiltrado.length === 0) {
             alert('No hay boletas emitidas para exportar con los filtros actuales.');
             return;
@@ -411,7 +414,8 @@ export function initBoletas() {
         doc.save(`boletas-emitidas-${fechaArchivo()}.pdf`);
     });
 
-    boletasEmitidasExportarExcelBtn.addEventListener('click', () => {
+    boletasEmitidasExportarExcelBtn.addEventListener('click', async () => {
+        await cargarLibsExport('xlsx');
         if (boletasEmitidasFiltrado.length === 0) {
             alert('No hay boletas emitidas para exportar con los filtros actuales.');
             return;
