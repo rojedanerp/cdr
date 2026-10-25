@@ -17,13 +17,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.46.0/tabler-icons.min.css">
     <link rel="stylesheet" href="css/styles.css">
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <!-- Exportar Historial: PDF (jsPDF + autotable) y Excel (SheetJS) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" integrity="sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="modulepreload" href="js/app.js?v=23">
+    <link rel="modulepreload" href="js/firebase-config.js">
+    <link rel="modulepreload" href="js/ui.js">
+    <link rel="modulepreload" href="js/auditoria.js">
+    <link rel="modulepreload" href="js/tasas.js">
+    <link rel="modulepreload" href="js/clientes.js">
+    <link rel="modulepreload" href="js/remesas.js">
+    <link rel="modulepreload" href="js/conciliacion.js">
+    <link rel="modulepreload" href="js/reportes.js">
+    <link rel="modulepreload" href="js/caja.js">
+    <link rel="modulepreload" href="js/billetera.js">
+    <link rel="modulepreload" href="js/boletas.js">
+    <link rel="modulepreload" href="js/dashboard.js">
+    <link rel="modulepreload" href="js/shared.js">
+    <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <!-- Barra superior: marca + usuario -->
@@ -1962,8 +1972,8 @@
         </div>
     </div>
 
-    <script src="js/calculadora.js?v=21"></script>
-    <script type="module" src="js/app.js?v=22"></script>
+    <script defer src="js/calculadora.js?v=22"></script>
+    <script type="module" src="js/app.js?v=23"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
